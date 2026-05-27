@@ -3,6 +3,15 @@ from typing import Optional, Dict, Any
 from decimal import Decimal
 from datetime import datetime
 
+# Esquema para mostrar info básica del usuario/cliente
+class UsuarioInfo(BaseModel):
+    id: int
+    nombre: str
+    correo: str
+    telefono: Optional[str] = None
+    class Config:
+        from_attributes = True
+
 # Esquema para mostrar info básica del técnico
 class TecnicoInfo(BaseModel):
     id: int
@@ -31,8 +40,11 @@ class PagoInfo(BaseModel):
 # Esquema para mostrar info básica del taller
 class TallerInfo(BaseModel):
     id: int
+    nombre: Optional[str] = None
+    direccion: Optional[str] = None
     latitud: Decimal
     longitud: Decimal
+    comision_porcentaje: Optional[Decimal] = None
     class Config:
         from_attributes = True
 
@@ -73,11 +85,12 @@ class Incidente(IncidenteBase):
     clasificacion_ia: Optional[str] = None
     resumen_ia: Optional[str] = None
     
-    # 🚩 Pydantic se encargará de mapear la relación 'tecnico' a este esquema
-    tecnico: Optional[TecnicoInfo] = None 
-    vehiculo: Optional[VehiculoInfo] = None  # 🚗 Relación con el vehículo
+    # Relaciones con otros modelos
+    usuario: Optional[UsuarioInfo] = None  # 👤 Cliente que reportó el incidente
+    tecnico: Optional[TecnicoInfo] = None  # 👨‍🔧 Técnico asignado
+    vehiculo: Optional[VehiculoInfo] = None  # 🚗 Vehículo del incidente
     pagos: Optional[PagoInfo] = None  # Relación con el pago asociado
-    taller: Optional[TallerInfo] = None  # Relación con el taller
+    taller: Optional[TallerInfo] = None  # 🏢 Taller asignado
     distancia_metros: Optional[float] = None  # 📏 Distancia al taller en metros 
 
     @root_validator(pre=True)
@@ -105,10 +118,11 @@ class Incidente(IncidenteBase):
                 "clasificacion_ia": obj.clasificacion_ia,
                 "resumen_ia": obj.resumen_ia,
                 "fecha_creacion": obj.fecha_creacion,
-                "tecnico": obj.tecnico,
-                "vehiculo": obj.vehiculo,  # 🚗 Incluir relación con vehículo
-                "pagos": obj.pagos,  # 🆕 Incluir relación con pagos
-                "taller": obj.taller,  # 🆕 Incluir relación con taller
-                "distancia_metros": getattr(obj, "distancia_metros", None)  # 📏 Incluir distancia
+                "usuario": getattr(obj, "usuario", None),  # 👤 AGREGADO: cliente
+                "tecnico": getattr(obj, "tecnico", None),  # 👨‍🔧 técnico
+                "vehiculo": getattr(obj, "vehiculo", None),  # 🚗 vehículo
+                "pagos": getattr(obj, "pagos", None),  # pago
+                "taller": getattr(obj, "taller", None),  # 🏢 taller
+                "distancia_metros": getattr(obj, "distancia_metros", None)  # 📏 distancia
             }
         return obj

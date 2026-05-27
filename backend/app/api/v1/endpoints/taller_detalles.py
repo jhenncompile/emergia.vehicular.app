@@ -30,6 +30,41 @@ def agregar_horario(
 def leer_horarios_taller(taller_id: int, db: Session = Depends(deps.get_db)):
     return horario_crud.obtener_por_taller(db, taller_id=taller_id)
 
+@router.put("/horarios/{horario_id}", response_model=HorarioTaller)
+def actualizar_horario(
+    horario_id: int,
+    obj_in: HorarioTallerCreate,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_admin_taller)
+):
+    """Actualiza un horario existente."""
+    horario = horario_crud.get(db, id=horario_id)
+    if not horario:
+        raise HTTPException(status_code=404, detail="Horario no encontrado")
+    
+    # Verificar que el horario pertenece al taller del usuario
+    if horario.taller_id != current_user.taller_id:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    
+    return horario_crud.update(db, db_obj=horario, obj_in=obj_in)
+
+@router.delete("/horarios/{horario_id}")
+def eliminar_horario(
+    horario_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_admin_taller)
+):
+    """Elimina un horario."""
+    horario = horario_crud.get(db, id=horario_id)
+    if not horario:
+        raise HTTPException(status_code=404, detail="Horario no encontrado")
+    
+    if horario.taller_id != current_user.taller_id:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    
+    horario_crud.remove(db, id=horario_id)
+    return {"detail": "Horario eliminado"}
+
 # --- ESPECIALIDADES (Catálogo General) ---
 @router.post("/especialidades", response_model=Especialidad)
 def crear_especialidad(

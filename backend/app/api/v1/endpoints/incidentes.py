@@ -370,3 +370,57 @@ def descargar_reporte_tecnico(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=reporte_tecnico_{id}.pdf"}
     )
+# ==========================================
+# 🔧 NUEVOS: ENDPOINTS PARA TÉCNICO
+# ==========================================
+# 🔧 NUEVOS: ENDPOINTS PARA TÉCNICO
+# ==========================================
+
+@router.get("/tecnico/mis-incidentes", response_model=List[IncidenteSchema])
+def obtener_incidentes_del_tecnico(
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user)
+):
+    """
+    Obtiene todos los incidentes asignados al técnico autenticado.
+    Solo rol_id = 3 (Técnico) puede acceder.
+    """
+    if current_user.rol_id != 3:
+        raise HTTPException(status_code=403, detail="Solo técnicos pueden acceder a esta sección.")
+    
+    incidentes = db.query(Incidente).filter(
+        Incidente.tecnico_id == current_user.id
+    ).order_by(Incidente.fecha_creacion.desc()).all()
+    
+    return incidentes
+
+@router.get("/{id}", response_model=IncidenteSchema)
+def obtener_incidente_por_id(
+    id: int,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user)
+):
+    """
+    Obtiene los detalles de un incidente específico con todas sus relaciones.
+    El técnico solo puede ver incidentes asignados a él.
+    El admin puede ver cualquier incidente.
+    """
+    from sqlalchemy.orm import joinedload
+    
+    incidente = db.query(Incidente).filter(
+        Incidente.id == id
+    ).options(
+        joinedload(Incidente.usuario),
+        joinedload(Incidente.taller),
+        joinedload(Incidente.vehiculo),
+        joinedload(Incidente.tecnico)
+    ).first()
+    
+    if not incidente:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado")
+    
+    # Control de acceso: solo técnico (rol_id=3) puede ver sus propios incidentes, admin (rol_id=1) ve todos
+    if current_user.rol_id == 3 and incidente.tecnico_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tienes permiso para ver este incidente")
+    
+    return incidente

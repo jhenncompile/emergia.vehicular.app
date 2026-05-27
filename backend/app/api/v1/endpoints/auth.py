@@ -99,6 +99,9 @@ def registrar_empresa_y_admin(
                 nuevo_usuario.id, expires_delta=access_token_expires
             ),
             "token_type": "bearer",
+            "rol_id": nuevo_usuario.rol_id,
+            "usuario_id": nuevo_usuario.id,
+            "nombre": nuevo_usuario.nombre,
         }
     except Exception as e:
         db.rollback()
@@ -142,6 +145,9 @@ def login_access_token(
             usuario.id, expires_delta=access_token_expires
         ),
         "token_type": "bearer",
+        "rol_id": usuario.rol_id,
+        "usuario_id": usuario.id,
+        "nombre": usuario.nombre,
     }
 
 
