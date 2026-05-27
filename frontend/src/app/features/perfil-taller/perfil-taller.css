@@ -211,3 +211,169 @@ input:checked + .slider:before { transform: translateX(26px); }
 .horarios-tabla tr:last-child td {
   border-bottom: none;
 }
+
+/* Botones de Edición */
+.btn-editar {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-editar:hover {
+  background: #2563eb;
+}
+
+.btn-mini {
+  background: #f0f4f8;
+  border: 1px solid #cbd5e1;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.btn-mini:hover {
+  background: #e2e8f0;
+}
+
+.btn-mini.btn-eliminar {
+  background: #fee2e2;
+}
+
+.btn-mini.btn-eliminar:hover {
+  background: #fecaca;
+}
+
+.btn-mini.btn-success {
+  background: #dcfce7;
+  border-color: #22c55e;
+}
+
+.btn-mini.btn-success:hover {
+  background: #bbf7d0;
+}
+
+.btn-mini.btn-cancel {
+  background: #fee2e2;
+  border-color: #ef4444;
+}
+
+.btn-mini.btn-cancel:hover {
+  background: #fecaca;
+}
+
+/* Formulario de Horarios */
+.formulario-horarios {
+  background: #f8fafc;
+  border: 2px dashed #3b82f6;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.formulario-horarios h4 {
+  margin-top: 0;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.horario-input-group {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.horario-input-group select,
+.horario-input-group input {
+  padding: 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.horario-input-group select {
+  flex: 1.2;
+  background: white;
+}
+
+.horario-input-group input {
+  flex: 1;
+}
+
+.horario-input-group button {
+  padding: 0.4rem 0.6rem;
+}
+
+.btn-agregar {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  width: 100%;
+  transition: background 0.2s;
+}
+
+.btn-agregar:hover {
+  background: #059669;
+}
+
+.btn-agregar:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.botones-accion {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn-success {
+  background: #22c55e;
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  flex: 1;
+  transition: background 0.2s;
+}
+
+.btn-success:hover {
+  background: #16a34a;
+}
+
+.btn-success:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.btn-cancel {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  flex: 1;
+  transition: background 0.2s;
+}
+
+.btn-cancel:hover {
+  background: #dc2626;
+}

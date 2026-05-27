@@ -1,0 +1,16 @@
+# This file is used by the build system to determine which browser versions to support.
+# See: https://github.com/browserslist/browserslist
+
+# Browsers that support modern JavaScript features needed by Angular 21
+last 2 Chrome versions
+last 2 Firefox versions
+last 2 Edge versions
+last 2 Safari versions
+last 2 iOS versions
+
+# Explicitly exclude old versions
+not Chrome < 100
+not Firefox < 100
+not Edge < 100
+not Safari < 15
+not iOS < 15

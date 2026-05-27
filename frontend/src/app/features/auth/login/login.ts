@@ -40,9 +40,22 @@ export class LoginComponent {
       next: (res: any) => { 
         this.isLoading = false;
         console.log('Login exitoso, guardando token y redirigiendo...');
-        localStorage.setItem('token', res.access_token); 
+        localStorage.setItem('token', res.access_token);
         
-        this.router.navigate(['/dashboard']); 
+        // Redireccionar según rol
+        const rolId = this.authService.getRolId();
+        console.log('Rol:', rolId);
+        
+        if (rolId === 3) {
+          // Técnico
+          this.router.navigate(['/tecnico/dashboard']);
+        } else if (rolId === 1) {
+          // Admin
+          this.router.navigate(['/dashboard']);
+        } else {
+          // Cliente u otro rol
+          this.router.navigate(['/']);
+        }
       },
       error: (err) => {
         this.isLoading = false;

@@ -1,0 +1,133 @@
+<div class="dashboard-container">
+  <!-- Header -->
+  <div class="dashboard-header">
+    <div class="user-info">
+      <h2>Mi Dashboard</h2>
+      <p>Técnico: <strong>{{ nombre }}</strong></p>
+    </div>
+    <button class="btn-logout" (click)="salir()">Salir</button>
+  </div>
+
+  <!-- Mensaje de error -->
+  <div *ngIf="mensaje" class="alert alert-error">
+    {{ mensaje }}
+  </div>
+
+  <!-- Filtros -->
+  <div class="filtros-section">
+    <h3>🔍 Filtros</h3>
+    <div class="filtros-grid">
+      <div class="filter-group">
+        <label for="filtroEstado">Estado:</label>
+        <select 
+          id="filtroEstado" 
+          [(ngModel)]="filtroEstado" 
+          [ngModelOptions]="{standalone: true}"
+          (change)="onFiltroChange()"
+          class="filter-select">
+          <option value="">Todos</option>
+          <option *ngFor="let estado of estados" [value]="estado">
+            {{ estado | uppercase }}
+          </option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="filtroFecha">Fecha:</label>
+        <input 
+          type="date" 
+          id="filtroFecha" 
+          [(ngModel)]="filtroFecha" 
+          [ngModelOptions]="{standalone: true}"
+          (change)="onFiltroChange()"
+          class="filter-input">
+      </div>
+
+      <div class="filter-group">
+        <label for="filtroDistancia">Distancia:</label>
+        <select 
+          id="filtroDistancia" 
+          [(ngModel)]="filtroDistancia" 
+          [ngModelOptions]="{standalone: true}"
+          (change)="onFiltroChange()"
+          class="filter-select">
+          <option value="">Todas</option>
+          <option value="cerca">Cerca (< 5 km)</option>
+          <option value="medio">Medio (5 - 15 km)</option>
+          <option value="lejos">Lejos (> 15 km)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cargando -->
+  <div *ngIf="cargando" class="loading">
+    <p>Cargando incidentes...</p>
+  </div>
+
+  <!-- Sin incidentes -->
+  <div *ngIf="!cargando && incidentesFiltrados.length === 0" class="empty-state">
+    <p>📭 No hay incidentes con estos filtros</p>
+  </div>
+
+  <!-- Tabla de Incidentes -->
+  <div *ngIf="!cargando && incidentesFiltrados.length > 0" class="table-section">
+    <h3>📋 Incidentes Asignados ({{ incidentesFiltrados.length }})</h3>
+    <div class="table-responsive">
+      <table class="incidents-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Vehículo</th>
+            <th>Prioridad</th>
+            <th>Estado</th>
+            <th>Distancia</th>
+            <th>Fecha</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let incidente of incidentesFiltrados" class="table-row">
+            <td class="cell-id">#{{ incidente.id }}</td>
+            <td class="cell-vehiculo">
+              {{ incidente.vehiculo?.placa }}<br>
+              <small>{{ incidente.vehiculo?.marca }} {{ incidente.vehiculo?.modelo }}</small>
+            </td>
+            <td class="cell-prioridad">
+              <span [ngClass]="getPrioridadClass(incidente.prioridad)" class="badge">
+                {{ incidente.prioridad | uppercase }}
+              </span>
+            </td>
+            <td class="cell-estado">
+              <span [ngClass]="getEstadoClass(incidente.estado)" class="badge">
+                {{ incidente.estado | uppercase }}
+              </span>
+            </td>
+            <td class="cell-distancia">
+              <span [ngClass]="getDistanciaClass(incidente)" class="distancia-badge">
+                {{ calcularDistancia(incidente) }} km
+              </span>
+              <button 
+                *ngIf="incidente.taller?.latitud && incidente.taller?.longitud"
+                class="btn-mini-maps"
+                (click)="abrirGoogleMaps(incidente)"
+                title="Ver en Google Maps">
+                Ubicación
+              </button>
+            </td>
+            <td class="cell-fecha">
+              {{ incidente.fecha_creacion | date: 'dd/MM/yyyy HH:mm' }}
+            </td>
+            <td class="cell-acciones">
+              <button 
+                class="btn-detalle"
+                (click)="verDetalle(incidente.id)">
+                Ver Detalle →
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

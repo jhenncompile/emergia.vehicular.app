@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, NgZone } from '@angular/core';
+import { Component, inject, OnInit, NgZone, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TalleresService } from '../../core/services/talleres';
@@ -14,6 +14,7 @@ import * as L from 'leaflet';
 export class PerfilTallerComponent implements OnInit {
   private talleresService = inject(TalleresService);
   private zone = inject(NgZone);
+  private cdr = inject(ChangeDetectorRef);
   private map: any;
   private marker: any;
 
@@ -31,6 +32,31 @@ export class PerfilTallerComponent implements OnInit {
 
   cargando: boolean = false;
   mensaje: string = '';
+  
+  // Edición de horarios
+  editandoHorarios: boolean = false;
+  horarioEnEdicion: any = null;
+  horariosAnadidos: any[] = [];
+  diasSemana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+  
+  // Método para obtener días disponibles para una fila específica
+  getDiasDisponibles(indexActual: number): string[] {
+    const normalizarDia = (dia: string) => dia.toLowerCase()
+      .replace('á', 'a')
+      .replace('é', 'e')
+      .replace('í', 'i')
+      .replace('ó', 'o')
+      .replace('ú', 'u')
+      .replace('ñ', 'n');
+    
+    const diasUsados = this.taller.horarios.map((h: any) => normalizarDia(h.dia));
+    // Excluir días de OTRAS filas, pero NO la fila actual
+    const diasDeOtrasFila = this.horariosAnadidos
+      .map((h: any, i: number) => i !== indexActual ? normalizarDia(h.dia) : null)
+      .filter(d => d !== null);
+    
+    return this.diasSemana.filter(d => !diasUsados.includes(d) && !diasDeOtrasFila.includes(d));
+  }
 
   ngOnInit() {
     this.cargarDatos();
@@ -40,10 +66,23 @@ export class PerfilTallerComponent implements OnInit {
     this.talleresService.getMiTaller().subscribe({
       next: (data) => {
         this.taller = data;
-        // Ordenar horarios por día
+        // Normalizar días (remover tildes) y ordenar horarios
         if (this.taller.horarios) {
+          const normalizarDia = (dia: string) => dia.toLowerCase()
+            .replace('á', 'a')
+            .replace('é', 'e')
+            .replace('í', 'i')
+            .replace('ó', 'o')
+            .replace('ú', 'u')
+            .replace('ñ', 'n');
+          
+          this.taller.horarios = this.taller.horarios.map((h: any) => ({
+            ...h,
+            dia: normalizarDia(h.dia)
+          }));
           this.taller.horarios = this.ordenarHorarios(this.taller.horarios);
         }
+        this.cdr.detectChanges();
         this.initMap();
       },
       error: (err) => {
@@ -114,12 +153,154 @@ export class PerfilTallerComponent implements OnInit {
 
   // Ordenar horarios por día de la semana
   private ordenarHorarios(horarios: any[]): any[] {
-    const diasOrden = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+    const diasOrden = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
     
     return horarios.sort((a, b) => {
       const indexA = diasOrden.indexOf(a.dia.toLowerCase());
       const indexB = diasOrden.indexOf(b.dia.toLowerCase());
       return indexA - indexB;
     });
+  }
+
+  // --- EDICIÓN DE HORARIOS ---
+  iniciarEdicionHorarios() {
+    this.editandoHorarios = true;
+    this.horariosAnadidos = [];
+    this.agregarHorarioTemp(); // Agregar una fila vacía automáticamente
+    this.cdr.detectChanges();
+  }
+
+  agregarHorarioTemp() {
+    const nuevoHorario = {
+      dia: '',
+      hora_apertura: '08:00',
+      hora_cierre: '18:00'
+    };
+    this.horariosAnadidos.push(nuevoHorario);
+    this.cdr.detectChanges();
+  }
+
+  guardarHorarios() {
+    this.cargando = true;
+    let completados = 0;
+    const total = this.horariosAnadidos.length;
+
+    if (total === 0) {
+      this.editandoHorarios = false;
+      this.cargando = false;
+      return;
+    }
+
+    this.horariosAnadidos.forEach((horario) => {
+      if (!horario.dia) {
+        this.mensaje = 'Por favor selecciona un día para todos los horarios ❌';
+        this.cargando = false;
+        return;
+      }
+
+      const payload = {
+        taller_id: this.taller.id || 0,
+        dia: this.normalizarDiaAlGuardar(horario.dia),
+        hora_apertura: horario.hora_apertura,
+        hora_cierre: horario.hora_cierre
+      };
+
+      this.talleresService.agregarHorario(payload).subscribe({
+        next: () => {
+          completados++;
+          if (completados === total) {
+            this.mensaje = '¡Horarios agregados correctamente! ✅';
+            this.cargando = false;
+            this.editandoHorarios = false;
+            this.horariosAnadidos = [];            this.cdr.detectChanges();            this.cargarDatos();
+          }
+        },
+        error: (err) => {
+          this.mensaje = 'Error al guardar horarios ❌';
+          this.cargando = false;
+        }
+      });
+    });
+  }
+
+  editarHorario(horario: any) {
+    console.log('Editando horario:', horario);
+    this.horarioEnEdicion = { ...horario };
+    this.cdr.detectChanges();
+  }
+
+  guardarEdicionHorario() {
+    if (!this.horarioEnEdicion) return;
+
+    this.cargando = true;
+    const payload = {
+      taller_id: this.taller.id,
+      dia: this.normalizarDiaAlGuardar(this.horarioEnEdicion.dia),
+      hora_apertura: this.horarioEnEdicion.hora_apertura,
+      hora_cierre: this.horarioEnEdicion.hora_cierre
+    };
+
+    this.talleresService.actualizarHorario(this.horarioEnEdicion.id, payload).subscribe({
+      next: () => {
+        this.mensaje = '¡Horario actualizado! ✅';
+        this.horarioEnEdicion = null;
+        this.cargando = false;        this.cdr.detectChanges();        this.cargarDatos();
+      },
+      error: (err) => {
+        console.error('Error actualizar horario:', err);
+        this.mensaje = 'Error al actualizar horario ❌';
+        this.cargando = false;
+      }
+    });
+  }
+
+  cancelarEdicion() {
+    this.horarioEnEdicion = null;
+    this.editandoHorarios = false;
+    this.horariosAnadidos = [];
+    this.cdr.detectChanges();
+  }
+
+  eliminarHorario(horarioId: number) {
+    if (confirm('¿Deseas eliminar este horario?')) {
+      this.talleresService.eliminarHorario(horarioId).subscribe({
+        next: () => {
+          this.mensaje = '¡Horario eliminado! ✅';          this.cdr.detectChanges();          this.cargarDatos();
+        },
+        error: () => {
+          this.mensaje = 'Error al eliminar horario ❌';
+        }
+      });
+    }
+  }
+
+  // Convertir días sin tildes a días con tildes para guardar en backend
+  private normalizarDiaAlGuardar(dia: string): string {
+    const mapa: any = {
+      'lunes': 'lunes',
+      'martes': 'martes',
+      'miercoles': 'miércoles',
+      'jueves': 'jueves',
+      'viernes': 'viernes',
+      'sabado': 'sábado',
+      'domingo': 'domingo'
+    };
+    return mapa[dia.toLowerCase()] || dia;
+  }
+
+  // Para ngFor trackBy
+  trackByIndex(index: number): number {
+    return index;
+  }
+
+  // Cuando cambia el día en el select, actualizar diasDisponibles
+  onDiaChange() {
+    this.cdr.detectChanges();
+  }
+
+  // Eliminar un día temporal del formulario
+  eliminarDiaTemp(index: number) {
+    this.horariosAnadidos.splice(index, 1);
+    this.cdr.detectChanges();
   }
 }

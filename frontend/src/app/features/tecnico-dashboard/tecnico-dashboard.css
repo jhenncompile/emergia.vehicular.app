@@ -1,0 +1,377 @@
+.dashboard-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 20px 30px;
+  border-radius: 10px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.user-info h2 {
+  margin: 0;
+  font-size: 28px;
+  color: #333;
+  font-weight: 600;
+}
+
+.user-info p {
+  margin: 5px 0 0 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.btn-logout {
+  padding: 10px 20px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+
+.btn-logout:hover {
+  background: #dc2626;
+}
+
+.alert {
+  padding: 15px 20px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.alert-error {
+  background: #fee;
+  color: #c33;
+  border-left: 4px solid #c33;
+}
+
+/* Filtros */
+.filtros-section {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 20px 30px;
+  border-radius: 10px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.filtros-section h3 {
+  margin: 0 0 15px 0;
+  font-size: 18px;
+  color: #333;
+  font-weight: 600;
+}
+
+.filtros-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: #667eea;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-select,
+.filter-input {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.filter-select:focus,
+.filter-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.loading {
+  text-align: center;
+  color: white;
+  padding: 40px;
+  font-size: 16px;
+}
+
+.empty-state {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 40px;
+  border-radius: 10px;
+  text-align: center;
+  color: #999;
+  font-size: 16px;
+}
+
+/* Tabla */
+.table-section {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 20px 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.table-section h3 {
+  margin: 0 0 15px 0;
+  font-size: 18px;
+  color: #333;
+  font-weight: 600;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.incidents-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.incidents-table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.incidents-table thead th {
+  padding: 15px 12px;
+  text-align: left;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 12px;
+}
+
+.incidents-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background 0.3s;
+}
+
+.incidents-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.incidents-table tbody td {
+  padding: 15px 12px;
+}
+
+.cell-id {
+  font-weight: 600;
+  color: #667eea;
+}
+
+.cell-vehiculo {
+  font-weight: 500;
+  color: #333;
+}
+
+.cell-vehiculo small {
+  display: block;
+  color: #999;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+}
+
+.prioridad-alta {
+  background: #ef4444;
+}
+
+.prioridad-media {
+  background: #f59e0b;
+}
+
+.prioridad-baja {
+  background: #10b981;
+}
+
+.estado-pendiente {
+  background: #eab308;
+  color: #000;
+}
+
+.estado-en-proceso {
+  background: #3b82f6;
+}
+
+.estado-rechazado {
+  background: #f97316;
+}
+
+.estado-atendido {
+  background: #10b981;
+}
+
+.estado-completado {
+  background: #10b981;
+}
+
+.estado-cancelado {
+  background: #6b7280;
+}
+
+.distancia-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  margin-right: 5px;
+}
+
+.distancia-cerca {
+  background: #10b981;
+}
+
+.distancia-medio {
+  background: #f59e0b;
+}
+
+.distancia-lejos {
+  background: #ef4444;
+}
+
+.btn-mini-maps {
+  padding: 4px 8px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 0.3s;
+  margin-left: 5px;
+}
+
+.btn-mini-maps:hover {
+  background: #2563eb;
+}
+
+.cell-distancia {
+  text-align: center;
+}
+
+.cell-fecha {
+  white-space: nowrap;
+  color: #666;
+}
+
+.cell-acciones {
+  text-align: center;
+}
+
+.btn-detalle {
+  padding: 8px 12px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 13px;
+  transition: background 0.3s;
+  white-space: nowrap;
+}
+
+.btn-detalle:hover {
+  background: #2563eb;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .btn-logout {
+    align-self: flex-end;
+  }
+
+  .filtros-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .incidents-table {
+    font-size: 12px;
+  }
+
+  .incidents-table thead th,
+  .incidents-table tbody td {
+    padding: 10px 8px;
+  }
+
+  .badge {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .btn-detalle {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-container {
+    padding: 10px;
+  }
+
+  .dashboard-header,
+  .filtros-section,
+  .table-section {
+    padding: 15px;
+  }
+
+  .user-info h2 {
+    font-size: 20px;
+  }
+
+  .incidents-table {
+    font-size: 11px;
+  }
+
+  .incidents-table thead th,
+  .incidents-table tbody td {
+    padding: 8px 5px;
+  }
+}

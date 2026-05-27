@@ -37,34 +37,103 @@
 
         <!-- 🕐 HORARIOS DEL TALLER -->
         <div class="horarios-section">
-          <label>📅 Horarios de Atención:</label>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <label style="margin: 0;">📅 Horarios de Atención:</label>
+            <button *ngIf="!editandoHorarios" 
+                    type="button" 
+                    class="btn-editar"
+                    (click)="iniciarEdicionHorarios()">
+              {{ taller.horarios.length === 0 ? '➕ Agregar Horarios' : '➕ Agregar Día' }}
+            </button>
+          </div>
+
           <div class="horarios-indicator" [ngClass]="taller.esta_abierto_ahora ? 'abierto' : 'cerrado'">
             <span class="badge-status">
               {{ taller.esta_abierto_ahora ? '🟢 ABIERTO AHORA' : '🔴 CERRADO' }}
             </span>
           </div>
-          
-          <div *ngIf="taller.horarios && taller.horarios.length > 0; else noHorarios" class="horarios-tabla">
-            <table>
-              <thead>
-                <tr>
-                  <th>Día</th>
-                  <th>Apertura</th>
-                  <th>Cierre</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let h of taller.horarios">
-                  <td><strong>{{ h.dia | titlecase }}</strong></td>
-                  <td>{{ formatTime(h.hora_apertura) }}</td>
-                  <td>{{ formatTime(h.hora_cierre) }}</td>
-                </tr>
-              </tbody>
-            </table>
+
+          <!-- MODO VISUALIZACIÓN -->
+          <div *ngIf="!editandoHorarios">
+            <div *ngIf="taller.horarios && taller.horarios.length > 0; else noHorarios" class="horarios-tabla">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Día</th>
+                    <th>Apertura</th>
+                    <th>Cierre</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let h of taller.horarios">
+                    <td *ngIf="!horarioEnEdicion || horarioEnEdicion.id !== h.id">
+                      <strong>{{ h.dia | titlecase }}</strong>
+                    </td>
+                    <td *ngIf="!horarioEnEdicion || horarioEnEdicion.id !== h.id">
+                      {{ formatTime(h.hora_apertura) }}
+                    </td>
+                    <td *ngIf="!horarioEnEdicion || horarioEnEdicion.id !== h.id">
+                      {{ formatTime(h.hora_cierre) }}
+                    </td>
+                    <td *ngIf="!horarioEnEdicion || horarioEnEdicion.id !== h.id" style="text-align: center;">
+                      <button type="button" class="btn-mini" (click)="editarHorario(h)">✏️</button>
+                      <button type="button" class="btn-mini btn-eliminar" (click)="eliminarHorario(h.id)">🗑️</button>
+                    </td>
+
+                    <!-- MODO EDICIÓN INDIVIDUAL -->
+                    <ng-container *ngIf="horarioEnEdicion && horarioEnEdicion.id === h.id">
+                      <td>
+                        <strong>{{ horarioEnEdicion.dia | titlecase }}</strong>
+                      </td>
+                      <td>
+                        <input type="time" [(ngModel)]="horarioEnEdicion.hora_apertura" [ngModelOptions]="{standalone: true}" style="width: 100%;">
+                      </td>
+                      <td>
+                        <input type="time" [(ngModel)]="horarioEnEdicion.hora_cierre" [ngModelOptions]="{standalone: true}" style="width: 100%;">
+                      </td>
+                      <td style="text-align: center;">
+                        <button type="button" class="btn-mini btn-success" (click)="guardarEdicionHorario()">💾</button>
+                        <button type="button" class="btn-mini btn-cancel" (click)="cancelarEdicion()">❌</button>
+                      </td>
+                    </ng-container>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ng-template #noHorarios>
+              <p class="empty-msg">⚠️ No hay horarios definidos. Haz clic en "Agregar Horarios".</p>
+            </ng-template>
           </div>
-          <ng-template #noHorarios>
-            <p class="empty-msg">⚠️ No hay horarios definidos. Contacta al administrador.</p>
-          </ng-template>
+
+          <!-- MODO AGREGAR -->
+          <div *ngIf="editandoHorarios" class="formulario-horarios">
+            <h4>Agregar Nuevos Horarios</h4>
+            
+            <div *ngFor="let h of horariosAnadidos; let i = index; trackBy: trackByIndex" class="horario-input-group">
+              <select [(ngModel)]="horariosAnadidos[i].dia" name="dia_{{i}}" [ngModelOptions]="{standalone: true}" (change)="onDiaChange()" style="color: #333;">
+                <option value="" style="color: #999;">-- Selecciona día --</option>
+                <option *ngFor="let dia of getDiasDisponibles(i)" [value]="dia" style="color: #333;">{{ dia | titlecase }}</option>
+              </select>
+              <input type="time" [(ngModel)]="horariosAnadidos[i].hora_apertura" name="apertura_{{i}}" [ngModelOptions]="{standalone: true}" placeholder="Apertura">
+              <input type="time" [(ngModel)]="horariosAnadidos[i].hora_cierre" name="cierre_{{i}}" [ngModelOptions]="{standalone: true}" placeholder="Cierre">
+              <button type="button" class="btn-mini btn-eliminar" (click)="eliminarDiaTemp(i)">🗑️</button>
+            </div>
+
+            <button type="button" class="btn-agregar" (click)="agregarHorarioTemp()" 
+                    [disabled]="horariosAnadidos.length >= diasSemana.length">
+              ➕ Agregar Otro Día
+            </button>
+
+            <div class="botones-accion" style="margin-top: 1rem;">
+              <button type="button" class="btn-success" (click)="guardarHorarios()" [disabled]="cargando">
+                {{ cargando ? 'Guardando...' : '💾 Guardar Horarios' }}
+              </button>
+              <button type="button" class="btn-cancel" (click)="cancelarEdicion()">
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
 
         <div class="coords">

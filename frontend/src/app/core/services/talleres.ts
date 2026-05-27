@@ -23,4 +23,17 @@ export class TalleresService {
   updateMiTaller(data: any): Observable<any> {
     return this.http.put(`${this.apiUrl}/me`, data, { headers: this.getHeaders() });
   }
+
+  // Horarios
+  agregarHorario(horario: any): Observable<any> {
+    return this.http.post(`${this.apiUrl.replace('/talleres', '')}/taller-config/horarios`, horario, { headers: this.getHeaders() });
+  }
+
+  actualizarHorario(horarioId: number, horario: any): Observable<any> {
+    return this.http.put(`${this.apiUrl.replace('/talleres', '')}/taller-config/horarios/${horarioId}`, horario, { headers: this.getHeaders() });
+  }
+
+  eliminarHorario(horarioId: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl.replace('/talleres', '')}/taller-config/horarios/${horarioId}`, { headers: this.getHeaders() });
+  }
 }

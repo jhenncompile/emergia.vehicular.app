@@ -1,0 +1,129 @@
+<div class="detalle-container">
+  <!-- Header -->
+  <div class="detalle-header">
+    <div class="user-info">
+      <h2>Detalle del Incidente</h2>
+      <p>Técnico: <strong>{{ nombre }}</strong></p>
+    </div>
+    <button class="btn-logout" (click)="salir()">Salir</button>
+  </div>
+
+  <!-- Mensaje de error -->
+  <div *ngIf="mensaje" class="alert alert-error">
+    {{ mensaje }}
+  </div>
+
+  <!-- Cargando -->
+  <div *ngIf="cargando" class="loading">
+    <p>Cargando incidente...</p>
+  </div>
+
+  <!-- Contenido del Incidente -->
+  <div *ngIf="!cargando && incidente" class="incidente-card">
+    <div class="incidente-header-card">
+      <div>
+        <h3>Incidente #{{ incidente.id }}</h3>
+        <p class="fecha">Creado: {{ incidente.fecha_creacion | date: 'dd/MM/yyyy HH:mm' }}</p>
+      </div>
+      <div class="badges">
+        <span [ngClass]="getPrioridadClass(incidente.prioridad)" class="badge">
+          🔴 {{ incidente.prioridad | uppercase }}
+        </span>
+        <span [ngClass]="getEstadoClass(incidente.estado)" class="badge">
+          {{ incidente.estado | uppercase }}
+        </span>
+      </div>
+    </div>
+
+    <div class="incidente-details">
+      <div class="detail-section">
+        <h4>📋 Información General</h4>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Vehículo:</label>
+            <p>{{ incidente.vehiculo?.placa }} - {{ incidente.vehiculo?.marca }} {{ incidente.vehiculo?.modelo }}</p>
+          </div>
+          <div class="detail-item">
+            <label>Cliente:</label>
+            <p>{{ incidente.usuario?.nombre }}</p>
+          </div>
+          <div class="detail-item">
+            <label>Correo Cliente:</label>
+            <p>{{ incidente.usuario?.correo }}</p>
+          </div>
+          <div class="detail-item">
+            <label>Teléfono:</label>
+            <p>{{ incidente.usuario?.telefono }}</p>
+          </div>
+          <div class="detail-item">
+            <label>Taller:</label>
+            <p>{{ incidente.taller?.nombre }}</p>
+          </div>
+          <div class="detail-item">
+            <label>Dirección Taller:</label>
+            <p>{{ incidente.taller?.direccion }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h4>🔧 Detalles del Incidente</h4>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Tipo de Problema:</label>
+            <p>{{ incidente.tipo_problema }}</p>
+          </div>
+          <div class="detail-item full-width">
+            <label>Descripción:</label>
+            <p>{{ incidente.descripcion }}</p>
+          </div>
+          <div class="detail-item">
+            <label>Prioridad:</label>
+            <span [ngClass]="getPrioridadClass(incidente.prioridad)" class="badge-inline">
+              {{ incidente.prioridad | uppercase }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <label>Estado:</label>
+            <span [ngClass]="getEstadoClass(incidente.estado)" class="badge-inline">
+              {{ incidente.estado | uppercase }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h4>💰 Información de Pago</h4>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Costo Estimado:</label>
+            <p class="price">${{ incidente.costo_estimado }}</p>
+          </div>
+          <div class="detail-item">
+            <label>Estado de Pago:</label>
+            <p>{{ incidente.pago_estado | uppercase }}</p>
+          </div>
+          <div class="detail-item">
+            <label>Comisión Taller (%):</label>
+            <p>{{ incidente.taller?.comision_porcentaje }}%</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section" *ngIf="incidente.taller?.latitud && incidente.taller?.longitud">
+        <h4>📍 Ubicación en Mapa</h4>
+        <div class="mapa-container">
+          <div id="mapa"></div>
+        </div>
+        <p class="mapa-coords">
+          Coordenadas: {{ incidente.taller?.latitud | number: '1.4-4' }}, {{ incidente.taller?.longitud | number: '1.4-4' }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Botones de Acción -->
+    <div class="acciones">
+      <button class="btn-volver" (click)="volver()">← Volver al Dashboard</button>
+    </div>
+  </div>
+</div>
