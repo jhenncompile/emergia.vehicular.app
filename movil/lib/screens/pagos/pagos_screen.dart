@@ -21,7 +21,8 @@ class _PagosScreenState extends State<PagosScreen>
     _tabController = TabController(length: 2, vsync: this);
 
     // Cargar datos
-    Future.microtask(() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final userId = context.read<AuthProvider>().userId;
       if (userId == null) return;
       final pagoProvider = context.read<PagoProvider>();

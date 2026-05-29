@@ -93,12 +93,14 @@ class VehiculoService {
         if (marca != null && marca.trim().isNotEmpty) 'marca': marca.trim(),
         if (modelo != null && modelo.trim().isNotEmpty) 'modelo': modelo.trim(),
         if (color != null && color.trim().isNotEmpty) 'color': color.trim(),
-        if (anio != null) 'anio': anio,
         if (tipoCombustible != null && tipoCombustible.trim().isNotEmpty)
           'tipo_combustible': tipoCombustible.trim(),
         if (detalle != null && detalle.trim().isNotEmpty)
           'detalle': detalle.trim(),
       };
+      if (anio != null) {
+        body['anio'] = anio;
+      }
 
       final response = await apiService.put(
         '/api/v1/vehiculos/$vehiculoId',

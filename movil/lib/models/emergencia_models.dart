@@ -4,6 +4,7 @@
 /// - Request models (validation)
 /// - Response models (API responses)
 /// - Result wrapper (Success/Failure pattern)
+library;
 
 // ============================================================================
 // EXCEPTIONS
@@ -36,10 +37,11 @@ class FileSizeException extends EmergenciaException {
     required this.fileSize,
     required this.maxSize,
   }) : super(
-    message: 'File "$fileName" exceeds maximum size. '
-        'Size: ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB, '
-        'Max: ${(maxSize / 1024 / 1024).toStringAsFixed(2)}MB',
-  );
+         message:
+             'File "$fileName" exceeds maximum size. '
+             'Size: ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB, '
+             'Max: ${(maxSize / 1024 / 1024).toStringAsFixed(2)}MB',
+       );
 }
 
 /// Exception thrown when file MIME type is invalid.
@@ -53,17 +55,19 @@ class FileTypeException extends EmergenciaException {
     required this.fileType,
     required this.allowedTypes,
   }) : super(
-    message: 'Invalid file type for "$fileName". '
-        'Got: $fileType, Allowed: ${allowedTypes.join(', ')}',
-  );
+         message:
+             'Invalid file type for "$fileName". '
+             'Got: $fileType, Allowed: ${allowedTypes.join(', ')}',
+       );
 }
 
 /// Exception thrown when no internet connection is available.
 class NoInternetException extends EmergenciaException {
   NoInternetException()
-      : super(
-          message: 'No internet connection. Please check your network and try again.',
-        );
+    : super(
+        message:
+            'No internet connection. Please check your network and try again.',
+      );
 }
 
 /// Exception thrown when API request times out.
@@ -71,10 +75,11 @@ class TimeoutException extends EmergenciaException {
   final Duration timeout;
 
   TimeoutException({required this.timeout})
-      : super(
-          message: 'Request timed out after ${timeout.inSeconds} seconds. '
-              'Please check your internet connection and try again.',
-        );
+    : super(
+        message:
+            'Request timed out after ${timeout.inSeconds} seconds. '
+            'Please check your internet connection and try again.',
+      );
 }
 
 /// Exception thrown when server returns HTTP error.
@@ -84,9 +89,9 @@ class HttpException extends EmergenciaException {
 
   HttpException({
     required this.statusCode,
-    required String message,
+    required super.message,
     this.responseBody,
-  }) : super(message: message);
+  });
 
   /// User-friendly error message based on status code.
   String get userFriendlyMessage {
@@ -110,7 +115,7 @@ class HttpException extends EmergenciaException {
 // ============================================================================
 
 /// Represents a single detected object in the image.
-/// 
+///
 /// Example:
 /// ```dart
 /// var detection = Detection(
@@ -124,11 +129,7 @@ class Detection {
   final double score;
   final Map<String, dynamic>? box;
 
-  Detection({
-    required this.label,
-    required this.score,
-    this.box,
-  });
+  Detection({required this.label, required this.score, this.box});
 
   factory Detection.fromJson(Map<String, dynamic> json) {
     return Detection(
@@ -149,10 +150,10 @@ class Detection {
 }
 
 /// Emergency report response from the backend.
-/// 
+///
 /// Contains AI analysis results including transcription, object detections,
 /// and priority assessment.
-/// 
+///
 /// Example:
 /// ```dart
 /// var report = EmergenciaReporte(
@@ -202,9 +203,11 @@ class EmergenciaReporte {
     return EmergenciaReporte(
       status: json['status'] ?? 'unknown',
       transcription: data['transcription'] ?? '',
-      detections: (data['detections'] as List?)
-          ?.map((e) => Detection.fromJson(e as Map<String, dynamic>))
-          .toList() ?? [],
+      detections:
+          (data['detections'] as List?)
+              ?.map((e) => Detection.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       detectionSummary: List<String>.from(data['detection_summary'] ?? []),
       priority: data['priority'] ?? 'Media',
       processingStatus: data['processing_status'] ?? 'unknown',
@@ -240,14 +243,14 @@ class EmergenciaReporte {
 // ============================================================================
 
 /// Abstract base class for Result pattern.
-/// 
+///
 /// Represents the outcome of an operation that can either succeed or fail.
 /// This pattern eliminates the need for try-catch blocks in calling code.
-/// 
+///
 /// Example:
 /// ```dart
 /// final result = await emergenciaService.enviarReporte(audio, imagen);
-/// 
+///
 /// result.when(
 ///   success: (reporte) => print('Priority: ${reporte.priority}'),
 ///   failure: (error) => print('Error: ${error.message}'),
@@ -304,7 +307,7 @@ sealed class Result<T> {
 }
 
 /// Success case of Result.
-/// 
+///
 /// Contains the result data of a successful operation.
 final class Success<T> extends Result<T> {
   final T data;
@@ -316,7 +319,7 @@ final class Success<T> extends Result<T> {
 }
 
 /// Failure case of Result.
-/// 
+///
 /// Contains the exception from a failed operation.
 final class Failure<T> extends Result<T> {
   final EmergenciaException error;
@@ -332,7 +335,7 @@ final class Failure<T> extends Result<T> {
 // ============================================================================
 
 /// Request data for sending an emergency report.
-/// 
+///
 /// Used to validate and prepare data before sending to backend.
 class EmergenciaReporteRequest {
   /// Path to audio file (e.g., /data/user/0/com.app/cache/audio.mp3)
@@ -355,6 +358,7 @@ class EmergenciaReporteRequest {
   });
 
   @override
-  String toString() => 'EmergenciaReporteRequest('
+  String toString() =>
+      'EmergenciaReporteRequest('
       'audio: $audioPath, image: $imagePath)';
 }

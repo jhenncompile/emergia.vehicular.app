@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException,  Response, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 from app.api import deps
 from app.crud.crud_incidente import incidente_crud
@@ -12,8 +12,8 @@ from typing import Optional
 from datetime import datetime
 from fpdf import FPDF
 from app.models.pago import Pago
-
 from app.models.bitacora import Bitacora # 👈 Agrega esta importación
+from app.services.notificacion_service import NotificacionService # 👈 Servicio de notificaciones
 
 router = APIRouter()
 
@@ -147,6 +147,26 @@ def aceptar_incidente(
         nuevo=jsonable_encoder(actualizado)
     )
     
+    # 🔔 NOTIFICACIÓN: Avisar al cliente que su incidente fue aceptado
+    taller = db.query(Usuario).filter(Usuario.id == current_user.id).first()
+    taller_nombre = taller.nombre if taller else "Taller"
+    
+    NotificacionService.notificar_incidente_aceptado(
+        db=db,
+        cliente_id=incidente_db.usuario_id,
+        incidente_id=id,
+        taller_nombre=taller_nombre
+    )
+
+    # Al aceptar, el CRUD mueve el incidente a "en_proceso"; esto equivale a
+    # avisar al cliente que el auxilio ya está en camino.
+    NotificacionService.notificar_cambio_estado(
+        db=db,
+        incidente=actualizado,
+        estado_anterior=anterior.get("estado"),
+        estado_nuevo=actualizado.estado
+    )
+    
     return actualizado
 @router.patch("/{id}/asignar-tecnico", response_model=IncidenteSchema)
 def asignar_tecnico_a_incidente(
@@ -172,6 +192,15 @@ def asignar_tecnico_a_incidente(
     bitacora_crud.registrar(db, usuario_id=current_user.id, taller_id=current_user.taller_id,
                             tabla="incidente", tabla_id=id, accion="ASIGNAR_TECNICO",
                             anterior=anterior, nuevo=jsonable_encoder(actualizado))
+    
+    # 🔔 NOTIFICACIÓN: Avisar al técnico que se le asignó un incidente
+    NotificacionService.notificar_tecnico_asignado(
+        db=db,
+        tecnico_id=tecnico_id,
+        incidente_id=id,
+        incidente=actualizado
+    )
+    
     return actualizado
 
 @router.patch("/{id}/rechazar", response_model=IncidenteSchema)
@@ -216,6 +245,18 @@ def rechazar_pedido_auxilio(
         nuevo=jsonable_encoder(incidente_db)
     )
     
+    # 🔔 NOTIFICACIÓN: Avisar al cliente que su incidente fue rechazado
+    taller = db.query(Usuario).filter(Usuario.id == current_user.id).first()
+    taller_nombre = taller.nombre if taller else "Taller"
+    
+    NotificacionService.notificar_incidente_rechazado(
+        db=db,
+        cliente_id=incidente_db.usuario_id,
+        incidente_id=id,
+        taller_nombre=taller_nombre,
+        motivo=motivo
+    )
+    
     return incidente_db
 
 # 5. FINALIZAR: Cambiar el estado a "atendido"
@@ -239,7 +280,8 @@ def actualizar_estado_incidente(
             detail="No tienes permiso para finalizar un auxilio que no te pertenece."
         )
 
-    # Guardamos datos para la bitácora
+    # Guardamos estado anterior para notificaciones
+    estado_anterior = incidente_db.estado
     anterior = jsonable_encoder(incidente_db)
 
     # Actualizamos usando el CRUD
@@ -256,6 +298,15 @@ def actualizar_estado_incidente(
         anterior=anterior,
         nuevo=jsonable_encoder(actualizado)
     )
+    
+    # 🔔 NOTIFICACIÓN: Enviar solo si el estado cambió realmente.
+    if obj_in.estado and estado_anterior != actualizado.estado:
+        NotificacionService.notificar_cambio_estado(
+            db=db,
+            incidente=actualizado,
+            estado_anterior=estado_anterior,
+            estado_nuevo=actualizado.estado
+        )
     
     return actualizado
 

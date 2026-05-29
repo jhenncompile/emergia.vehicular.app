@@ -1,6 +1,7 @@
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:8000/api/v1',
+  wsUrl: 'ws://localhost:8000/ws',
   firebase: {
     apiKey: "AIzaSyAN4sQc58P6fwKWKVjM6kVhSCEBbEqR3mQ",
     authDomain: "emergenciavehicular.firebaseapp.com",

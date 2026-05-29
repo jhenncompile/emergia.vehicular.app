@@ -1,28 +1,38 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { TecnicoService } from '../../core/services/tecnico';
 import { AuthService } from '../../core/services/auth';
+import { NotificacionContadorService } from '../../core/services/notificacion-contador.service';
+import { WebSocketNotificacionService } from '../../core/services/websocket-notificacion.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-tecnico-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './tecnico-dashboard.html',
   styleUrls: ['./tecnico-dashboard.css']
 })
-export class TecnicoDashboardComponent implements OnInit {
+export class TecnicoDashboardComponent implements OnInit, OnDestroy {
   private tecnicoService = inject(TecnicoService);
   private authService = inject(AuthService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  private contadorNotificaciones = inject(NotificacionContadorService);
+  public wsService = inject(WebSocketNotificacionService);
+  private notificacionSub: Subscription | null = null;
+  private contadorSub: Subscription | null = null;
 
   incidentes: any[] = [];
   incidentesFiltrados: any[] = [];
   cargando = false;
   nombre = '';
   mensaje = '';
+  notificacionesNoLeidas = 0;
+  toastNotificacion: any = null;
+  private toastTimeoutId: ReturnType<typeof setTimeout> | null = null;
   
   // Filtros
   filtroEstado = '';
@@ -38,6 +48,42 @@ export class TecnicoDashboardComponent implements OnInit {
   ngOnInit() {
     this.nombre = this.authService.getNombre();
     this.cargarIncidentes();
+    this.contadorSub = this.contadorNotificaciones.noLeidas$.subscribe((cantidad) => {
+      this.notificacionesNoLeidas = cantidad;
+      this.cdr.detectChanges();
+    });
+    this.contadorNotificaciones.cargarPendientes();
+    
+    // Conectar WebSocket para recibir notificaciones en tiempo real
+    const usuarioId = localStorage.getItem('usuario_id');
+    if (usuarioId) {
+      this.wsService.conectar(parseInt(usuarioId));
+      
+      // Escuchar notificaciones
+      this.notificacionSub = this.wsService.notificaciones$.subscribe(notif => {
+        if (notif) {
+          // Mostrar notificación visual
+          this.mostrarNotificacion(notif);
+          this.contadorNotificaciones.cargarPendientes();
+          
+          // Recargar incidentes automáticamente
+          this.cargarIncidentes();
+        }
+      });
+    }
+  }
+
+  ngOnDestroy() {
+    // Desconectar WebSocket al salir
+    if (this.notificacionSub) {
+      this.notificacionSub.unsubscribe();
+    }
+    this.contadorSub?.unsubscribe();
+    if (this.toastTimeoutId) {
+      clearTimeout(this.toastTimeoutId);
+      this.toastTimeoutId = null;
+    }
+    this.wsService.desconectar();
   }
 
   cargarIncidentes() {
@@ -60,14 +106,7 @@ export class TecnicoDashboardComponent implements OnInit {
 
   aplicarFiltrosYOrdenamiento() {
     let resultado = [...this.incidentes];
-    
-    console.log('=== FILTROS ===');
-    console.log('Incidentes totales:', resultado.length);
-    console.log('Estados únicos:', [...new Set(resultado.map(i => i.estado))]);
-    console.log('Filtro estado seleccionado:', this.filtroEstado);
-    console.log('Filtro fecha:', this.filtroFecha);
-    console.log('Filtro distancia:', this.filtroDistancia);
-    
+
     // Filtro por estado
     if (this.filtroEstado) {
       resultado = resultado.filter(inc => {
@@ -75,7 +114,6 @@ export class TecnicoDashboardComponent implements OnInit {
         const filtro_estado = this.filtroEstado.toLowerCase().trim();
         return incidentes_estado === filtro_estado;
       });
-      console.log('Después de filtro estado:', resultado.length);
     }
     
     // Filtro por fecha
@@ -92,11 +130,8 @@ export class TecnicoDashboardComponent implements OnInit {
         const day = String(fechaIncDate.getDate()).padStart(2, '0');
         const fechaIncStr = `${year}-${month}-${day}`; // YYYY-MM-DD
         
-        const coincide = fechaIncStr === fechaFiltro;
-        console.log('Fecha filtro:', fechaFiltro, '| Fecha incidente:', fechaIncStr, '| Coincide:', coincide);
-        return coincide;
+        return fechaIncStr === fechaFiltro;
       });
-      console.log('Después de filtro fecha:', resultado.length);
     }
     
     // Filtro por distancia
@@ -108,7 +143,6 @@ export class TecnicoDashboardComponent implements OnInit {
         if (this.filtroDistancia === 'lejos') return distancia >= 15;
         return true;
       });
-      console.log('Después de filtro distancia:', resultado.length);
     }
     
     // Ordenamiento: primero por estado (en_proceso > atendido > pendiente > rechazado > cancelado)
@@ -137,7 +171,6 @@ export class TecnicoDashboardComponent implements OnInit {
              (ordenPrioridad[b.prioridad?.toLowerCase()] || 0);
     });
     
-    console.log('Resultado final después de filtros y ordenamiento:', resultado.length);
     this.incidentesFiltrados = resultado;
   }
 
@@ -190,6 +223,7 @@ export class TecnicoDashboardComponent implements OnInit {
   }
 
   salir() {
+    this.contadorNotificaciones.limpiar();
     this.authService.logout();
     this.router.navigate(['/login']);
   }
@@ -214,5 +248,62 @@ export class TecnicoDashboardComponent implements OnInit {
       'alta': 'prioridad-alta'
     };
     return prioridadMap[prioridad?.toLowerCase()] || 'prioridad-media';
+  }
+
+  mostrarNotificacion(notif: any) {
+    this.toastNotificacion = {
+      titulo: notif.titulo || 'Nueva notificación',
+      mensaje: notif.mensaje || 'Tienes una nueva notificación',
+      tipo: notif.tipo || 'sistema',
+      incidente_id: notif.incidente_id
+    };
+
+    if (this.toastTimeoutId) {
+      clearTimeout(this.toastTimeoutId);
+    }
+
+    this.toastTimeoutId = setTimeout(() => {
+      this.cerrarToastNotificacion();
+    }, 8000);
+    
+    // Reproducir sonido (opcional)
+    this.playNotificationSound();
+  }
+
+  cerrarToastNotificacion() {
+    this.toastNotificacion = null;
+    if (this.toastTimeoutId) {
+      clearTimeout(this.toastTimeoutId);
+      this.toastTimeoutId = null;
+    }
+    this.cdr.detectChanges();
+  }
+
+  abrirNotificaciones() {
+    this.cerrarToastNotificacion();
+    this.router.navigate(['/tecnico/notificaciones']);
+  }
+
+  playNotificationSound() {
+    // Crear un beep simple sin necesidad de archivo de audio
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 800; // Frecuencia en Hz
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (e) {
+      // Si falla, silenciosamente continuar
+    }
   }
 }

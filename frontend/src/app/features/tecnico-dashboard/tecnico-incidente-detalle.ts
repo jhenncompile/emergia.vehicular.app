@@ -1,30 +1,39 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TecnicoService } from '../../core/services/tecnico';
 import { AuthService } from '../../core/services/auth';
+import { NotificacionContadorService } from '../../core/services/notificacion-contador.service';
+import { WebSocketNotificacionService } from '../../core/services/websocket-notificacion.service';
+import { Subscription } from 'rxjs';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 @Component({
   selector: 'app-tecnico-incidente-detalle',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './tecnico-incidente-detalle.html',
   styleUrls: ['./tecnico-incidente-detalle.css']
 })
-export class TecnicoIncidenteDetalleComponent implements OnInit {
+export class TecnicoIncidenteDetalleComponent implements OnInit, OnDestroy {
   private tecnicoService = inject(TecnicoService);
   private authService = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
+  private contadorNotificaciones = inject(NotificacionContadorService);
+  public wsService = inject(WebSocketNotificacionService);
+  private notificacionSub: Subscription | null = null;
+  private contadorSub: Subscription | null = null;
 
   incidente: any = null;
   cargando = true;
   mensaje = '';
   nombre = '';
+  notificacionesNoLeidas = 0;
   mapa: L.Map | null = null;
+  private mapaTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit() {
     // Configurar iconos de Leaflet usando URLs públicas
@@ -42,6 +51,43 @@ export class TecnicoIncidenteDetalleComponent implements OnInit {
 
     this.nombre = this.authService.getNombre();
     this.cargarIncidente();
+    this.contadorSub = this.contadorNotificaciones.noLeidas$.subscribe((cantidad) => {
+      this.notificacionesNoLeidas = cantidad;
+      this.cdr.detectChanges();
+    });
+    this.contadorNotificaciones.cargarPendientes();
+    
+    // Conectar WebSocket para recibir actualizaciones en tiempo real
+    const usuarioId = localStorage.getItem('usuario_id');
+    if (usuarioId) {
+      this.wsService.conectar(parseInt(usuarioId));
+      
+      // Escuchar notificaciones y recargar datos si cambian
+      this.notificacionSub = this.wsService.notificaciones$.subscribe(notif => {
+        if (notif) {
+          // Recargar datos del incidente
+          this.cargarIncidente();
+          this.contadorNotificaciones.cargarPendientes();
+        }
+      });
+    }
+  }
+
+  ngOnDestroy() {
+    // Desconectar WebSocket al salir
+    if (this.notificacionSub) {
+      this.notificacionSub.unsubscribe();
+    }
+    this.contadorSub?.unsubscribe();
+    this.wsService.desconectar();
+    if (this.mapaTimeoutId) {
+      clearTimeout(this.mapaTimeoutId);
+      this.mapaTimeoutId = null;
+    }
+    // Remover mapa
+    if (this.mapa) {
+      this.mapa.remove();
+    }
   }
 
   cargarIncidente() {
@@ -53,17 +99,14 @@ export class TecnicoIncidenteDetalleComponent implements OnInit {
 
     this.tecnicoService.getIncidente(parseInt(id)).subscribe({
       next: (data) => {
-        console.log('=== DATOS RECIBIDOS DEL API ===');
-        console.log('Incidente completo:', data);
-        console.log('Usuario:', data?.usuario);
-        console.log('Taller:', data?.taller);
-        console.log('Vehículo:', data?.vehiculo);
-        console.log('Técnico:', data?.tecnico);
         this.incidente = data;
         this.cargando = false;
         this.cdr.detectChanges();
         // Inicializar mapa después de cargar datos y que se renderice el DOM
-        setTimeout(() => this.inicializarMapa(), 500);
+        if (this.mapaTimeoutId) {
+          clearTimeout(this.mapaTimeoutId);
+        }
+        this.mapaTimeoutId = setTimeout(() => this.inicializarMapa(), 500);
       },
       error: (err) => {
         console.error('Error al cargar incidente:', err);
@@ -86,10 +129,6 @@ export class TecnicoIncidenteDetalleComponent implements OnInit {
       return;
     }
 
-    console.log('Inicializando Leaflet');
-    console.log('Elemento mapa encontrado:', elementoMapa);
-    console.log('Dimensiones del elemento:', elementoMapa.offsetWidth, 'x', elementoMapa.offsetHeight);
-
     // Evitar inicializar múltiples veces
     if (this.mapa) {
       this.mapa.remove();
@@ -98,29 +137,20 @@ export class TecnicoIncidenteDetalleComponent implements OnInit {
     const lat = parseFloat(this.incidente.taller.latitud as any);
     const lng = parseFloat(this.incidente.taller.longitud as any);
 
-    console.log('Coordenadas:', lat, lng);
-
     try {
       this.mapa = L.map('mapa', { 
         center: [lat, lng],
         zoom: 15
       });
 
-      console.log('L.map inicializado:', this.mapa);
-
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 19
       }).addTo(this.mapa);
 
-      console.log('Tile layer agregado');
-
       // Agregar marcador
       const marker = L.marker([lat, lng]).addTo(this.mapa);
       marker.bindPopup(`<b>${this.incidente.taller.nombre || 'Taller'}</b>`);
-
-      console.log('Marcador agregado');
-      console.log('Mapa inicializado correctamente');
     } catch (error) {
       console.error('Error al inicializar mapa:', error);
     }
@@ -153,6 +183,7 @@ export class TecnicoIncidenteDetalleComponent implements OnInit {
   }
 
   salir() {
+    this.contadorNotificaciones.limpiar();
     this.authService.logout();
     this.router.navigate(['/login']);
   }

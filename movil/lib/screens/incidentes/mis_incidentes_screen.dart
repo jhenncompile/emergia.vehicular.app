@@ -16,7 +16,8 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
   void initState() {
     super.initState();
     // Cargar incidentes al abrir la pantalla
-    Future.microtask(() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final userId = context.read<AuthProvider>().userId;
       if (userId != null) {
         context.read<IncidenteProvider>().cargarMisIncidentes(

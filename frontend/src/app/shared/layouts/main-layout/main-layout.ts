@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { SidebarComponent } from '../../components/sidebar/sidebar';
+import { WebSocketNotificacionService } from '../../../core/services/websocket-notificacion.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -48,4 +49,17 @@ import { SidebarComponent } from '../../components/sidebar/sidebar';
     }
   `]
 })
-export class MainLayoutComponent {}
+export class MainLayoutComponent implements OnInit, OnDestroy {
+  private wsService = inject(WebSocketNotificacionService);
+
+  ngOnInit() {
+    const usuarioId = Number(localStorage.getItem('usuario_id'));
+    if (Number.isFinite(usuarioId) && usuarioId > 0) {
+      this.wsService.conectar(usuarioId);
+    }
+  }
+
+  ngOnDestroy() {
+    this.wsService.desconectar();
+  }
+}

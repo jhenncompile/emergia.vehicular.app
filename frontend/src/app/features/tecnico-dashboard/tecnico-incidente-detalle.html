@@ -4,8 +4,20 @@
     <div class="user-info">
       <h2>Detalle del Incidente</h2>
       <p>Técnico: <strong>{{ nombre }}</strong></p>
+      <p class="connection-status" [class.connected]="wsService.conectado">
+        <span class="status-dot"></span>
+        {{ wsService.conectado ? '🔌 Conectado (WebSocket)' : '❌ Desconectado' }}
+      </p>
     </div>
-    <button class="btn-logout" (click)="salir()">Salir</button>
+    <div class="header-actions">
+      <a class="btn-notificaciones" routerLink="/tecnico/notificaciones">
+        Notificaciones
+        <span *ngIf="notificacionesNoLeidas > 0" class="notification-badge">
+          {{ notificacionesNoLeidas }}
+        </span>
+      </a>
+      <button class="btn-logout" (click)="salir()">Salir</button>
+    </div>
   </div>
 
   <!-- Mensaje de error -->

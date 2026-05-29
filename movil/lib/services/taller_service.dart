@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'api_service.dart';
 
 /// Servicio para gestionar talleres disponibles
@@ -94,14 +96,14 @@ class TallerService {
     double radioKm = 5.0,
   }) async {
     try {
-      print('⚠️ ACTUALIZACIÓN NO DISPONIBLE');
-      print(
+      debugPrint('⚠️ ACTUALIZACIÓN NO DISPONIBLE');
+      debugPrint(
         'La funcionalidad de búsqueda de talleres cercanos se implementará en la próxima versión.',
       );
-      print(
+      debugPrint(
         'Requiere integración con servicios de geolocalización y cálculo de distancias.',
       );
-      print(
+      debugPrint(
         'Por ahora, usa obtenerTalleresActivos() para ver todos los talleres disponibles.',
       );
       return [];

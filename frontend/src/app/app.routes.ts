@@ -14,6 +14,7 @@ import { FinanzasComponent } from './features/finanzas/finanzas';
 import { HistorialComponent } from './features/historial/historial';
 import { TecnicoDashboardComponent } from './features/tecnico-dashboard/tecnico-dashboard';
 import { TecnicoIncidenteDetalleComponent } from './features/tecnico-dashboard/tecnico-incidente-detalle';
+import { NotificacionesComponent } from './features/notificaciones/notificaciones';
 
 
 export const routes: Routes = [
@@ -28,6 +29,7 @@ export const routes: Routes = [
   // Dashboard del Técnico (sin MainLayout)
   { path: 'tecnico/dashboard', component: TecnicoDashboardComponent },
   { path: 'tecnico/incidente/:id', component: TecnicoIncidenteDetalleComponent },
+  { path: 'tecnico/notificaciones', component: NotificacionesComponent },
   
   {
     path: '',
@@ -39,6 +41,7 @@ export const routes: Routes = [
       { path: 'incidentes', component: AuxiliosComponent },
       { path: 'perfil-taller', component: PerfilTallerComponent }, // 👈 Revisa que el nombre sea IDÉNTICO al routerLink
       { path: 'administradores', component: GestionAdminsComponent },
+      { path: 'notificaciones', component: NotificacionesComponent },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'historial', component: HistorialComponent },
     ]

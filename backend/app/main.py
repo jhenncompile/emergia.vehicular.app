@@ -14,15 +14,23 @@ License: MIT
 import os
 import logging
 from typing import List
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.base import BaseHTTPMiddleware
+from starlette.responses import PlainTextResponse
 from app.db.session import engine
 from app.db.base import Base  # Importamos el que tiene todos los modelos
 from app.api.v1.api import api_router
+from app.websocket.manager import manager
+from app.core.config import settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Environment configuration
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+cors_origins = ["*"]  # Allow all origins in development
 
 # ============================================================
 # APPLICATION INITIALIZATION
@@ -33,67 +41,50 @@ app = FastAPI(
     version="1.0.0",
 )
 
+
+# ============================================================
+# MIDDLEWARE PERSONALIZADO PARA WEBSOCKET PREFLIGHT
+# ============================================================
+class WebSocketCORSMiddleware(BaseHTTPMiddleware):
+    """Middleware para manejar preflight requests de WebSocket"""
+    async def dispatch(self, request: Request, call_next):
+        # Si es OPTIONS request (preflight), responder OK
+        if request.method == "OPTIONS":
+            return PlainTextResponse("OK", status_code=200, headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            })
+        
+        # Para WebSocket, dejar pasar sin modificar headers
+        # (WebSocket no es una respuesta HTTP normal y no soporta header modification)
+        if request.url.path.startswith("/ws/"):
+            return await call_next(request)
+        
+        # Para otros requests, procesar normalmente
+        return await call_next(request)
+
+
+app.add_middleware(WebSocketCORSMiddleware)
+
 # ============================================================
 # CORS CONFIGURATION
-# Production-ready CORS with support for:
-# - Local development (Angular + Flutter emulator/simulator)
-# - Mobile devices (physical Android/iOS)
-# - Production frontend (Render deployment)
+# Middleware personalizado ya maneja WebSocket preflight
 # ============================================================
 
-# Get environment variables with sensible defaults
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
-RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "")
-
-# Build CORS origins list
-cors_origins = [
-    # === LOCAL DEVELOPMENT ===
-    # Angular Frontend (Web)
-    "http://localhost:4200",
-    "http://127.0.0.1:4200",
-    # Ionic Frontend (Mobile Web)
-    "http://localhost:8100",
-    "http://127.0.0.1:8100",
-    # Flutter Mobile - Android Emulator
-    "http://10.0.2.2:8000",
-    "http://10.0.2.2:3000",
-    # Flutter Mobile - iOS Simulator
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    # Local network access (physical devices on development machine)
-    "http://192.168.56.1:8000",
-    "http://192.168.56.1:3000",
-    # Alternative local network patterns
-    "http://192.168.*:*",
-]
-
-# === PRODUCTION URLS ===
-if RENDER_EXTERNAL_URL:
-    cors_origins.append(RENDER_EXTERNAL_URL)
-    logger.info(f"Added Render production URL: {RENDER_EXTERNAL_URL}")
-
-if FRONTEND_URL:
-    cors_origins.append(FRONTEND_URL)
-    logger.info(f"Added custom frontend URL: {FRONTEND_URL}")
-
-# For production, you can add your production domain here
-# Example:
-# cors_origins.append("https://vialia-frontend.onrender.com")
-# cors_origins.append("https://app.vialia.com")
-
 # Log CORS configuration
-logger.info(f"Environment: {ENVIRONMENT}")
-logger.info(f"CORS Origins: {cors_origins}")
+logger.info(f"Environment: development")
+logger.info("✅ WebSocket CORS manejado por middleware personalizado")
 
+# CORS para HTTP requests (no WebSocket)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],            # Permite Angular
-    allow_origins=cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, PUT, DELETE, etc.)
-    allow_headers=["*"],  # Allow all headers (Content-Type, Authorization, etc.)
-    max_age=3600,  # Cache CORS preflight for 1 hour
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 
 # ============================================================
@@ -148,6 +139,68 @@ def readiness_check():
             "ready": False,
             "error": str(e),
         }
+
+
+@app.get("/ws-test")
+def ws_test():
+    """Test endpoint to verify FastAPI is working."""
+    return {"status": "ok", "message": "FastAPI is running"}
+
+
+# ============================================================
+# WEBSOCKET ENDPOINT (Direct on app, not in router)
+# ============================================================
+@app.websocket("/ws/{usuario_id}")
+async def websocket_endpoint(websocket: WebSocket, usuario_id: int):
+    """
+    WebSocket endpoint for real-time notifications.
+    
+    Connect with: ws://localhost:8000/ws/{usuario_id}
+    
+    Sends JSON notifications:
+    {
+        "titulo": "...",
+        "mensaje": "...",
+        "tipo": "incident_type",
+        "incidente_id": 5
+    }
+    """
+    # Debug headers
+    print(f"\n🔍 DEBUG WebSocket Request:")
+    print(f"  Path: {websocket.url.path}")
+    print(f"  Headers: {dict(websocket.headers)}")
+    print(f"  usuario_id: {usuario_id}")
+    logger.info(f"🔌 WebSocket request: usuario_id={usuario_id}, origin={websocket.headers.get('origin', 'N/A')}")
+    
+    try:
+        print(f"✅ Acceptando conexión para usuario {usuario_id}")
+        await manager.connect(usuario_id, websocket)
+        logger.info(f"✅ Usuario {usuario_id} conectado a WebSocket")
+        
+        # Mantener conexión abierta (escuchar heartbeat del cliente)
+        try:
+            while True:
+                try:
+                    data = await websocket.receive_text()
+                    # El cliente envía "ping" para mantener viva la conexión
+                    if data == "ping":
+                        await websocket.send_text("pong")
+                except Exception as receive_error:
+                    logger.debug(f"Error recibiendo datos WebSocket usuario {usuario_id}: {str(receive_error)}")
+                    break
+        except Exception as e:
+            logger.error(f"Error en loop WebSocket usuario {usuario_id}: {str(e)}")
+    
+    except WebSocketDisconnect:
+        manager.disconnect(usuario_id, websocket)
+        logger.info(f"👋 WebSocket desconectado para usuario {usuario_id}")
+    except Exception as e:
+        logger.error(f"❌ Error en WebSocket usuario {usuario_id}: {str(e)}")
+        try:
+            manager.disconnect(usuario_id, websocket)
+        except:
+            pass
+        manager.disconnect(usuario_id, websocket)
 
 
 # ============================================================

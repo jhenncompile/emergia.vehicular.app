@@ -17,7 +17,8 @@ class _MisVehiculosScreenState extends State<MisVehiculosScreen> {
   void initState() {
     super.initState();
     // Cargar vehículos al abrir la pantalla
-    Future.microtask(() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final userId = context.read<AuthProvider>().userId;
       if (userId != null) {
         context.read<VehiculoProvider>().cargarMisVehiculos(usuarioId: userId);
@@ -131,7 +132,7 @@ class _MisVehiculosScreenState extends State<MisVehiculosScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryColor.withOpacity(0.1),
+                    color: AppColors.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: AppColors.primaryColor),
                   ),
@@ -265,9 +266,7 @@ class _MisVehiculosScreenState extends State<MisVehiculosScreen> {
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text(
-                      'Sesion invalida. Inicia sesion nuevamente.',
-                    ),
+                    content: Text('Sesion invalida. Inicia sesion nuevamente.'),
                   ),
                 );
                 return;
@@ -289,7 +288,7 @@ class _MisVehiculosScreenState extends State<MisVehiculosScreen> {
                     ok
                         ? 'Vehiculo actualizado'
                         : (vehiculoProvider.errorMessage ??
-                            'No se pudo actualizar'),
+                              'No se pudo actualizar'),
                   ),
                 ),
               );
@@ -338,17 +337,15 @@ class _MisVehiculosScreenState extends State<MisVehiculosScreen> {
               await vehiculoProvider.eliminarVehiculo(
                 vehiculoId: vehiculo['id'],
               );
-              if (mounted) {
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      vehiculoProvider.errorMessage ??
-                          'Operacion no disponible',
-                    ),
+              if (!context.mounted) return;
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    vehiculoProvider.errorMessage ?? 'Operacion no disponible',
                   ),
-                );
-              }
+                ),
+              );
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Eliminar'),

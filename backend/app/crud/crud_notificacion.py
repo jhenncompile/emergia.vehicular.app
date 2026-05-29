@@ -14,6 +14,12 @@ class CRUDNotificacion(CRUDBase[Notificacion, NotificacionCreate, NotificacionUp
             self.model.leido == False
         ).all()
 
+    def obtener_historial(self, db: Session, *, usuario_id: int):
+        """Obtiene TODAS las notificaciones (leídas y no leídas) del usuario"""
+        return db.query(self.model).filter(
+            self.model.usuario_id == usuario_id
+        ).order_by(self.model.fecha_envio.desc()).all()
+
 notificacion_crud = CRUDNotificacion(Notificacion)
 
 # CRUD para Tokens

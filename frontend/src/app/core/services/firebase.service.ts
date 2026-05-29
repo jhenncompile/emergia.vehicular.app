@@ -104,7 +104,7 @@ export class FirebaseService {
     try {
       // Si no pasan token, intentamos sacarlo del localStorage
       const fcmToken = token || localStorage.getItem('fcmToken');
-      const userId = localStorage.getItem('userId');
+      const userId = localStorage.getItem('usuario_id');
       const bearerToken = localStorage.getItem('token');
 
       if (!userId || !fcmToken || !bearerToken) {

@@ -7,13 +7,14 @@
 /// - Error handling with Result pattern
 /// - Progress tracking
 /// - State management integration
+library;
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import 'models/emergencia_models.dart';
-import 'services/emergencia_service.dart';
+import '../models/emergencia_models.dart';
+import '../services/emergencia_service.dart';
 
 // ============================================================================
 // SIMPLE EXAMPLE: Basic Usage
@@ -33,15 +34,15 @@ Future<void> basicExample() async {
   // Handle result using pattern matching
   result.when(
     success: (reporte) {
-      print('✅ Report submitted successfully!');
-      print('Priority: ${reporte.priority}');
-      print('Transcription: ${reporte.transcription}');
-      print('Detected objects: ${reporte.detectionSummary}');
+      debugPrint('✅ Report submitted successfully!');
+      debugPrint('Priority: ${reporte.priority}');
+      debugPrint('Transcription: ${reporte.transcription}');
+      debugPrint('Detected objects: ${reporte.detectionSummary}');
     },
     failure: (error) {
-      print('❌ Error: ${error.message}');
+      debugPrint('❌ Error: ${error.message}');
       if (error is FileSizeException) {
-        print('File is too large: ${error.fileName}');
+        debugPrint('File is too large: ${error.fileName}');
       }
     },
   );
@@ -52,7 +53,7 @@ Future<void> basicExample() async {
 // ============================================================================
 
 /// State manager for emergency report submission.
-/// 
+///
 /// Integrates with Provider package for state management.
 /// Usage:
 /// ```dart
@@ -137,7 +138,7 @@ class EmergenciaProvider extends ChangeNotifier {
 // ============================================================================
 
 /// UI screen for submitting emergency reports.
-/// 
+///
 /// Demonstrates:
 /// - File picking
 /// - Form validation
@@ -145,7 +146,7 @@ class EmergenciaProvider extends ChangeNotifier {
 /// - Error display
 /// - Result presentation
 class EmergenciaReporteScreen extends StatefulWidget {
-  const EmergenciaReporteScreen({Key? key}) : super(key: key);
+  const EmergenciaReporteScreen({super.key});
 
   @override
   State<EmergenciaReporteScreen> createState() =>
@@ -161,9 +162,7 @@ class _EmergenciaReporteScreenState extends State<EmergenciaReporteScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reportar Emergencia'),
-      ),
+      appBar: AppBar(title: const Text('Reportar Emergencia')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -201,8 +200,8 @@ class _EmergenciaReporteScreenState extends State<EmergenciaReporteScreen> {
                 }
 
                 return ElevatedButton(
-                  onPressed: _selectedAudioPath != null &&
-                          _selectedImagePath != null
+                  onPressed:
+                      _selectedAudioPath != null && _selectedImagePath != null
                       ? () => _submitReport(context)
                       : null,
                   style: ElevatedButton.styleFrom(
@@ -285,10 +284,7 @@ class _EmergenciaReporteScreenState extends State<EmergenciaReporteScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: progress,
-          minHeight: 8,
-        ),
+        LinearProgressIndicator(value: progress, minHeight: 8),
       ],
     );
   }
@@ -397,9 +393,7 @@ class _EmergenciaReporteScreenState extends State<EmergenciaReporteScreen> {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
-          Expanded(
-            child: Text(value),
-          ),
+          Expanded(child: Text(value)),
         ],
       ),
     );
@@ -408,9 +402,7 @@ class _EmergenciaReporteScreenState extends State<EmergenciaReporteScreen> {
   /// Pick audio file from device storage.
   Future<void> _pickAudioFile() async {
     try {
-      final file = await _picker.pickMedia(
-        requestFullMetadata: false,
-      );
+      final file = await _picker.pickMedia(requestFullMetadata: false);
 
       if (file != null) {
         setState(() {
@@ -457,10 +449,7 @@ class _EmergenciaReporteScreenState extends State<EmergenciaReporteScreen> {
   /// Show error snackbar.
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 }
@@ -475,22 +464,15 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (_) => EmergenciaProvider(),
-        ),
-      ],
+      providers: [ChangeNotifierProvider(create: (_) => EmergenciaProvider())],
       child: MaterialApp(
         title: 'VialIA - Emergency Reports',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          useMaterial3: true,
-        ),
+        theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
         home: const EmergenciaReporteScreen(),
       ),
     );

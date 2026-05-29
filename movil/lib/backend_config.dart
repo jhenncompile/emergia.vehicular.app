@@ -14,8 +14,10 @@ class BackendConfig {
 
   // ===== URLS CONSTRUIDAS =====
   static const String _localDevUrl = 'http://localhost:$_defaultPort';
-  static const String _localNetworkUrl = 'http://$_localNetworkIp:$_defaultPort';
-  static const String _androidEmulatorUrl = 'http://$_androidEmulatorHost:$_defaultPort';
+  static const String _localNetworkUrl =
+      'http://$_localNetworkIp:$_defaultPort';
+  static const String _androidEmulatorUrl =
+      'http://$_androidEmulatorHost:$_defaultPort';
 
   /// URL del backend - automática por plataforma
   static String get baseUrl {
@@ -47,10 +49,9 @@ class BackendConfig {
   static String get localDevUrl => _localDevUrl;
 
   static void printDebugInfo() {
-    print('[CONFIG] URL Base: $baseUrl');
-    print('[CONFIG] Emulador Android: $_androidEmulatorUrl');
-    print('[CONFIG] Dispositivo Físico: $_localNetworkUrl');
-    print('[CONFIG] Localhost: $_localDevUrl');
+    debugPrint('[CONFIG] URL Base: $baseUrl');
+    debugPrint('[CONFIG] Emulador Android: $_androidEmulatorUrl');
+    debugPrint('[CONFIG] Dispositivo Físico: $_localNetworkUrl');
+    debugPrint('[CONFIG] Localhost: $_localDevUrl');
   }
 }
-

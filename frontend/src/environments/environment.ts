@@ -1,6 +1,7 @@
 export const environment = {
   production: true,
   apiUrl: 'https://emergencia-vehicular.onrender.com/api/v1',
+  wsUrl: 'wss://emergencia-vehicular.onrender.com/ws',
   firebase: {
     apiKey: "AIzaSyAN4sQc58P6fwKWKVjM6kVhSCEBbEqR3mQ",
     authDomain: "emergenciavehicular.firebaseapp.com",

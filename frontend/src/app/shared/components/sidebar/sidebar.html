@@ -8,6 +8,10 @@
     <div class="user-info">
       <p class="user-name">{{ usuario }}</p>
       <span class="user-role">Admin de Taller</span>
+      <span class="connection-status" [class.connected]="wsService.conectado">
+        <span class="status-dot"></span>
+        {{ wsService.conectado ? 'WebSocket conectado' : 'WebSocket desconectado' }}
+      </span>
     </div>
   </div>
 
@@ -22,6 +26,10 @@
       </a>
       <a routerLink="/finanzas" routerLinkActive="active" class="nav-link">
         <span>💰</span> Finanzas y Cobros
+      </a>
+      <a routerLink="/notificaciones" routerLinkActive="active" class="nav-link">
+        <span>🔔</span> Notificaciones
+        <span *ngIf="notificacionesNoLeidas > 0" class="notification-badge">{{ notificacionesNoLeidas }}</span>
       </a>
 
       <p class="nav-label">CONFIGURACIÓN</p>

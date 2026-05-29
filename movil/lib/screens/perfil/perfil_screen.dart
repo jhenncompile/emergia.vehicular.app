@@ -16,7 +16,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
   void initState() {
     super.initState();
     // Cargar perfil al abrir la pantalla
-    Future.microtask(() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<UsuarioProvider>().cargarPerfil();
     });
   }
@@ -45,7 +46,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: AppColors.primaryColor.withOpacity(0.2),
+                    color: AppColors.primaryColor.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.primaryColor, width: 2),
                   ),
@@ -261,7 +262,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 direccion: direccionController.text,
               );
 
-              if (success && mounted) {
+              if (!context.mounted) return;
+              if (success) {
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -269,7 +271,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     backgroundColor: Colors.green,
                   ),
                 );
-              } else if (mounted) {
+              } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
@@ -348,7 +350,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 contrasenaNueva: nuevaController.text,
               );
 
-              if (success && mounted) {
+              if (!context.mounted) return;
+              if (success) {
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -356,7 +359,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     backgroundColor: Colors.green,
                   ),
                 );
-              } else if (mounted) {
+              } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
@@ -427,9 +430,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
               await authProvider.logout();
               // El Consumer en main.dart detectará que isAuthenticated es false
               // y automáticamente mostrará LoginPage
-              if (mounted) {
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              }
+              if (!context.mounted) return;
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Cerrar Sesión'),

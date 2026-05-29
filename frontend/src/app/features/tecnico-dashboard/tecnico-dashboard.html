@@ -4,8 +4,30 @@
     <div class="user-info">
       <h2>Mi Dashboard</h2>
       <p>Técnico: <strong>{{ nombre }}</strong></p>
+      <p class="connection-status" [class.connected]="wsService.conectado">
+        <span class="status-dot"></span>
+        {{ wsService.conectado ? '🔌 Conectado (WebSocket)' : '❌ Desconectado' }}
+      </p>
     </div>
-    <button class="btn-logout" (click)="salir()">Salir</button>
+    <div class="header-actions">
+      <a class="btn-notificaciones" routerLink="/tecnico/notificaciones">
+        Notificaciones
+        <span *ngIf="notificacionesNoLeidas > 0" class="notification-badge">
+          {{ notificacionesNoLeidas }}
+        </span>
+      </a>
+      <button class="btn-logout" (click)="salir()">Salir</button>
+    </div>
+  </div>
+
+  <div *ngIf="toastNotificacion" class="toast-notificacion" [ngClass]="toastNotificacion.tipo">
+    <div class="toast-indicator"></div>
+    <div class="toast-content">
+      <strong>{{ toastNotificacion.titulo }}</strong>
+      <p>{{ toastNotificacion.mensaje }}</p>
+      <button type="button" class="toast-action" (click)="abrirNotificaciones()">Ver notificaciones</button>
+    </div>
+    <button type="button" class="toast-close" (click)="cerrarToastNotificacion()">x</button>
   </div>
 
   <!-- Mensaje de error -->

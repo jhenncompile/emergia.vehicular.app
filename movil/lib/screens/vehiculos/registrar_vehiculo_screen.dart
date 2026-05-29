@@ -115,7 +115,7 @@ class _RegistrarVehiculoScreenState extends State<RegistrarVehiculoScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.1),
+                        color: AppColors.error.withValues(alpha: 0.1),
                         border: Border.all(color: AppColors.error),
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -200,7 +200,8 @@ class _RegistrarVehiculoScreenState extends State<RegistrarVehiculoScreen> {
       seguro: _seguroController.text.isNotEmpty ? _seguroController.text : null,
     );
 
-    if (success && mounted) {
+    if (!context.mounted) return;
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('¡Vehículo registrado exitosamente!'),

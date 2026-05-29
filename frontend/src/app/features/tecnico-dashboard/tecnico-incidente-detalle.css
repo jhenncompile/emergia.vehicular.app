@@ -44,6 +44,46 @@
   background: #dc2626;
 }
 
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.btn-notificaciones {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.3s;
+}
+
+.btn-notificaciones:hover {
+  background: #1d4ed8;
+}
+
+.notification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .alert {
   padding: 15px 20px;
   margin-bottom: 20px;
@@ -283,7 +323,7 @@
     gap: 15px;
   }
 
-  .btn-logout {
+  .header-actions {
     align-self: flex-end;
   }
 
@@ -307,5 +347,52 @@
   .incidente-details,
   .detalle-container {
     padding: 15px;
+  }
+}
+
+/* Indicador de conexión WebSocket */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #f59e0b;
+  margin-top: 5px;
+}
+
+.connection-status.connected {
+  color: #10b981;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #f59e0b;
+  animation: pulse 2s infinite;
+}
+
+.connection-status.connected .status-dot {
+  background-color: #10b981;
+  animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes pulse-green {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
   }
 }

@@ -1,7 +1,10 @@
 <div class="page-container">
   <div class="header">
-    <h2>🔔 Centro de Notificaciones</h2>
-    <p>Historial de alertas, emergencias y pagos</p>
+    <div>
+      <h2>🔔 Centro de Notificaciones</h2>
+      <p>Historial de alertas, emergencias y pagos</p>
+    </div>
+    <button *ngIf="esTecnico" class="btn-back" (click)="volver()">Volver</button>
   </div>
 
   <div *ngIf="cargando" class="loading-state">

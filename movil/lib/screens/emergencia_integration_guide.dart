@@ -2,6 +2,7 @@
 ///
 /// This file shows minimal, copy-paste ready code for integrating the EmergenciaService
 /// into your existing screens without major refactoring.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,7 +19,7 @@ import '../services/emergencia_service.dart';
 /// This is the minimal code needed to add emergency reporting capability
 /// to any existing Flutter screen without major refactoring.
 class ExistingIncidentScreen extends StatefulWidget {
-  const ExistingIncidentScreen({Key? key}) : super(key: key);
+  const ExistingIncidentScreen({super.key});
 
   @override
   State<ExistingIncidentScreen> createState() => _ExistingIncidentScreenState();
@@ -43,9 +44,7 @@ class _ExistingIncidentScreenState extends State<ExistingIncidentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reporte de Incidente'),
-      ),
+      appBar: AppBar(title: const Text('Reporte de Incidente')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -59,10 +58,7 @@ class _ExistingIncidentScreenState extends State<ExistingIncidentScreen> {
             const SizedBox(height: 16),
             const Text(
               'Reportar Emergencia (AI Analysis)',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
@@ -182,9 +178,7 @@ class _ExistingIncidentScreenState extends State<ExistingIncidentScreen> {
       // === Handle Result ===
       result.when(
         success: (reporte) {
-          _showSnackbar(
-            '✅ Reporte enviado\nPrioridad: ${reporte.priority}',
-          );
+          _showSnackbar('✅ Reporte enviado\nPrioridad: ${reporte.priority}');
 
           // Reset form
           setState(() {
@@ -193,8 +187,8 @@ class _ExistingIncidentScreenState extends State<ExistingIncidentScreen> {
           });
 
           // TODO: Save report data or navigate to success screen
-          print('Report priority: ${reporte.priority}');
-          print('Detections: ${reporte.detectionSummary}');
+          debugPrint('Report priority: ${reporte.priority}');
+          debugPrint('Detections: ${reporte.detectionSummary}');
         },
         failure: (error) {
           String message = error.message;
@@ -241,7 +235,7 @@ class _ExistingIncidentScreenState extends State<ExistingIncidentScreen> {
 /// 4. Handle result in success/failure callbacks
 
 class QuickStartTemplate extends StatefulWidget {
-  const QuickStartTemplate({Key? key}) : super(key: key);
+  const QuickStartTemplate({super.key});
 
   @override
   State<QuickStartTemplate> createState() => _QuickStartTemplateState();
@@ -261,17 +255,17 @@ class _QuickStartTemplateState extends State<QuickStartTemplate> {
     final result = await service.enviarReporte(
       audioPath: audioPath!,
       imagePath: imagePath!,
-      onProgress: (p) => print('${(p * 100).toStringAsFixed(0)}%'),
+      onProgress: (p) => debugPrint('${(p * 100).toStringAsFixed(0)}%'),
     );
 
     // Step 3: Handle result
     result.when(
       success: (reporte) {
-        print('✅ Priority: ${reporte.priority}');
+        debugPrint('✅ Priority: ${reporte.priority}');
         // Update UI with reporte data
       },
       failure: (error) {
-        print('❌ ${error.message}');
+        debugPrint('❌ ${error.message}');
         // Show error to user
       },
     );
@@ -293,8 +287,6 @@ class _QuickStartTemplateState extends State<QuickStartTemplate> {
 // ============================================================================
 // ADVANCED: With State Management (Provider)
 // ============================================================================
-
-import 'package:provider/provider.dart';
 
 /// State management wrapper for emergency service.
 ///
@@ -326,10 +318,7 @@ class EmergenciaNotifier extends ChangeNotifier {
       },
     );
 
-    result.when(
-      success: (r) => lastReport = r,
-      failure: (e) => error = e,
-    );
+    result.when(success: (r) => lastReport = r, failure: (e) => error = e);
 
     isLoading = false;
     notifyListeners();
@@ -367,11 +356,7 @@ class ErrorDisplay extends StatelessWidget {
   final EmergenciaException error;
   final VoidCallback? onDismiss;
 
-  const ErrorDisplay({
-    Key? key,
-    required this.error,
-    this.onDismiss,
-  }) : super(key: key);
+  const ErrorDisplay({super.key, required this.error, this.onDismiss});
 
   @override
   Widget build(BuildContext context) {
@@ -380,8 +365,11 @@ class ErrorDisplay extends StatelessWidget {
     final title = _getTitleForError(error);
 
     return Card(
-      color: color.withOpacity(0.1),
-      border: Border.all(color: color),
+      color: color.withValues(alpha: 0.1),
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: color),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -394,10 +382,7 @@ class ErrorDisplay extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: color),
                   ),
                 ),
                 if (onDismiss != null)
