@@ -16,8 +16,11 @@ class CRUDUsuario(CRUDBase[Usuario, UsuarioCreate, UsuarioUpdate]):
     def create(self, db: Session, *, obj_in: UsuarioCreate, usuario_id: Optional[int] = None) -> Usuario:
         db_obj = Usuario(
             nombre=obj_in.nombre,
+            apellido=obj_in.apellido,
             correo=obj_in.correo,
             telefono=obj_in.telefono,
+            ciudad=obj_in.ciudad,
+            direccion=obj_in.direccion,
             clave_hash=obtener_hash_clave(obj_in.clave),
             rol_id=obj_in.rol_id,
             taller_id=obj_in.taller_id

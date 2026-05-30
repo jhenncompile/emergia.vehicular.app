@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 from fastapi import APIRouter, UploadFile, File, HTTPException, status
 from app.services.ai_service import (
     AIService,
@@ -10,13 +11,27 @@ from app.services.ai_service import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-ai_service = AIService()
+ai_service: Optional[AIService] = None
 
 # Allowed file types for validation
-ALLOWED_AUDIO_FORMATS = {"audio/mpeg", "audio/wav", "audio/ogg", "audio/flac"}
+ALLOWED_AUDIO_FORMATS = {
+    "audio/mpeg",
+    "audio/wav",
+    "audio/ogg",
+    "audio/flac",
+    "audio/mp4",
+}
 ALLOWED_IMAGE_FORMATS = {"image/jpeg", "image/png", "image/webp"}
 MAX_AUDIO_SIZE_MB = 25  # Reasonable limit for audio files
 MAX_IMAGE_SIZE_MB = 10  # Reasonable limit for image files
+
+
+def _get_ai_service() -> AIService:
+    """Initialize AI service lazily so the API can boot without HF_API_TOKEN."""
+    global ai_service
+    if ai_service is None:
+        ai_service = AIService()
+    return ai_service
 
 
 def _validate_file_size(file: UploadFile, max_size_mb: int) -> None:
@@ -165,7 +180,10 @@ async def reportar_emergencia(
         )
 
         # Process emergency report with AI models
-        resultado = ai_service.process_emergency_report(audio_data, imagen_data)
+        resultado = _get_ai_service().process_emergency_report(
+            audio_data,
+            imagen_data,
+        )
 
         # Format response
         response_message = (

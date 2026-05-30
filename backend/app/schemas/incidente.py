@@ -53,6 +53,8 @@ class IncidenteBase(BaseModel):
     usuario_id: int
     taller_id: Optional[int] = None
     tecnico_id: Optional[int] = None
+    descripcion: Optional[str] = None
+    ubicacion: Optional[str] = None
     latitud: Decimal = Field(..., ge=-90, le=90)
     longitud: Decimal = Field(..., ge=-180, le=180)
     prioridad: str = "media" 
@@ -73,6 +75,8 @@ class IncidenteCreate(IncidenteBase):
 class IncidenteUpdate(BaseModel):
     taller_id: Optional[int] = None
     tecnico_id: Optional[int] = None
+    descripcion: Optional[str] = None
+    ubicacion: Optional[str] = None
     prioridad: Optional[str] = None
     estado: Optional[str] = None 
     pago_estado: Optional[str] = None
@@ -97,9 +101,9 @@ class Incidente(IncidenteBase):
     def extraer_datos_virtuales(cls, obj):
         if not isinstance(obj, dict):
             usuario = getattr(obj, "usuario", None)
-            tel = "No disponible"
+            tel = getattr(obj, "telefono_cliente", None) or "No disponible"
             if usuario:
-                tel = getattr(usuario, "telefono", "No disponible") or "No disponible"
+                tel = getattr(usuario, "telefono", None) or tel
             
             return {
                 "id": obj.id,
@@ -107,6 +111,8 @@ class Incidente(IncidenteBase):
                 "usuario_id": obj.usuario_id,
                 "taller_id": obj.taller_id,
                 "tecnico_id": obj.tecnico_id,
+                "descripcion": getattr(obj, "descripcion", None),
+                "ubicacion": getattr(obj, "ubicacion", None),
                 "latitud": obj.latitud,
                 "longitud": obj.longitud,
                 "prioridad": obj.prioridad,

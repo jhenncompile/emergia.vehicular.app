@@ -45,10 +45,16 @@ class UsuarioProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await usuarioService.actualizarPerfilNoDisponible();
+      _perfil = await usuarioService.actualizarPerfil(
+        nombre: nombre,
+        apellido: apellido,
+        telefono: telefono,
+        ciudad: ciudad,
+        direccion: direccion,
+      );
       _isLoading = false;
       notifyListeners();
-      return false;
+      return true;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;

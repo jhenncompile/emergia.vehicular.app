@@ -7,6 +7,7 @@ class IncidenteProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _misIncidentes = [];
   final List<Map<String, dynamic>> _localIncidentes = [];
   Map<String, dynamic>? _incidenteSeleccionado;
+  Map<String, dynamic>? _ultimoIncidenteReportado;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -15,6 +16,8 @@ class IncidenteProvider extends ChangeNotifier {
   // Getters
   List<Map<String, dynamic>> get misIncidentes => _misIncidentes;
   Map<String, dynamic>? get incidenteSeleccionado => _incidenteSeleccionado;
+  Map<String, dynamic>? get ultimoIncidenteReportado =>
+      _ultimoIncidenteReportado;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -25,10 +28,7 @@ class IncidenteProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final pendientes = await incidenteService.obtenerIncidentesPendientes();
-      final remotosUsuario = pendientes
-          .where((inc) => inc['usuario_id'] == usuarioId)
-          .toList();
+      final remotosUsuario = await incidenteService.obtenerMisIncidentes();
 
       final combinados = [..._localIncidentes, ...remotosUsuario];
       final Map<int, Map<String, dynamic>> porId = {};
@@ -62,6 +62,7 @@ class IncidenteProvider extends ChangeNotifier {
     required String ubicacion,
     required double latitud,
     required double longitud,
+    String? audioPath,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -75,8 +76,10 @@ class IncidenteProvider extends ChangeNotifier {
         ubicacion: ubicacion,
         latitud: latitud,
         longitud: longitud,
+        audioPath: audioPath,
       );
 
+      _ultimoIncidenteReportado = nuevoIncidente;
       _localIncidentes.insert(0, nuevoIncidente);
       _misIncidentes.insert(0, nuevoIncidente);
       _isLoading = false;
@@ -123,6 +126,7 @@ class IncidenteProvider extends ChangeNotifier {
     _misIncidentes = [];
     _localIncidentes.clear();
     _incidenteSeleccionado = null;
+    _ultimoIncidenteReportado = null;
     _errorMessage = null;
   }
 }

@@ -6,6 +6,7 @@ import 'providers/auth_provider.dart';
 import 'providers/incidente_provider.dart';
 import 'providers/notificacion_provider.dart';
 import 'providers/pago_provider.dart';
+import 'providers/realtime_provider.dart';
 import 'providers/usuario_provider.dart';
 import 'providers/vehiculo_provider.dart';
 import 'screens/historial/historial_screen.dart';
@@ -20,6 +21,7 @@ import 'services/auth_service.dart';
 import 'services/incidente_service.dart';
 import 'services/notificacion_service.dart';
 import 'services/pago_service.dart';
+import 'services/realtime_service.dart';
 import 'services/taller_service.dart';
 import 'services/usuario_service.dart';
 import 'services/vehiculo_service.dart';
@@ -39,6 +41,9 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<ApiService>(create: (_) => ApiService(baseUrl: backendUrl)),
+        Provider<RealtimeService>(
+          create: (_) => RealtimeService(baseUrl: backendUrl),
+        ),
         Provider<AuthService>(
           create: (context) =>
               AuthService(apiService: context.read<ApiService>()),
@@ -94,21 +99,45 @@ class MyApp extends StatelessWidget {
           create: (context) =>
               UsuarioProvider(usuarioService: context.read<UsuarioService>()),
         ),
+        ChangeNotifierProxyProvider2<
+          AuthProvider,
+          IncidenteProvider,
+          RealtimeProvider
+        >(
+          create: (context) => RealtimeProvider(
+            realtimeService: context.read<RealtimeService>(),
+          ),
+          update: (context, authProvider, incidenteProvider, realtimeProvider) {
+            final provider =
+                realtimeProvider ??
+                RealtimeProvider(
+                  realtimeService: context.read<RealtimeService>(),
+                );
+            provider.sync(
+              authProvider: authProvider,
+              incidenteProvider: incidenteProvider,
+            );
+            return provider;
+          },
+        ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Emergencia Vehicular',
         theme: appTheme,
-        // DEV MODE: Skip login, go directly to HomePage
-        home: const HomePage(),
-        // PRODUCTION: Uncomment for login requirement
-        // home: Consumer<AuthProvider>(
-        //   builder: (context, authProvider, _) {
-        //     return authProvider.isAuthenticated
-        //         ? const HomePage()
-        //         : const LoginPage();
-        //   },
-        // ),
+        home: Consumer<AuthProvider>(
+          builder: (context, authProvider, _) {
+            if (authProvider.isCheckingAuth) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            return authProvider.isAuthenticated
+                ? const HomePage()
+                : const LoginPage();
+          },
+        ),
       ),
     );
   }
@@ -148,9 +177,6 @@ class _LoginPageState extends State<LoginPage> {
 
     if (!mounted) return;
     if (success) {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
       return;
     }
 

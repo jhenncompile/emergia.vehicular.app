@@ -19,11 +19,14 @@ class Incidente(Base):
     tecnico_id = Column(Integer, ForeignKey("usuario.id", ondelete="SET NULL"), nullable=True)
 
     # --- DATOS DE ESTADO Y UBICACIÓN ---
+    descripcion = Column(Text, nullable=True)
+    ubicacion = Column(String(255), nullable=True)
     latitud = Column(Numeric(10, 8))
     longitud = Column(Numeric(11, 8))
     prioridad = Column(String(20)) # 'baja', 'media', 'alta'
     estado = Column(String(20), default="pendiente") 
     pago_estado = Column(String(20), default="pendiente")
+    telefono_cliente = Column(String(20), nullable=True)
     motivo_cancelacion = Column(Text, nullable=True)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
 

@@ -20,14 +20,14 @@
     </div>
   </div>
 
-  <div *ngIf="toastNotificacion" class="toast-notificacion" [ngClass]="toastNotificacion.tipo">
+  <div *ngIf="toastNotificacion" class="toast-notificacion" [ngClass]="toastNotificacion.clase || 'toast-info'">
     <div class="toast-indicator"></div>
     <div class="toast-content">
       <strong>{{ toastNotificacion.titulo }}</strong>
       <p>{{ toastNotificacion.mensaje }}</p>
-      <button type="button" class="toast-action" (click)="abrirNotificaciones()">Ver notificaciones</button>
+      <button type="button" class="toast-action" (click)="abrirNotificaciones()">Ver m\u00e1s</button>
     </div>
-    <button type="button" class="toast-close" (click)="cerrarToastNotificacion()">x</button>
+    <button type="button" class="toast-close" (click)="cerrarToastNotificacion()">\u00d7</button>
   </div>
 
   <!-- Mensaje de error -->

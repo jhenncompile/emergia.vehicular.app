@@ -19,12 +19,32 @@ class UsuarioService {
     }
   }
 
-  /// Endpoint de actualizacion disponible para administradores de taller.
-  /// En movil cliente esta funcionalidad queda deshabilitada por backend.
-  Future<Map<String, dynamic>> actualizarPerfilNoDisponible() async {
-    throw Exception(
-      'Actualizar perfil no disponible para rol movil en backend actual.',
-    );
+  Future<Map<String, dynamic>> actualizarPerfil({
+    String? nombre,
+    String? apellido,
+    String? telefono,
+    String? direccion,
+    String? ciudad,
+  }) async {
+    try {
+      final response = await apiService.put(
+        '/api/v1/usuarios/me',
+        body: {
+          if (_texto(nombre) != null) 'nombre': _texto(nombre),
+          'apellido': _texto(apellido),
+          'telefono': _texto(telefono),
+          'ciudad': _texto(ciudad),
+          'direccion': _texto(direccion),
+        },
+      );
+
+      if (response is Map<String, dynamic>) {
+        return response;
+      }
+      throw Exception('Respuesta inesperada del servidor');
+    } catch (e) {
+      throw Exception('Error al actualizar perfil: $e');
+    }
   }
 
   Future<Map<String, dynamic>> solicitarRecuperacionContrasena({
@@ -43,5 +63,11 @@ class UsuarioService {
     } catch (e) {
       throw Exception('Error al solicitar recuperacion de contrasena: $e');
     }
+  }
+
+  String? _texto(String? value) {
+    final text = value?.trim();
+    if (text == null || text.isEmpty) return null;
+    return text;
   }
 }

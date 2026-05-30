@@ -531,3 +531,112 @@
     opacity: 0.6;
   }
 }
+
+/* Toast Styles diferenciados por tipo de evento */
+.toast-success {
+  border-color: #86efac;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  color: #166534;
+}
+
+.toast-success .toast-indicator {
+  background: #22c55e;
+}
+
+.toast-success .toast-action {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.toast-success .toast-action:hover {
+  color: #15803d;
+}
+
+.toast-success .toast-content strong {
+  color: #166534;
+}
+
+.toast-success .toast-content p {
+  color: #166534;
+}
+
+.toast-warning {
+  border-color: #fcd34d;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  color: #92400e;
+}
+
+.toast-warning .toast-indicator {
+  background: #f59e0b;
+}
+
+.toast-warning .toast-action {
+  color: #d97706;
+  font-weight: 700;
+}
+
+.toast-warning .toast-action:hover {
+  color: #b45309;
+}
+
+.toast-warning .toast-content strong {
+  color: #92400e;
+}
+
+.toast-warning .toast-content p {
+  color: #92400e;
+}
+
+.toast-danger {
+  border-color: #fca5a5;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  color: #991b1b;
+}
+
+.toast-danger .toast-indicator {
+  background: #ef4444;
+}
+
+.toast-danger .toast-action {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.toast-danger .toast-action:hover {
+  color: #b91c1c;
+}
+
+.toast-danger .toast-content strong {
+  color: #991b1b;
+}
+
+.toast-danger .toast-content p {
+  color: #991b1b;
+}
+
+.toast-info {
+  border-color: #93c5fd;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  color: #0c2340;
+}
+
+.toast-info .toast-indicator {
+  background: #3b82f6;
+}
+
+.toast-info .toast-action {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.toast-info .toast-action:hover {
+  color: #1e40af;
+}
+
+.toast-info .toast-content strong {
+  color: #0c2340;
+}
+
+.toast-info .toast-content p {
+  color: #0c2340;
+}

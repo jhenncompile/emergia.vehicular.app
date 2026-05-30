@@ -34,6 +34,19 @@ class ApiService {
   /// Se ejecuta antes de cada petición para incluir autenticación
   final Future<String?> Function()? getToken;
   final http.Client _client;
+  String? _authToken;
+
+  void setAuthToken(String? token) {
+    _authToken = token;
+  }
+
+  Future<String?> currentAuthToken() async {
+    String? token = _authToken;
+    token ??= await getToken?.call();
+    token ??= (await SharedPreferences.getInstance()).getString('auth_token');
+    _authToken = token;
+    return token;
+  }
 
   // Construye la URI completa para la petición, incluyendo los parámetros de consulta si se proporcionan
   Uri _buildUri(String path, [Map<String, dynamic>? queryParams]) {
@@ -57,8 +70,7 @@ class ApiService {
   /// Ej: Un petición POST a /incidentes/ llevará el header:
   ///     Authorization: Bearer eyJhbGciOiJIUzI1NiI...
   Future<Map<String, String>> _headers({bool jsonContent = true}) async {
-    String? token = await getToken?.call();
-    token ??= (await SharedPreferences.getInstance()).getString('auth_token');
+    final token = await currentAuthToken();
 
     return {
       if (jsonContent) 'Content-Type': 'application/json',
@@ -162,6 +174,10 @@ class ApiService {
   /// Ej: Si el backend retorna 422 (datos inválidos)
   ///     Lanza: "Error 422: {detalle del error}"
   dynamic _handleResponse(http.Response response) {
+    return handleRawResponse(response);
+  }
+
+  dynamic handleRawResponse(http.Response response) {
     final body = response.body.isNotEmpty ? response.body : null;
 
     if (response.statusCode >= 200 && response.statusCode < 300) {

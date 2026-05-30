@@ -119,7 +119,7 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
 
             // Descripción
             Text(
-              incidente['descripcion'] ?? 'Sin descripción',
+              _textoIncidente(incidente) ?? 'Sin descripción',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 13),
@@ -229,8 +229,23 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
               ),
               _buildDetalleRow(
                 'Descripción',
-                incidente['descripcion'] ?? 'N/A',
+                _texto(incidente['descripcion']) ?? 'N/A',
               ),
+              if (_texto(incidente['clasificacion_ia']) != null)
+                _buildDetalleRow(
+                  'Categoria IA',
+                  _texto(incidente['clasificacion_ia'])!,
+                ),
+              if (_texto(incidente['transcripcion_audio']) != null)
+                _buildDetalleRow(
+                  'Transcripcion',
+                  _texto(incidente['transcripcion_audio'])!,
+                ),
+              if (_texto(incidente['resumen_ia']) != null)
+                _buildDetalleRow(
+                  'Resumen IA',
+                  _texto(incidente['resumen_ia'])!,
+                ),
               _buildDetalleRow('Ubicación', incidente['ubicacion'] ?? 'N/A'),
               _buildDetalleRow(
                 'Vehículo',
@@ -273,5 +288,17 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
         ],
       ),
     );
+  }
+
+  String? _textoIncidente(Map<String, dynamic> incidente) {
+    return _texto(incidente['descripcion']) ??
+        _texto(incidente['transcripcion_audio']) ??
+        _texto(incidente['resumen_ia']);
+  }
+
+  String? _texto(dynamic value) {
+    final text = value?.toString().trim();
+    if (text == null || text.isEmpty) return null;
+    return text;
   }
 }

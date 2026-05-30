@@ -11,6 +11,7 @@ from app.schemas.usuario import (
     Usuario as UsuarioSchema, 
     UsuarioCreate, 
     UsuarioUpdate,
+    UsuarioPerfilUpdate,
     TecnicoCreate,
     TecnicoUpdate
 )
@@ -23,6 +24,25 @@ router = APIRouter()
 def leer_usuario_actual(current_user = Depends(deps.get_current_user)):
     """Retorna los datos del usuario autenticado."""
     return current_user
+
+@router.put("/me", response_model=UsuarioSchema)
+def actualizar_mi_perfil(
+    *,
+    db: Session = Depends(deps.get_db),
+    user_in: UsuarioPerfilUpdate,
+    current_user = Depends(deps.get_current_cliente)
+):
+    """Actualiza datos editables del perfil del cliente movil autenticado."""
+    update_data = user_in.dict(exclude_unset=True)
+    if not update_data:
+        return current_user
+
+    return usuario_crud.update(
+        db,
+        db_obj=current_user,
+        obj_in=UsuarioUpdate(**update_data),
+        usuario_id=current_user.id,
+    )
 
 @router.get("/mis-administradores", response_model=List[UsuarioSchema])
 def listar_admins_de_mi_taller(

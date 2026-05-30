@@ -10,7 +10,7 @@ Maneja la lógica de:
 
 from sqlalchemy.orm import Session
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 import logging
 import json
 
@@ -38,7 +38,8 @@ class NotificacionService:
         titulo: str,
         mensaje: str,
         tipo: str,
-        incidente_id: Optional[int] = None
+        incidente_id: Optional[int] = None,
+        extra_data: Optional[Dict[str, object]] = None
     ) -> bool:
         """
         Crea una notificación en la BD y la envía por todos los canales.
@@ -81,6 +82,8 @@ class NotificacionService:
                 "incidente_id": incidente_id,
                 "fecha_envio": notificacion_db.fecha_envio.isoformat() if notificacion_db.fecha_envio else None
             }
+            if extra_data:
+                data.update(extra_data)
             
             # 2️⃣ Enviar por WebSocket (si usuario conectado en web)
             try:
@@ -93,7 +96,7 @@ class NotificacionService:
                 logger.info(f"ℹ️  WebSocket no pudo programarse: {str(e)}")
             
             # 3️⃣ Enviar por FCM (si usuario tiene token registrado)
-            NotificacionService._enviar_fcm(db, usuario_id, titulo, mensaje, incidente_id)
+            NotificacionService._enviar_fcm(db, usuario_id, titulo, mensaje, tipo, incidente_id, extra_data)
             
             return True
         except Exception as e:
@@ -126,7 +129,13 @@ class NotificacionService:
             titulo=titulo,
             mensaje=mensaje,
             tipo="tecnico_asignado",
-            incidente_id=incidente_id
+            incidente_id=incidente_id,
+            extra_data={
+                "evento": "tecnico_asignado",
+                "estado_nuevo": incidente.estado,
+                "taller_id": incidente.taller_id,
+                "tecnico_id": tecnico_id,
+            }
         )
 
     @staticmethod
@@ -154,7 +163,13 @@ class NotificacionService:
             titulo=titulo,
             mensaje=mensaje,
             tipo="incidente_aceptado",
-            incidente_id=incidente_id
+            incidente_id=incidente_id,
+            extra_data={
+                "evento": "taller_acepto",
+                "estado_nuevo": "en_proceso",
+                "taller_nombre": taller_nombre,
+                "tecnico_nombre": tecnico_nombre,
+            }
         )
 
     @staticmethod
@@ -183,7 +198,13 @@ class NotificacionService:
             titulo=titulo,
             mensaje=mensaje,
             tipo="incidente_rechazado",
-            incidente_id=incidente_id
+            incidente_id=incidente_id,
+            extra_data={
+                "evento": "taller_rechazo",
+                "estado_nuevo": "pendiente",
+                "taller_nombre": taller_nombre,
+                "motivo": motivo,
+            }
         )
 
     @staticmethod
@@ -211,19 +232,25 @@ class NotificacionService:
         titulo_cliente = ""
         mensaje_cliente = ""
 
+        evento = "estado_cambiado"
+
         if estado_nuevo == "en_proceso":
+            evento = "auxilio_en_camino"
             titulo_cliente = "🚗 Auxilio en camino"
             mensaje_cliente = f"Tu solicitud #{incidente_id} está siendo atendida. El técnico está en camino."
             
         elif estado_nuevo == "atendido":
+            evento = "servicio_atendido"
             titulo_cliente = "✅ Servicio completado"
             mensaje_cliente = f"Tu solicitud #{incidente_id} ha sido completada. Gracias por usar nuestro servicio."
             
         elif estado_nuevo == "rechazado":
+            evento = "taller_rechazo"
             titulo_cliente = "⚠️ Servicio rechazado"
             mensaje_cliente = f"Tu solicitud #{incidente_id} no pudo ser completada. Contáctanos para más detalles."
             
         elif estado_nuevo == "cancelado":
+            evento = "servicio_cancelado"
             titulo_cliente = "🚫 Solicitud cancelada"
             mensaje_cliente = f"Tu solicitud #{incidente_id} ha sido cancelada."
 
@@ -235,7 +262,15 @@ class NotificacionService:
                 titulo=titulo_cliente,
                 mensaje=mensaje_cliente,
                 tipo=f"cambio_estado_{estado_nuevo}",
-                incidente_id=incidente_id
+                incidente_id=incidente_id,
+                extra_data={
+                    "evento": evento,
+                    "estado_anterior": estado_anterior,
+                    "estado_nuevo": estado_nuevo,
+                    "taller_id": incidente.taller_id,
+                    "tecnico_id": incidente.tecnico_id,
+                    "pago_estado": incidente.pago_estado,
+                }
             )
 
         # Notificar al técnico en estados específicos
@@ -264,7 +299,15 @@ class NotificacionService:
                         titulo=titulo_tecnico,
                         mensaje=mensaje_tecnico,
                         tipo=f"cambio_estado_{estado_nuevo}_tecnico",
-                        incidente_id=incidente_id
+                        incidente_id=incidente_id,
+                        extra_data={
+                            "evento": evento,
+                            "estado_anterior": estado_anterior,
+                            "estado_nuevo": estado_nuevo,
+                            "taller_id": incidente.taller_id,
+                            "tecnico_id": incidente.tecnico_id,
+                            "pago_estado": incidente.pago_estado,
+                        }
                     )
 
         return resultado
@@ -315,7 +358,9 @@ class NotificacionService:
         usuario_id: int,
         titulo: str,
         mensaje: str,
-        incidente_id: Optional[int] = None
+        tipo: str,
+        incidente_id: Optional[int] = None,
+        extra_data: Optional[Dict[str, object]] = None
     ) -> bool:
         """
         Envía notificación push a través de Firebase Cloud Messaging.
@@ -354,9 +399,11 @@ class NotificacionService:
                 data = {
                     "titulo": titulo,
                     "mensaje": mensaje,
-                    "tipo": "notificacion",
+                    "tipo": tipo,
                     "incidente_id": str(incidente_id) if incidente_id else ""
                 }
+                if extra_data:
+                    data.update({key: "" if value is None else str(value) for key, value in extra_data.items()})
                 
                 # Enviar a cada token
                 enviados = 0

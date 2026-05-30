@@ -16,7 +16,7 @@ import logging
 from typing import List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import PlainTextResponse
 from app.db.session import engine
 from app.db.base import Base  # Importamos el que tiene todos los modelos

@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Usamos tu ubicacion para enviar la posicion real del incidente al taller.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Usamos el microfono para adjuntar un audio al reporte del incidente.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

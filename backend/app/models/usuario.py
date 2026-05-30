@@ -25,9 +25,12 @@ class Usuario(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String, nullable=False)
+    apellido = Column(String(100), nullable=True)
     correo = Column(String, unique=True, index=True, nullable=False)
     clave_hash = Column(String, nullable=False)
     telefono = Column(String(20), nullable=True)
+    ciudad = Column(String(100), nullable=True)
+    direccion = Column(String(200), nullable=True)
     esta_activo = Column(Boolean, default=True) 
 
     rol_id = Column(Integer, ForeignKey("rol.id", ondelete="RESTRICT"), nullable=False)

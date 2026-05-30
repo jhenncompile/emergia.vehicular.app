@@ -29,8 +29,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
         title: const Text('Mi Perfil'),
         backgroundColor: AppColors.primaryColor,
       ),
-      body: Consumer<UsuarioProvider>(
-        builder: (context, usuarioProvider, _) {
+      body: Consumer2<UsuarioProvider, AuthProvider>(
+        builder: (context, usuarioProvider, authProvider, _) {
           if (usuarioProvider.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -59,7 +59,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 const SizedBox(height: 24),
 
                 // Información del usuario
-                _buildPerfilInfo(context, perfil),
+                _buildPerfilInfo(context, perfil, authProvider),
                 const SizedBox(height: 32),
 
                 // Botones de acción
@@ -89,9 +89,36 @@ class _PerfilScreenState extends State<PerfilScreen> {
     );
   }
 
-  Widget _buildPerfilInfo(BuildContext context, Map<String, dynamic>? perfil) {
+  Widget _buildPerfilInfo(
+    BuildContext context,
+    Map<String, dynamic>? perfil,
+    AuthProvider authProvider,
+  ) {
     if (perfil == null) {
-      return const Text('No se pudo cargar la información del perfil');
+      final nombre = authProvider.userName ?? 'Cliente';
+      final correo = authProvider.userEmail ?? 'Correo no disponible';
+
+      return Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.1),
+              border: Border.all(color: AppColors.warning),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'No se pudo cargar el perfil completo. Mostrando datos de la sesion.',
+              style: TextStyle(color: AppColors.warning),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildInfoCard(label: 'Nombre', value: nombre, icon: Icons.person),
+          const SizedBox(height: 12),
+          _buildInfoCard(label: 'Email', value: correo, icon: Icons.email),
+        ],
+      );
     }
 
     return Column(

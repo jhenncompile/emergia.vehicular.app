@@ -126,8 +126,8 @@ def login_access_token(
 
     if plataforma == "web" and usuario.rol_id == 2:
         raise HTTPException(status_code=403, detail="Acceso denegado: Use la App Móvil.")
-    if plataforma == "movil" and usuario.rol_id == 1:
-        raise HTTPException(status_code=403, detail="Acceso denegado: Use el Panel Web.")
+    if plataforma == "movil" and usuario.rol_id != 2:
+        raise HTTPException(status_code=403, detail="Acceso denegado: La app móvil es solo para clientes.")
 
     bitacora_crud.registrar(
         db,

@@ -62,12 +62,17 @@ export class TecnicoDashboardComponent implements OnInit, OnDestroy {
       // Escuchar notificaciones
       this.notificacionSub = this.wsService.notificaciones$.subscribe(notif => {
         if (notif) {
-          // Mostrar notificación visual
+          // Mostrar notificación visual con estilo diferenciado
           this.mostrarNotificacion(notif);
           this.contadorNotificaciones.cargarPendientes();
           
-          // Recargar incidentes automáticamente
-          this.cargarIncidentes();
+          // Actualizar incidente específico en lugar de recargar todo
+          if (notif.incidente_id) {
+            this.actualizarIncidente(notif.incidente_id);
+          } else {
+            // Si no hay incidente_id, recargar todo
+            this.cargarIncidentes();
+          }
         }
       });
     }
@@ -251,10 +256,39 @@ export class TecnicoDashboardComponent implements OnInit, OnDestroy {
   }
 
   mostrarNotificacion(notif: any) {
+    // Determinar la clase CSS y duración basada en el tipo/evento
+    let claseToast = 'toast-info';
+    let duracion = 8000; // ms
+    
+    const evento = notif.evento || notif.tipo || '';
+    
+    // Clasificar por importancia y tipo
+    if (evento.includes('aceptado') || evento.includes('acepto')) {
+      claseToast = 'toast-success';
+      duracion = 6000; // Menos tiempo para eventos positivos
+    } else if (evento.includes('rechazado') || evento.includes('rechazo')) {
+      claseToast = 'toast-warning';
+      duracion = 8000;
+    } else if (evento.includes('cancelado') || evento.includes('cancelada')) {
+      claseToast = 'toast-danger';
+      duracion = 8000;
+    } else if (evento.includes('en_proceso') || evento.includes('en_camino')) {
+      claseToast = 'toast-info';
+      duracion = 5000;
+    } else if (evento.includes('atendido') || evento.includes('completado')) {
+      claseToast = 'toast-success';
+      duracion = 6000;
+    } else if (evento.includes('asignado')) {
+      claseToast = 'toast-info';
+      duracion = 7000;
+    }
+
     this.toastNotificacion = {
       titulo: notif.titulo || 'Nueva notificación',
       mensaje: notif.mensaje || 'Tienes una nueva notificación',
       tipo: notif.tipo || 'sistema',
+      evento: evento,
+      clase: claseToast,
       incidente_id: notif.incidente_id
     };
 
@@ -264,10 +298,37 @@ export class TecnicoDashboardComponent implements OnInit, OnDestroy {
 
     this.toastTimeoutId = setTimeout(() => {
       this.cerrarToastNotificacion();
-    }, 8000);
+    }, duracion);
     
-    // Reproducir sonido (opcional)
-    this.playNotificationSound();
+    // Reproducir sonido diferenciado
+    this.playNotificationSound(evento);
+  }
+
+  actualizarIncidente(incidenteId: number) {
+    // Actualiza un incidente específico sin recargar toda la lista
+    this.tecnicoService.getIncidente(incidenteId).subscribe({
+      next: (incidenteActualizado) => {
+        // Buscar y actualizar en la lista local
+        const index = this.incidentes.findIndex(i => i.id === incidenteId);
+        if (index !== -1) {
+          this.incidentes[index] = incidenteActualizado;
+        } else {
+          // Si no estaba en la lista, agregarlo (caso raro)
+          this.incidentes.push(incidenteActualizado);
+        }
+        
+        // Reapllicar filtros sin recargar del servidor
+        this.aplicarFiltrosYOrdenamiento();
+        this.cdr.detectChanges();
+        
+        console.log(`✅ Incidente ${incidenteId} actualizado en la lista`);
+      },
+      error: (err) => {
+        console.error(`❌ Error actualizando incidente ${incidenteId}:`, err);
+        // Fallback: recargar todo si hay error
+        this.cargarIncidentes();
+      }
+    });
   }
 
   cerrarToastNotificacion() {
@@ -284,8 +345,8 @@ export class TecnicoDashboardComponent implements OnInit, OnDestroy {
     this.router.navigate(['/tecnico/notificaciones']);
   }
 
-  playNotificationSound() {
-    // Crear un beep simple sin necesidad de archivo de audio
+  playNotificationSound(evento?: string) {
+    // Crear un beep diferenciado según el tipo de evento
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
@@ -294,7 +355,17 @@ export class TecnicoDashboardComponent implements OnInit, OnDestroy {
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       
-      oscillator.frequency.value = 800; // Frecuencia en Hz
+      // Frecuencias diferentes por evento
+      let frecuencia = 800; // Default
+      if (evento?.includes('aceptado') || evento?.includes('acepto')) {
+        frecuencia = 1000; // Sonido más alto para aceptado
+      } else if (evento?.includes('rechazado') || evento?.includes('rechazo')) {
+        frecuencia = 600; // Sonido más bajo para rechazado
+      } else if (evento?.includes('cancelado')) {
+        frecuencia = 500; // Sonido crítico
+      }
+      
+      oscillator.frequency.value = frecuencia;
       oscillator.type = 'sine';
       
       gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);

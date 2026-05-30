@@ -1,26 +1,158 @@
-from fastapi import APIRouter, Depends, HTTPException,  Response, Query
+import logging
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import APIRouter, Depends, HTTPException, Response, Query, UploadFile, File, Form
 from sqlalchemy.orm import Session, joinedload
 from typing import List
 from app.api import deps
 from app.crud.crud_incidente import incidente_crud
 from app.crud.crud_bitacora import bitacora_crud # 👈 Importante para la Regla de Oro
+from app.crud.crud_evidencia import evidencia_crud
+from app.schemas.evidencia import EvidenciaCreate
 from app.schemas.incidente import Incidente as IncidenteSchema, IncidenteCreate, IncidenteUpdate
 from app.models.incidente import Incidente  # 👈 Modelo ORM
 from fastapi.encoders import jsonable_encoder
 from app.models.usuario import Usuario
+from app.models.vehiculo import Vehiculo
 from typing import Optional
 from datetime import datetime
 from fpdf import FPDF
 from app.models.pago import Pago
 from app.models.bitacora import Bitacora # 👈 Agrega esta importación
 from app.services.notificacion_service import NotificacionService # 👈 Servicio de notificaciones
+from app.services.ai_service import AIService, AIServiceError, HuggingFaceAPIError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
+UPLOADS_DIR = Path("uploads") / "incidentes"
+ALLOWED_AUDIO_FORMATS = {"audio/mpeg", "audio/wav", "audio/ogg", "audio/flac", "audio/mp4"}
+
+
+def _transcribir_audio_si_es_posible(audio_data: bytes) -> tuple[str | None, str | None]:
+    try:
+        transcripcion = AIService().transcribe_audio(audio_data)
+        return transcripcion, None
+    except (AIServiceError, HuggingFaceAPIError) as e:
+        logger.warning("No se pudo transcribir audio del incidente: %s", str(e))
+        return None, str(e)
+
+
+def _clasificar_por_texto(texto: str) -> str:
+    texto_normalizado = texto.lower()
+    reglas = [
+        ("Pinchazo", ["pinch", "llanta", "neumatico", "neumático", "rueda"]),
+        ("Falla Eléctrica", ["elect", "bateria", "batería", "alternador", "luces"]),
+        ("Fuga de refrigerante", ["refrigerante", "agua", "fuga", "radiador"]),
+        ("Sobrecalentamiento", ["calienta", "sobrecal", "temperatura", "humo"]),
+        ("Sistema de Frenos", ["freno", "frenos", "pastilla"]),
+        ("Falla de Motor", ["motor", "arranca", "apaga", "aceite"]),
+        ("Transmisiones", ["embrague", "caja", "transmision", "transmisión"]),
+        ("Aire Acondicionado", ["aire acondicionado", "ac", "climatizador"]),
+    ]
+
+    for categoria, palabras in reglas:
+        if any(palabra in texto_normalizado for palabra in palabras):
+            return categoria
+
+    return "Otro / No clasificado"
+
+
+def _prioridad_por_texto(texto: str) -> str:
+    texto_normalizado = texto.lower()
+    alta = ["choque", "accidente", "fuego", "incendio", "herido", "sangre", "humo"]
+    if any(palabra in texto_normalizado for palabra in alta):
+        return "alta"
+    return "media"
 
 # 1. Reportar incidente (IA) - Mantenemos igual
 @router.post("/", response_model=IncidenteSchema)
 def crear_nuevo_incidente(*, db: Session = Depends(deps.get_db), obj_in: IncidenteCreate):
     return incidente_crud.create(db, obj_in=obj_in, usuario_id=obj_in.usuario_id)
+
+
+@router.post("/reportar-audio", response_model=IncidenteSchema)
+async def crear_incidente_con_audio(
+    *,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_cliente),
+    vehiculo_id: int = Form(...),
+    descripcion: str = Form(""),
+    ubicacion: str = Form("Ubicacion seleccionada en mapa"),
+    latitud: float = Form(...),
+    longitud: float = Form(...),
+    audio: UploadFile | None = File(None),
+):
+    """Crea un incidente desde movil y procesa audio opcional con IA."""
+    vehiculo = db.query(Vehiculo).filter(
+        Vehiculo.id == vehiculo_id,
+        Vehiculo.usuario_id == current_user.id,
+    ).first()
+    if not vehiculo:
+        raise HTTPException(
+            status_code=404,
+            detail="Vehiculo no encontrado para el cliente autenticado.",
+        )
+
+    transcripcion = None
+    error_ia = None
+    ruta_audio = None
+
+    if audio is not None:
+        if audio.content_type not in ALLOWED_AUDIO_FORMATS:
+            raise HTTPException(
+                status_code=400,
+                detail="Formato de audio no soportado.",
+            )
+
+        audio_data = await audio.read()
+        if audio_data:
+            UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+            extension = Path(audio.filename or "audio.m4a").suffix or ".m4a"
+            nombre_archivo = f"{uuid4().hex}{extension}"
+            ruta_audio = UPLOADS_DIR / nombre_archivo
+            ruta_audio.write_bytes(audio_data)
+
+            transcripcion, error_ia = _transcribir_audio_si_es_posible(audio_data)
+
+    texto_para_ia = " ".join(
+        parte for parte in [descripcion, transcripcion] if parte
+    )
+    clasificacion = _clasificar_por_texto(texto_para_ia)
+    resumen = transcripcion or descripcion or "Sin descripcion/transcripcion disponible"
+    if error_ia:
+        resumen = f"{resumen}\n\nIA audio no disponible: {error_ia}".strip()
+
+    obj_in = IncidenteCreate(
+        usuario_id=current_user.id,
+        vehiculo_id=vehiculo_id,
+        descripcion=descripcion,
+        ubicacion=ubicacion,
+        latitud=latitud,
+        longitud=longitud,
+        prioridad=_prioridad_por_texto(texto_para_ia),
+        estado="pendiente",
+        pago_estado="pendiente",
+        telefono_cliente=current_user.telefono or "No disponible",
+        transcripcion_audio=transcripcion,
+        clasificacion_ia=clasificacion,
+        resumen_ia=resumen,
+    )
+    incidente = incidente_crud.create(db, obj_in=obj_in, usuario_id=current_user.id)
+
+    if ruta_audio is not None:
+        evidencia_crud.create(
+            db,
+            obj_in=EvidenciaCreate(
+                incidente_id=incidente.id,
+                tipo_archivo="audio",
+                url_archivo=str(ruta_audio),
+            ),
+            usuario_id=current_user.id,
+        )
+
+    return incidente
 
 # 2. Pendientes: Solo los que no tienen taller asignado
 # Reemplaza tu función leer_incidentes_pendientes por esta:
@@ -72,6 +204,23 @@ def leer_incidentes_pendientes(
     # Ordenar por distancia (cercanos primero)
     resultado.sort(key=lambda x: x.distancia_metros if x.distancia_metros else float('inf'))
     return resultado
+
+@router.get("/mis-incidentes", response_model=List[IncidenteSchema])
+def leer_mis_incidentes_cliente(
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_cliente)
+):
+    """Lista todos los incidentes del cliente autenticado para el móvil."""
+    incidentes = db.query(Incidente).filter(
+        Incidente.usuario_id == current_user.id
+    ).options(
+        joinedload(Incidente.taller),
+        joinedload(Incidente.vehiculo),
+        joinedload(Incidente.tecnico),
+        joinedload(Incidente.pagos)
+    ).order_by(Incidente.fecha_creacion.desc()).all()
+
+    return incidentes
 
 # 3. MI PANEL: Emergencias que YO (como taller) estoy atendiendo
 @router.get("/mis-atenciones", response_model=List[IncidenteSchema])
