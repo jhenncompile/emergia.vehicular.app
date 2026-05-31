@@ -99,10 +99,10 @@ Primera base implementada:
 - Se agrego `RankingTallerService`.
 - Al crear el incidente, el backend genera candidatos y ofrece al primer taller.
 - Aceptar/rechazar ya actualiza la cola cuando existe ranking.
+- Un worker automatico procesa ofertas vencidas y avanza al siguiente candidato.
 
 Pendiente para cerrar completamente la HU:
 
-- tarea automatica de timeout,
 - UI web para ofertas de ranking,
 - mantenimiento administrativo de categorias/especialidades,
 - metricas de historial y carga,
@@ -465,6 +465,7 @@ DELETE /api/v1/categorias-incidente/{id}/especialidades/{especialidad_id}
 POST  /api/v1/incidentes/{id}/generar-ranking
 GET   /api/v1/incidentes/{id}/candidatos
 POST  /api/v1/incidentes/{id}/ofrecer-siguiente
+POST  /api/v1/incidentes/procesar-timeouts
 PATCH /api/v1/incidentes/{id}/aceptar
 PATCH /api/v1/incidentes/{id}/rechazar
 ```
@@ -598,7 +599,7 @@ Si mas adelante se usa un LLM para clasificar categorias, se debe limitar su res
 2. Ofrecer al primer candidato desde `RankingTallerService`.
 3. Adaptar aceptar/rechazar para actualizar la cola.
 4. Agregar timeout configurable.
-5. Pendiente: tarea en segundo plano para expirar ofertas sin accion manual.
+5. Worker en segundo plano para expirar ofertas sin accion manual.
 
 ### Fase 5 - Notificaciones - Parcial
 

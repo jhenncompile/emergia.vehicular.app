@@ -307,6 +307,7 @@ Endpoints agregados:
 POST /api/v1/incidentes/{id}/generar-ranking
 GET  /api/v1/incidentes/{id}/candidatos
 POST /api/v1/incidentes/{id}/ofrecer-siguiente
+POST /api/v1/incidentes/procesar-timeouts
 ```
 
 El endpoint:
@@ -362,13 +363,38 @@ Luego el sistema intenta ofrecer el incidente al siguiente candidato pendiente.
 
 Todavia falta cerrar:
 
-1. Tarea automatica de timeout para marcar candidatos `expirado`.
-2. UI web para que el taller vea que un incidente fue ofrecido por ranking.
-3. Pantalla/admin de catalogo `categoria_incidente`.
-4. Pantalla/admin para mantener `categoria_especialidad`.
-5. Metricas historicas para `score_historial` y `score_carga`.
-6. Notificaciones push FCM reales si Firebase Admin no esta configurado.
-7. Mostrar ranking/candidatos de forma amigable en frontend administrativo.
+1. UI web para que el taller vea que un incidente fue ofrecido por ranking.
+2. Pantalla/admin de catalogo `categoria_incidente`.
+3. Pantalla/admin para mantener `categoria_especialidad`.
+4. Metricas historicas para `score_historial` y `score_carga`.
+5. Notificaciones push FCM reales si Firebase Admin no esta configurado.
+6. Mostrar ranking/candidatos de forma amigable en frontend administrativo.
+
+## Timeout automatico
+
+El backend tiene un worker ligero en `app.main` que revisa ofertas vencidas.
+
+Configuracion:
+
+```text
+ASSIGNMENT_TIMEOUT_WORKER_ENABLED=true
+ASSIGNMENT_TIMEOUT_CHECK_SECONDS=30
+```
+
+Comportamiento:
+
+```text
+candidato.ofrecido con expira_en vencido
+  -> candidato.expirado
+  -> notifica al cliente taller_no_responde
+  -> ofrece al siguiente candidato pendiente
+```
+
+Tambien se puede forzar manualmente:
+
+```text
+POST /api/v1/incidentes/procesar-timeouts
+```
 
 ## Diferencia con el endpoint historico
 

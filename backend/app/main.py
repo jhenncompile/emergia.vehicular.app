@@ -13,6 +13,7 @@ License: MIT
 
 import os
 import logging
+import asyncio
 from pathlib import Path
 from typing import List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
@@ -20,11 +21,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import PlainTextResponse
-from app.db.session import engine
+from app.db.session import SessionLocal, engine
 from app.db.base import Base  # Importamos el que tiene todos los modelos
 from app.api.v1.api import api_router
 from app.websocket.manager import manager
 from app.core.config import settings
+from app.services.ranking_taller_service import RankingTallerService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +44,22 @@ app = FastAPI(
     description="Emergency vehicle reporting with AI-powered multimodal analysis",
     version="1.0.0",
 )
+
+
+async def assignment_timeout_worker():
+    """Avanza ofertas de taller vencidas sin esperar una accion manual."""
+    interval_seconds = int(os.getenv("ASSIGNMENT_TIMEOUT_CHECK_SECONDS", "30"))
+    while True:
+        await asyncio.sleep(interval_seconds)
+        db = SessionLocal()
+        try:
+            procesados = RankingTallerService(db).procesar_ofertas_vencidas()
+            if procesados:
+                logger.info("Ofertas vencidas procesadas: %s", procesados)
+        except Exception as exc:
+            logger.exception("Error procesando ofertas vencidas: %s", exc)
+        finally:
+            db.close()
 
 
 # ============================================================
@@ -231,8 +249,22 @@ async def startup_event():
     Base.metadata.create_all(bind=engine)
     logger.info("✓ Database initialized")
 
+    worker_enabled = os.getenv("ASSIGNMENT_TIMEOUT_WORKER_ENABLED", "true").lower()
+    if worker_enabled not in {"0", "false", "no"}:
+        app.state.assignment_timeout_task = asyncio.create_task(
+            assignment_timeout_worker()
+        )
+        logger.info("✓ Assignment timeout worker enabled")
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on application shutdown."""
+    task = getattr(app.state, "assignment_timeout_task", None)
+    if task:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
     logger.info("VialIA Backend shutting down...")

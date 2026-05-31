@@ -383,6 +383,47 @@ class RankingTallerService:
         self._notificar_oferta_taller(incidente, siguiente)
         return siguiente
 
+    def procesar_ofertas_vencidas(
+        self,
+        *,
+        timeout_minutos: int = 5,
+        limite: int = 50,
+    ) -> int:
+        ahora = _ahora()
+        vencidos = (
+            self.db.query(IncidenteAsignacionCandidato)
+            .options(joinedload(IncidenteAsignacionCandidato.incidente))
+            .filter(
+                IncidenteAsignacionCandidato.estado == "ofrecido",
+                IncidenteAsignacionCandidato.expira_en.isnot(None),
+                IncidenteAsignacionCandidato.expira_en <= ahora,
+            )
+            .order_by(IncidenteAsignacionCandidato.expira_en.asc())
+            .limit(limite)
+            .all()
+        )
+
+        procesados = 0
+        for candidato in vencidos:
+            incidente = candidato.incidente
+            if not incidente or incidente.taller_id:
+                candidato.estado = "saltado"
+                candidato.fecha_respuesta = ahora
+                self.db.commit()
+                continue
+
+            candidato.estado = "expirado"
+            candidato.fecha_respuesta = ahora
+            self.db.commit()
+            self._notificar_taller_no_responde(incidente, candidato)
+            self.ofrecer_siguiente(
+                incidente,
+                timeout_minutos=timeout_minutos,
+            )
+            procesados += 1
+
+        return procesados
+
     def _obtener_categoria_por_nombre(self, nombre: str) -> CategoriaIncidente | None:
         categoria = (
             self.db.query(CategoriaIncidente)
@@ -598,3 +639,25 @@ class RankingTallerService:
                     ),
                 },
             )
+
+    def _notificar_taller_no_responde(
+        self,
+        incidente: Incidente,
+        candidato: IncidenteAsignacionCandidato,
+    ) -> None:
+        NotificacionService.crear_notificacion(
+            db=self.db,
+            usuario_id=incidente.usuario_id,
+            titulo="Buscando otro taller",
+            mensaje=(
+                f"El taller candidato no respondio el incidente #{incidente.id}. "
+                "Estamos buscando el siguiente taller disponible."
+            ),
+            tipo="taller_no_responde",
+            incidente_id=incidente.id,
+            extra_data={
+                "evento": "taller_no_responde",
+                "estado_nuevo": incidente.estado,
+                "taller_id": candidato.taller_id,
+            },
+        )

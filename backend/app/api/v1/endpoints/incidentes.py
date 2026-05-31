@@ -1145,6 +1145,8 @@ def leer_incidentes_pendientes(
     from sqlalchemy.orm import joinedload
     from app.models.taller import Taller
 
+    RankingTallerService(db).procesar_ofertas_vencidas()
+
     incidentes_query = db.query(Incidente).filter(
         Incidente.estado == "pendiente"
     ).options(joinedload(Incidente.taller), joinedload(Incidente.vehiculo))
@@ -1282,6 +1284,16 @@ def ofrecer_siguiente_taller(
         raise HTTPException(status_code=403, detail="No puedes modificar este ranking.")
 
     return RankingTallerService(db).ofrecer_siguiente(incidente_db)
+
+
+@router.post("/procesar-timeouts")
+def procesar_timeouts_asignacion(
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user),
+):
+    """Procesa ofertas vencidas y avanza al siguiente taller candidato."""
+    procesados = RankingTallerService(db).procesar_ofertas_vencidas()
+    return {"procesados": procesados}
 
 # 3. MI PANEL: Emergencias que YO (como taller) estoy atendiendo
 @router.get("/mis-atenciones", response_model=List[IncidenteSchema])
