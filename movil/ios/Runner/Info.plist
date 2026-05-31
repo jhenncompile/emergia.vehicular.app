@@ -30,6 +30,10 @@
 	<string>Usamos tu ubicacion para enviar la posicion real del incidente al taller.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Usamos el microfono para adjuntar un audio al reporte del incidente.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Usamos la camara para adjuntar una imagen como evidencia del incidente.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Usamos la galeria para seleccionar imagenes como evidencia del incidente.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

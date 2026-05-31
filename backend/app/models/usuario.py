@@ -18,6 +18,11 @@ class Especialidad(Base):
     nombre = Column(String(50), unique=True, nullable=False)
     descripcion = Column(Text, nullable=True)
     usuarios = relationship("Usuario", secondary=usuario_especialidad, back_populates="especialidades")
+    categorias_incidente = relationship(
+        "CategoriaEspecialidad",
+        back_populates="especialidad",
+        cascade="all, delete-orphan",
+    )
 
 # 3. MODELO DE USUARIO
 class Usuario(Base):

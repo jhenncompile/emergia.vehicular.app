@@ -73,7 +73,7 @@ Opcionalmente puede sugerir una categoria nueva, pero esa categoria no debe usar
 El backend ya tiene una base compatible:
 
 - `AIService` procesa audio e imagen con Hugging Face.
-- Se usa `openai/whisper-tiny` para transcripcion.
+- Se usa `openai/whisper-large-v3` para transcripcion por defecto.
 - Se usa `facebook/detr-resnet-50` para deteccion de objetos.
 - El modelo `Incidente` ya tiene campos de IA:
   - `transcripcion_audio`
@@ -89,15 +89,32 @@ El backend ya tiene una base compatible:
 - Ya existen endpoints para aceptar y rechazar incidentes.
 - Ya existe base de notificaciones por BD, WebSocket y FCM.
 
-Lo que falta es conectar esas piezas con un servicio de ranking y asignacion progresiva.
+Primera base implementada:
 
-## Modelo recomendado
+- `POST /api/v1/incidentes/reportar` crea el incidente real desde movil.
+- El reporte guarda audio/imagen como evidencias.
+- El backend clasifica el incidente en una categoria oficial por reglas.
+- El backend genera un resumen IA mas explicativo para el taller.
+- Se agregaron tablas para categoria, mapeo de especialidades y candidatos.
+- Se agrego `RankingTallerService`.
+- Al crear el incidente, el backend genera candidatos y ofrece al primer taller.
+- Aceptar/rechazar ya actualiza la cola cuando existe ranking.
+
+Pendiente para cerrar completamente la HU:
+
+- tarea automatica de timeout,
+- UI web para ofertas de ranking,
+- mantenimiento administrativo de categorias/especialidades,
+- metricas de historial y carga,
+- notificaciones push reales con FCM si Firebase Admin esta configurado.
+
+## Modelo implementado
 
 ### Tabla `categoria_incidente`
 
 Catalogo oficial de categorias que la IA puede seleccionar.
 
-Campos sugeridos:
+Campos:
 
 ```text
 id
@@ -117,7 +134,7 @@ Regla:
 
 Relaciona categorias de incidente con especialidades de taller.
 
-Campos sugeridos:
+Campos:
 
 ```text
 id
@@ -150,7 +167,7 @@ Peso: 0.6
 
 Guarda la cola ordenada de talleres candidatos para un incidente.
 
-Campos sugeridos:
+Campos:
 
 ```text
 id
@@ -250,10 +267,13 @@ Donde:
 - `score_historial`: mayor si suele aceptar rapido y completar servicios.
 - `score_carga`: mayor si tiene pocos incidentes activos.
 
-Para la primera entrega se puede implementar solo:
+Para la primera entrega implementada se usa:
 
 ```text
-distancia + especialidad + disponibilidad
+score_total =
+  score_distancia * 0.45
+  + score_especialidad * 0.40
+  + score_disponibilidad * 0.15
 ```
 
 Luego se puede ampliar con historial y carga.
@@ -420,7 +440,7 @@ Responsabilidades:
 - Procesar rechazo.
 - Procesar expiracion por timeout.
 
-## Endpoints sugeridos
+## Endpoints
 
 ### Administracion de categorias
 
@@ -442,14 +462,14 @@ DELETE /api/v1/categorias-incidente/{id}/especialidades/{especialidad_id}
 ### Ranking y asignacion
 
 ```text
-POST /api/v1/incidentes/{id}/generar-ranking
-GET  /api/v1/incidentes/{id}/candidatos
-POST /api/v1/incidentes/{id}/ofrecer-siguiente
-POST /api/v1/incidentes/{id}/aceptar
-POST /api/v1/incidentes/{id}/rechazar
+POST  /api/v1/incidentes/{id}/generar-ranking
+GET   /api/v1/incidentes/{id}/candidatos
+POST  /api/v1/incidentes/{id}/ofrecer-siguiente
+PATCH /api/v1/incidentes/{id}/aceptar
+PATCH /api/v1/incidentes/{id}/rechazar
 ```
 
-Los endpoints `aceptar` y `rechazar` ya existen conceptualmente; se deben adaptar para trabajar contra la cola de candidatos.
+Los endpoints de ranking ya estan agregados. `aceptar` y `rechazar` ya trabajan contra la cola cuando el incidente tiene candidatos.
 
 ## Eventos de tiempo real
 
@@ -538,7 +558,7 @@ Si mas adelante se usa un LLM para clasificar categorias, se debe limitar su res
 
 ## Plan de implementacion
 
-### Fase 0 - Preparar datos reales del incidente
+### Fase 0 - Preparar datos reales del incidente - Implementada
 
 1. Unificar el flujo de creacion de incidente con el analisis IA.
 2. Guardar `descripcion`, `ubicacion`, coordenadas reales y campos IA en cada incidente.
@@ -546,24 +566,24 @@ Si mas adelante se usa un LLM para clasificar categorias, se debe limitar su res
 4. Alinear formatos de audio aceptados entre movil y backend.
 5. Confirmar que el backend pueda arrancar aunque la IA externa no este configurada.
 
-### Fase 1 - Catalogo y mapeo
+### Fase 1 - Catalogo y mapeo - Implementada base
 
 1. Crear modelo `CategoriaIncidente`.
 2. Crear modelo `CategoriaEspecialidad`.
 3. Crear migracion.
-4. Sembrar categorias base.
+4. Asegurar categorias base desde `RankingTallerService`.
 5. Relacionar categorias base con especialidades actuales.
-6. Validar que una categoria activa tenga especialidades.
+6. Pendiente: administrar categorias y relaciones desde UI.
 
-### Fase 2 - Clasificacion del incidente
+### Fase 2 - Clasificacion del incidente - Implementada por reglas
 
 1. Reusar transcripcion y resumen actual.
-2. Crear `ClasificadorIncidenteService`.
-3. Implementar clasificacion inicial por palabras clave.
+2. Implementar clasificacion inicial por palabras clave.
+3. Detectar patrones como "enciende, pero no puede avanzar despues de golpe/derrape".
 4. Guardar `clasificacion_ia` con una categoria oficial.
-5. Guardar resumen y confianza si se agrega el campo.
+5. Guardar resumen IA con confianza textual, criticidad y accion sugerida.
 
-### Fase 3 - Ranking de talleres
+### Fase 3 - Ranking de talleres - Implementada base
 
 1. Crear `RankingTallerService`.
 2. Obtener talleres activos.
@@ -572,22 +592,21 @@ Si mas adelante se usa un LLM para clasificar categorias, se debe limitar su res
 5. Calcular disponibilidad por horario y tecnicos activos.
 6. Guardar candidatos ordenados.
 
-### Fase 4 - Asignacion progresiva
+### Fase 4 - Asignacion progresiva - Parcial
 
 1. Crear tabla `incidente_asignacion_candidato`.
-2. Crear `AsignacionIncidenteService`.
-3. Ofrecer al primer candidato.
-4. Adaptar aceptar/rechazar para actualizar la cola.
-5. Agregar timeout configurable.
-6. Agregar tarea en segundo plano para expirar ofertas.
+2. Ofrecer al primer candidato desde `RankingTallerService`.
+3. Adaptar aceptar/rechazar para actualizar la cola.
+4. Agregar timeout configurable.
+5. Pendiente: tarea en segundo plano para expirar ofertas sin accion manual.
 
-### Fase 5 - Notificaciones
+### Fase 5 - Notificaciones - Parcial
 
 1. Notificar al taller cuando reciba una oferta.
 2. Notificar al cliente cuando se acepte.
 3. Notificar al cliente cuando se rechace y se busque otro taller.
 4. Notificar si no hay talleres disponibles.
-5. Reusar WebSocket y FCM existentes.
+5. Pendiente: validar FCM real en dispositivos.
 
 ## Recomendacion final
 

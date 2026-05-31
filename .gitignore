@@ -19,6 +19,9 @@ build/
 # Bases de datos locales (si estuvieras usando SQLite, pero por si acaso)
 *.sqlite3
 
+# Evidencias subidas localmente por el backend
+backend/uploads/
+
 # Archivos del sistema operativo
 .DS_Store
 Thumbs.db

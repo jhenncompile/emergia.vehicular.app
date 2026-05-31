@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
@@ -26,6 +29,8 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
   final _mapController = MapController();
   final _audioRecorder = AudioRecorder();
   final _audioPlayer = AudioPlayer();
+  final _imagePicker = ImagePicker();
+  static const _screenChannel = MethodChannel('app_v/screen');
   static const LatLng _centroInicial = LatLng(-17.783327, -63.182140);
 
   int? _vehiculoSeleccionado;
@@ -33,13 +38,16 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
   double? _longitud;
   bool _obteniendoUbicacion = false;
   bool _grabandoAudio = false;
+  bool _pantallaActivaPorGrabacion = false;
   bool _reproduciendoAudio = false;
   Duration _audioDuration = Duration.zero;
   Timer? _audioTimer;
   StreamSubscription<void>? _audioCompleteSubscription;
   String? _audioPath;
+  String? _imagenPath;
   String? _ubicacionError;
   String? _audioError;
+  String? _imagenError;
 
   @override
   void initState() {
@@ -174,6 +182,16 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
             const SizedBox(height: 24),
 
             Text(
+              'Imagen del incidente',
+              style: Theme.of(
+                context,
+              ).textTheme.displayLarge?.copyWith(fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            _buildImagePicker(),
+            const SizedBox(height: 24),
+
+            Text(
               'Ubicación del incidente',
               style: Theme.of(
                 context,
@@ -272,19 +290,6 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
         children: [
           Row(
             children: [
-              Icon(
-                _grabandoAudio
-                    ? Icons.mic
-                    : tieneAudio
-                    ? Icons.check_circle
-                    : Icons.mic_none,
-                color: _grabandoAudio
-                    ? AppColors.error
-                    : tieneAudio
-                    ? AppColors.success
-                    : Colors.grey.shade700,
-              ),
-              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   _grabandoAudio
@@ -302,26 +307,16 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
+              _buildAudioActionButton(),
             ],
           ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ElevatedButton.icon(
-                onPressed: _grabandoAudio
-                    ? _detenerGrabacionAudio
-                    : _iniciarGrabacionAudio,
-                icon: Icon(_grabandoAudio ? Icons.stop : Icons.mic),
-                label: Text(_grabandoAudio ? 'Detener' : 'Grabar'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _grabandoAudio
-                      ? AppColors.error
-                      : AppColors.primaryColor,
-                ),
-              ),
-              if (tieneAudio && !_grabandoAudio) ...[
+          if (tieneAudio && !_grabandoAudio) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
                 OutlinedButton.icon(
                   onPressed: _reproducirOPausarAudio,
                   icon: Icon(
@@ -335,8 +330,8 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
                   tooltip: 'Descartar audio',
                 ),
               ],
-            ],
-          ),
+            ),
+          ],
           if (_audioError != null) ...[
             const SizedBox(height: 6),
             Text(
@@ -345,6 +340,26 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildAudioActionButton() {
+    final color = _grabandoAudio ? AppColors.error : AppColors.primaryColor;
+
+    return SizedBox(
+      width: 44,
+      height: 44,
+      child: IconButton.filled(
+        onPressed: _grabandoAudio
+            ? _detenerGrabacionAudio
+            : _iniciarGrabacionAudio,
+        icon: Icon(_grabandoAudio ? Icons.stop : Icons.mic),
+        tooltip: _grabandoAudio ? 'Detener grabacion' : 'Grabar audio',
+        style: IconButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+        ),
       ),
     );
   }
@@ -363,12 +378,13 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
 
       final tempDir = await getTemporaryDirectory();
       final path =
-          '${tempDir.path}/incidente_audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
+          '${tempDir.path}/incidente_audio_${DateTime.now().millisecondsSinceEpoch}.wav';
 
       await _audioRecorder.start(
-        const RecordConfig(encoder: AudioEncoder.aacLc),
+        const RecordConfig(encoder: AudioEncoder.wav),
         path: path,
       );
+      await _activarPantallaDuranteGrabacion();
 
       _audioTimer?.cancel();
       _audioTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -378,7 +394,12 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
         });
       });
 
-      if (!mounted) return;
+      if (!mounted) {
+        await _audioRecorder.stop();
+        _audioTimer?.cancel();
+        await _desactivarPantallaDuranteGrabacion();
+        return;
+      }
       setState(() {
         _grabandoAudio = true;
         _audioPath = path;
@@ -396,6 +417,7 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
     try {
       final path = await _audioRecorder.stop();
       _audioTimer?.cancel();
+      await _desactivarPantallaDuranteGrabacion();
 
       if (!mounted) return;
       setState(() {
@@ -403,6 +425,7 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
         _audioPath = path ?? _audioPath;
       });
     } catch (e) {
+      await _desactivarPantallaDuranteGrabacion();
       if (!mounted) return;
       setState(() {
         _grabandoAudio = false;
@@ -456,6 +479,7 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
   Future<void> _descartarAudio() async {
     _audioTimer?.cancel();
     await _audioPlayer.stop();
+    await _desactivarPantallaDuranteGrabacion();
     setState(() {
       _audioPath = null;
       _audioDuration = Duration.zero;
@@ -465,10 +489,146 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
     });
   }
 
+  Future<void> _activarPantallaDuranteGrabacion() async {
+    if (_pantallaActivaPorGrabacion) return;
+
+    try {
+      await _screenChannel.invokeMethod<void>('keepAwake');
+      _pantallaActivaPorGrabacion = true;
+    } catch (_) {
+      _pantallaActivaPorGrabacion = false;
+    }
+  }
+
+  Future<void> _desactivarPantallaDuranteGrabacion() async {
+    if (!_pantallaActivaPorGrabacion) return;
+
+    try {
+      await _screenChannel.invokeMethod<void>('allowSleep');
+    } catch (_) {
+      // No bloquea el flujo de grabacion si el sistema rechaza liberar el wake lock.
+    } finally {
+      _pantallaActivaPorGrabacion = false;
+    }
+  }
+
   String _formatDuration(Duration duration) {
     final minutes = duration.inMinutes.toString().padLeft(2, '0');
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
+  }
+
+  Widget _buildImagePicker() {
+    final tieneImagen = _imagenPath != null;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: tieneImagen
+            ? AppColors.success.withValues(alpha: 0.08)
+            : Colors.grey.withValues(alpha: 0.08),
+        border: Border.all(
+          color: tieneImagen ? AppColors.success : Colors.grey.shade400,
+        ),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                tieneImagen ? Icons.image : Icons.add_photo_alternate_outlined,
+                color: tieneImagen ? AppColors.success : Colors.grey.shade700,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  tieneImagen ? 'Imagen seleccionada' : 'Agrega una imagen',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: tieneImagen ? AppColors.success : Colors.black87,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (tieneImagen) ...[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: double.infinity,
+                height: 180,
+                child: Image.file(File(_imagenPath!), fit: BoxFit.cover),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _seleccionarImagen(ImageSource.camera),
+                icon: const Icon(Icons.photo_camera),
+                label: const Text('Camara'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _seleccionarImagen(ImageSource.gallery),
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Galeria'),
+              ),
+              if (tieneImagen)
+                IconButton(
+                  onPressed: _descartarImagen,
+                  icon: const Icon(Icons.delete_outline),
+                  tooltip: 'Descartar imagen',
+                ),
+            ],
+          ),
+          if (_imagenError != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              _imagenError!,
+              style: const TextStyle(fontSize: 12, color: AppColors.error),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _seleccionarImagen(ImageSource source) async {
+    setState(() {
+      _imagenError = null;
+    });
+
+    try {
+      final imagen = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: 82,
+        maxWidth: 1600,
+      );
+      if (!mounted || imagen == null) return;
+
+      setState(() {
+        _imagenPath = imagen.path;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _imagenError = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  void _descartarImagen() {
+    setState(() {
+      _imagenPath = null;
+      _imagenError = null;
+    });
   }
 
   Widget _buildSelectorMapa() {
@@ -681,11 +841,14 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
 
     final descripcion = _descriptionController.text.trim();
     final tieneAudio = _audioPath != null && _audioPath!.isNotEmpty;
+    final tieneImagen = _imagenPath != null && _imagenPath!.isNotEmpty;
 
-    if (descripcion.isEmpty && !tieneAudio) {
+    if (descripcion.isEmpty && !tieneAudio && !tieneImagen) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Graba un audio o escribe una descripcion.'),
+          content: Text(
+            'Graba un audio, agrega una imagen o escribe una descripcion.',
+          ),
         ),
       );
       return;
@@ -729,6 +892,7 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
       latitud: _latitud!,
       longitud: _longitud!,
       audioPath: _audioPath,
+      imagenPath: _imagenPath,
     );
 
     if (!context.mounted) return;
@@ -753,8 +917,14 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
     Map<String, dynamic>? incidente,
   ) {
     final categoria = _texto(incidente?['clasificacion_ia']);
+    final prioridad = _texto(incidente?['prioridad']);
     final transcripcion = _texto(incidente?['transcripcion_audio']);
     final resumen = _texto(incidente?['resumen_ia']);
+    final punto =
+        _latLngDesdeValores(incidente?['latitud'], incidente?['longitud']) ??
+        (_latitud != null && _longitud != null
+            ? LatLng(_latitud!, _longitud!)
+            : null);
 
     return showDialog<void>(
       context: context,
@@ -766,11 +936,13 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildResultadoRow('Categoria IA', categoria ?? 'No disponible'),
+              _buildResultadoRow('Criticidad', _labelPrioridad(prioridad)),
               _buildResultadoRow(
                 'Transcripcion',
                 transcripcion ?? 'No disponible',
               ),
               _buildResultadoRow('Resumen IA', resumen ?? 'No disponible'),
+              if (punto != null) _buildResultadoMapa(punto),
             ],
           ),
         ),
@@ -778,6 +950,68 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Aceptar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultadoMapa(LatLng punto) {
+    final mapWidth = (MediaQuery.sizeOf(context).width - 96)
+        .clamp(180.0, 320.0)
+        .toDouble();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Ubicacion',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              width: mapWidth,
+              height: 170,
+              child: FlutterMap(
+                options: MapOptions(
+                  initialCenter: punto,
+                  initialZoom: 15,
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.none,
+                  ),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.example.app_v',
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: punto,
+                        width: 44,
+                        height: 44,
+                        child: const Icon(
+                          Icons.location_pin,
+                          color: AppColors.error,
+                          size: 42,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${punto.latitude.toStringAsFixed(6)}, ${punto.longitude.toStringAsFixed(6)}',
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
           ),
         ],
       ),
@@ -801,6 +1035,31 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
     );
   }
 
+  LatLng? _latLngDesdeValores(dynamic latitud, dynamic longitud) {
+    final lat = _toDouble(latitud);
+    final lng = _toDouble(longitud);
+    if (lat == null || lng == null) return null;
+    return LatLng(lat, lng);
+  }
+
+  double? _toDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '');
+  }
+
+  String _labelPrioridad(String? prioridad) {
+    switch (prioridad?.toLowerCase()) {
+      case 'alta':
+        return 'Alta';
+      case 'media':
+        return 'Media';
+      case 'baja':
+        return 'Baja';
+      default:
+        return 'No disponible';
+    }
+  }
+
   String? _texto(dynamic value) {
     final text = value?.toString().trim();
     if (text == null || text.isEmpty) return null;
@@ -811,6 +1070,7 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
   void dispose() {
     _audioTimer?.cancel();
     _audioCompleteSubscription?.cancel();
+    unawaited(_desactivarPantallaDuranteGrabacion());
     _audioPlayer.dispose();
     _audioRecorder.dispose();
     _descriptionController.dispose();

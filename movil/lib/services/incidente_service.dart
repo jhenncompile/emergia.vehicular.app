@@ -19,11 +19,15 @@ class IncidenteService {
     required double latitud,
     required double longitud,
     String? audioPath,
+    String? imagenPath,
     String prioridad = 'media',
     String telefonoCliente = 'No disponible',
   }) async {
-    if (audioPath != null && audioPath.isNotEmpty) {
-      return _reportarIncidenteConAudio(
+    final tieneAudio = audioPath != null && audioPath.isNotEmpty;
+    final tieneImagen = imagenPath != null && imagenPath.isNotEmpty;
+
+    if (tieneAudio || tieneImagen) {
+      return _reportarIncidenteConEvidencias(
         usuarioId: usuarioId,
         vehiculoId: vehiculoId,
         descripcion: descripcion,
@@ -31,6 +35,7 @@ class IncidenteService {
         latitud: latitud,
         longitud: longitud,
         audioPath: audioPath,
+        imagenPath: imagenPath,
       );
     }
 
@@ -60,24 +65,29 @@ class IncidenteService {
     }
   }
 
-  Future<Map<String, dynamic>> _reportarIncidenteConAudio({
+  Future<Map<String, dynamic>> _reportarIncidenteConEvidencias({
     required int usuarioId,
     required int vehiculoId,
     required String descripcion,
     required String ubicacion,
     required double latitud,
     required double longitud,
-    required String audioPath,
+    String? audioPath,
+    String? imagenPath,
   }) async {
     try {
-      final audioFile = File(audioPath);
-      if (!await audioFile.exists()) {
+      final tieneAudio = audioPath != null && audioPath.isNotEmpty;
+      final tieneImagen = imagenPath != null && imagenPath.isNotEmpty;
+
+      if (tieneAudio && !await File(audioPath).exists()) {
         throw Exception('No se encontro el audio grabado.');
       }
 
-      final uri = Uri.parse(
-        '${apiService.baseUrl}/api/v1/incidentes/reportar-audio',
-      );
+      if (tieneImagen && !await File(imagenPath).exists()) {
+        throw Exception('No se encontro la imagen seleccionada.');
+      }
+
+      final uri = Uri.parse('${apiService.baseUrl}/api/v1/incidentes/reportar');
       final request = http.MultipartRequest('POST', uri);
       final token = await apiService.currentAuthToken();
 
@@ -95,13 +105,25 @@ class IncidenteService {
         'longitud': '$longitud',
       });
 
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'audio',
-          audioPath,
-          contentType: MediaType('audio', 'mp4'),
-        ),
-      );
+      if (tieneAudio) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'audio',
+            audioPath,
+            contentType: _mediaTypeAudio(audioPath),
+          ),
+        );
+      }
+
+      if (tieneImagen) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'imagen',
+            imagenPath,
+            contentType: _mediaTypeImagen(imagenPath),
+          ),
+        );
+      }
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
@@ -112,8 +134,36 @@ class IncidenteService {
       }
       throw Exception('Respuesta inesperada del servidor');
     } catch (e) {
-      throw Exception('Error al reportar incidente con audio: $e');
+      throw Exception('Error al reportar incidente con evidencias: $e');
     }
+  }
+
+  MediaType _mediaTypeImagen(String path) {
+    final lowerPath = path.toLowerCase();
+    if (lowerPath.endsWith('.png')) {
+      return MediaType('image', 'png');
+    }
+    if (lowerPath.endsWith('.webp')) {
+      return MediaType('image', 'webp');
+    }
+    return MediaType('image', 'jpeg');
+  }
+
+  MediaType _mediaTypeAudio(String path) {
+    final lowerPath = path.toLowerCase();
+    if (lowerPath.endsWith('.wav')) {
+      return MediaType('audio', 'wav');
+    }
+    if (lowerPath.endsWith('.flac')) {
+      return MediaType('audio', 'flac');
+    }
+    if (lowerPath.endsWith('.mp3') || lowerPath.endsWith('.mpeg')) {
+      return MediaType('audio', 'mpeg');
+    }
+    if (lowerPath.endsWith('.ogg') || lowerPath.endsWith('.opus')) {
+      return MediaType('audio', 'ogg');
+    }
+    return MediaType('audio', 'wav');
   }
 
   /// Backend disponible: lista pendientes globales.
@@ -175,6 +225,18 @@ class IncidenteService {
     } catch (e) {
       throw Exception('Error al obtener evidencias: $e');
     }
+  }
+
+  String resolverUrlArchivo(String? urlArchivo) {
+    final url = urlArchivo?.trim();
+    if (url == null || url.isEmpty) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+    final cleanBase = apiService.baseUrl.endsWith('/')
+        ? apiService.baseUrl.substring(0, apiService.baseUrl.length - 1)
+        : apiService.baseUrl;
+    final cleanPath = url.startsWith('/') ? url : '/$url';
+    return '$cleanBase$cleanPath';
   }
 
   Future<Map<String, dynamic>> crearEvidencia({

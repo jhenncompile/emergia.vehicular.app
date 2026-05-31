@@ -18,6 +18,11 @@ class Taller(Base):
     usuarios = relationship("Usuario", back_populates="taller")
     horarios = relationship("HorarioTaller", back_populates="taller")
     incidentes = relationship("Incidente", back_populates="taller")
+    asignacion_candidatos = relationship(
+        "IncidenteAsignacionCandidato",
+        back_populates="taller",
+        cascade="all, delete-orphan",
+    )
     pagos = relationship("Pago", back_populates="taller")
     bitacoras = relationship("Bitacora", back_populates="taller")
 

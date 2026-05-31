@@ -40,7 +40,7 @@ class AIService:
 
     def __init__(
         self,
-        audio_model: str = "openai/whisper-tiny",
+        audio_model: str = "openai/whisper-large-v3",
         vision_model: str = "facebook/detr-resnet-50",
         timeout: int = 30,
     ):
@@ -65,13 +65,16 @@ class AIService:
                 "Please set HF_API_TOKEN environment variable."
             )
 
+        audio_model = os.getenv("HF_AUDIO_MODEL", audio_model)
+        vision_model = os.getenv("HF_VISION_MODEL", vision_model)
+
         self.headers = {"Authorization": f"Bearer {self.api_token}"}
-        self.audio_url = (
-            f"https://api-inference.huggingface.co/models/{audio_model}"
-        )
-        self.vision_url = (
-            f"https://api-inference.huggingface.co/models/{vision_model}"
-        )
+        base_url = os.getenv(
+            "HF_INFERENCE_BASE_URL",
+            "https://router.huggingface.co/hf-inference/models",
+        ).rstrip("/")
+        self.audio_url = f"{base_url}/{audio_model}"
+        self.vision_url = f"{base_url}/{vision_model}"
         self.timeout = timeout
         logger.info("AIService initialized successfully")
 
@@ -80,6 +83,7 @@ class AIService:
         url: str,
         file_data: bytes,
         request_type: str = "audio",
+        content_type: str | None = None,
     ) -> Dict[str, Any]:
         """
         Make a POST request to Hugging Face Inference API.
@@ -102,7 +106,10 @@ class AIService:
         try:
             response = requests.post(
                 url,
-                headers=self.headers,
+                headers={
+                    **self.headers,
+                    **({"Content-Type": content_type} if content_type else {}),
+                },
                 data=file_data,
                 timeout=self.timeout,
             )
@@ -126,8 +133,12 @@ class AIService:
 
         except requests.exceptions.HTTPError as e:
             status_code = e.response.status_code
+            response_text = (e.response.text or "").strip()
+            if len(response_text) > 300:
+                response_text = f"{response_text[:300]}..."
             logger.error(
-                f"HTTP error {status_code} calling {request_type} API: {e}"
+                f"HTTP error {status_code} calling {request_type} API: "
+                f"{e}. Response: {response_text}"
             )
             if status_code == 401:
                 raise HuggingFaceAPIError("Invalid Hugging Face API token.")
@@ -137,9 +148,10 @@ class AIService:
                     "Please try again later."
                 )
             else:
+                detail = f" Detalle HF: {response_text}" if response_text else ""
                 raise HuggingFaceAPIError(
                     f"API error ({status_code}): "
-                    f"{request_type.capitalize()} processing failed."
+                    f"{request_type.capitalize()} processing failed.{detail}"
                 )
 
         except requests.exceptions.RequestException as e:
@@ -154,7 +166,11 @@ class AIService:
                 f"Invalid response from {request_type} processing service."
             )
 
-    def transcribe_audio(self, audio_data: bytes) -> str:
+    def transcribe_audio(
+        self,
+        audio_data: bytes,
+        content_type: str | None = "audio/wav",
+    ) -> str:
         """
         Transcribe audio data using Whisper Tiny model.
 
@@ -177,6 +193,7 @@ class AIService:
                 self.audio_url,
                 audio_data,
                 request_type="audio",
+                content_type=content_type,
             )
 
             transcription = response.get("text", "")
@@ -193,7 +210,11 @@ class AIService:
             logger.error(f"Unexpected error during audio transcription: {e}")
             raise HuggingFaceAPIError("Audio transcription failed unexpectedly.")
 
-    def detect_objects_in_image(self, image_data: bytes) -> list:
+    def detect_objects_in_image(
+        self,
+        image_data: bytes,
+        content_type: str | None = "image/jpeg",
+    ) -> list:
         """
         Detect objects in image data using DETR ResNet-50 model.
 
@@ -220,6 +241,7 @@ class AIService:
                 self.vision_url,
                 image_data,
                 request_type="vision",
+                content_type=content_type,
             )
 
             # Handle different response formats from the API

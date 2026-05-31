@@ -48,5 +48,10 @@ class Incidente(Base):
     taller = relationship("Taller", back_populates="incidentes", foreign_keys=[taller_id])
 
     evidencias = relationship("Evidencia", back_populates="incidente", cascade="all, delete-orphan")
+    asignacion_candidatos = relationship(
+        "IncidenteAsignacionCandidato",
+        back_populates="incidente",
+        cascade="all, delete-orphan",
+    )
     pagos = relationship("Pago", back_populates="incidente", uselist=False, cascade="all, delete-orphan")
     notificaciones = relationship("Notificacion", back_populates="incidente")

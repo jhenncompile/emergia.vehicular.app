@@ -10,3 +10,8 @@ from app.models.taller_detalle import HorarioTaller
 from app.models.usuario import Usuario, Especialidad
 from app.models.bitacora import Bitacora
 from app.models.evidencia import Evidencia
+from app.models.asignacion_inteligente import (
+    CategoriaEspecialidad,
+    CategoriaIncidente,
+    IncidenteAsignacionCandidato,
+)

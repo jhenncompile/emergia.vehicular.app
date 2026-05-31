@@ -63,6 +63,7 @@ class IncidenteProvider extends ChangeNotifier {
     required double latitud,
     required double longitud,
     String? audioPath,
+    String? imagenPath,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -77,6 +78,7 @@ class IncidenteProvider extends ChangeNotifier {
         latitud: latitud,
         longitud: longitud,
         audioPath: audioPath,
+        imagenPath: imagenPath,
       );
 
       _ultimoIncidenteReportado = nuevoIncidente;

@@ -13,9 +13,11 @@ License: MIT
 
 import os
 import logging
+from pathlib import Path
 from typing import List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import PlainTextResponse
 from app.db.session import engine
@@ -92,6 +94,10 @@ app.add_middleware(
 # ============================================================
 # Incluimos el router maestro con todos los endpoints
 app.include_router(api_router, prefix="/api/v1")
+
+UPLOADS_ROOT = Path("uploads")
+UPLOADS_ROOT.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_ROOT)), name="uploads")
 
 
 # ============================================================
