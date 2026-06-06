@@ -49,6 +49,16 @@ export class IncidentesService {
     });
   }
 
+  cancelarIncidente(id: number, motivo: string): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/${id}/cancelar`, {
+      motivo_cancelacion: motivo
+    }, { headers: this.getHeaders() });
+  }
+
+  marcarLlegada(id: number): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/${id}/marcar-llegada`, {}, { headers: this.getHeaders() });
+  }
+
   // 4. Actualizar estado (Finalizar)
   actualizarEstado(id: number, datos: any): Observable<any> {
     return this.http.put(`${this.apiUrl}/${id}`, datos, { headers: this.getHeaders() });
@@ -60,7 +70,7 @@ export class IncidentesService {
     if (fechaFin) params = params.set('fecha_fin', fechaFin);
     if (tecnicoId) params = params.set('tecnico_id', tecnicoId.toString());
     
-    // Para enviar la lista de estados: ?estados=atendido&estados=cancelado
+    // Para enviar la lista de estados: ?estados=finalizado&estados=cancelado
     if (estados && estados.length > 0) {
       estados.forEach(estado => {
         params = params.append('estados', estado);

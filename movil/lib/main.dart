@@ -7,6 +7,7 @@ import 'providers/incidente_provider.dart';
 import 'providers/notificacion_provider.dart';
 import 'providers/pago_provider.dart';
 import 'providers/realtime_provider.dart';
+import 'providers/tecnico_provider.dart';
 import 'providers/usuario_provider.dart';
 import 'providers/vehiculo_provider.dart';
 import 'screens/historial/historial_screen.dart';
@@ -19,10 +20,12 @@ import 'screens/vehiculos/mis_vehiculos_screen.dart';
 import 'services/api_service.dart';
 import 'services/auth_service.dart';
 import 'services/incidente_service.dart';
+import 'services/location_tracking_service.dart';
 import 'services/notificacion_service.dart';
 import 'services/pago_service.dart';
 import 'services/realtime_service.dart';
 import 'services/taller_service.dart';
+import 'services/tracking_service.dart';
 import 'services/usuario_service.dart';
 import 'services/vehiculo_service.dart';
 import 'theme/colors.dart';
@@ -72,6 +75,13 @@ class MyApp extends StatelessWidget {
           create: (context) =>
               TallerService(apiService: context.read<ApiService>()),
         ),
+        Provider<LocationTrackingService>(
+          create: (_) => LocationTrackingService(),
+        ),
+        Provider<TrackingService>(
+          create: (context) =>
+              TrackingService(apiService: context.read<ApiService>()),
+        ),
         ChangeNotifierProvider(
           create: (context) =>
               AuthProvider(authService: context.read<AuthService>()),
@@ -98,6 +108,13 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) =>
               UsuarioProvider(usuarioService: context.read<UsuarioService>()),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => TecnicoProvider(
+            incidenteService: context.read<IncidenteService>(),
+            locationService: context.read<LocationTrackingService>(),
+            trackingService: context.read<TrackingService>(),
+          ),
         ),
         ChangeNotifierProxyProvider2<
           AuthProvider,
@@ -203,6 +220,12 @@ class _LoginPageState extends State<LoginPage> {
                     'Asistencia Vehicular',
                     style: Theme.of(context).textTheme.displayMedium,
                   ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Acceso para clientes y tecnicos',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textLight),
+                  ),
                   const SizedBox(height: 24),
                   TextField(
                     controller: _emailController,
@@ -267,39 +290,276 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = const [
-      HomeDashboard(),
-      MisAtencionesScreen(),
-      HistorialScreen(),
-      PerfilScreen(),
-    ];
+    final authProvider = context.watch<AuthProvider>();
+    final esTecnico = authProvider.isTecnico;
+    final pages = esTecnico
+        ? <Widget>[
+            TecnicoDashboard(
+              onNavigate: (index) => setState(() => _selectedIndex = index),
+            ),
+            const MisIncidentesScreen(),
+            const HistorialScreen(),
+            const PerfilScreen(),
+          ]
+        : const <Widget>[
+            HomeDashboard(),
+            MisAtencionesScreen(),
+            HistorialScreen(),
+            PerfilScreen(),
+          ];
+    final items = esTecnico
+        ? const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              label: 'Inicio',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.assignment_outlined),
+              label: 'Asignados',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.history),
+              label: 'Historial',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              label: 'Perfil',
+            ),
+          ]
+        : const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              label: 'Inicio',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.build_circle_outlined),
+              label: 'Atenciones',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.history),
+              label: 'Historial',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              label: 'Perfil',
+            ),
+          ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Asistencia Vehicular')),
+      appBar: AppBar(
+        title: Text(esTecnico ? 'Panel Tecnico' : 'Asistencia Vehicular'),
+      ),
       body: pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
         selectedItemColor: AppColors.primaryColor,
         type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            label: 'Inicio',
+        items: items,
+      ),
+    );
+  }
+}
+
+class TecnicoDashboard extends StatefulWidget {
+  const TecnicoDashboard({super.key, required this.onNavigate});
+
+  final ValueChanged<int> onNavigate;
+
+  @override
+  State<TecnicoDashboard> createState() => _TecnicoDashboardState();
+}
+
+class _TecnicoDashboardState extends State<TecnicoDashboard> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _cargarIncidentes();
+    });
+  }
+
+  Future<void> _cargarIncidentes() async {
+    final authProvider = context.read<AuthProvider>();
+    final userId = authProvider.userId;
+    if (userId == null) return;
+
+    final incidenteProvider = context.read<IncidenteProvider>();
+    final tecnicoProvider = authProvider.isTecnico
+        ? context.read<TecnicoProvider>()
+        : null;
+
+    await incidenteProvider.cargarMisIncidentes(
+      usuarioId: userId,
+      esTecnico: authProvider.isTecnico,
+    );
+
+    if (!mounted) return;
+
+    // Cargar incidente activo en TecnicoProvider para seguimiento
+    if (tecnicoProvider != null) {
+      await tecnicoProvider.cargarIncidenteActivo(usuarioId: userId);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<IncidenteProvider>(
+      builder: (context, incidenteProvider, _) {
+        final incidentes = incidenteProvider.misIncidentes;
+        final activos = incidentes.where(_esIncidenteActivo).length;
+        final historico = incidentes.where(_esIncidenteHistorico).length;
+
+        return RefreshIndicator(
+          onRefresh: _cargarIncidentes,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.info,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.engineering_outlined, color: Colors.white),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Sesion tecnica activa. Revisa tus incidentes asignados.',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (incidenteProvider.isLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              _actionCard(
+                context,
+                color: AppColors.secondaryColor,
+                icon: Icons.assignment_outlined,
+                title: 'Incidentes asignados',
+                subtitle: '$activos activos de ${incidentes.length} asignados',
+                onTap: () => widget.onNavigate(1),
+              ),
+              _actionCard(
+                context,
+                color: const Color(0xFF2563EB),
+                icon: Icons.history,
+                title: 'Historico de servicios',
+                subtitle: '$historico incidentes finalizados o cancelados',
+                onTap: () => widget.onNavigate(2),
+              ),
+              _actionCard(
+                context,
+                color: AppColors.accentColor,
+                icon: Icons.person_outline,
+                title: 'Mis datos',
+                subtitle: 'Perfil y datos de sesion',
+                onTap: () => widget.onNavigate(3),
+              ),
+              if (incidentes.isEmpty && !incidenteProvider.isLoading)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: const [
+                        Icon(
+                          Icons.assignment_late_outlined,
+                          color: Colors.grey,
+                          size: 48,
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          'Aun no tienes incidentes asignados',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Cuando el taller te asigne uno, aparecera aqui.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.build_circle_outlined),
-            label: 'Atenciones',
+        );
+      },
+    );
+  }
+
+  bool _esIncidenteActivo(Map<String, dynamic> incidente) {
+    final estado = (incidente['estado'] ?? '').toString().toLowerCase();
+    return estado == 'pendiente' ||
+        estado == 'buscando_taller' ||
+        estado == 'asignado_taller' ||
+        estado == 'en_camino' ||
+        estado == 'en_atencion';
+  }
+
+  bool _esIncidenteHistorico(Map<String, dynamic> incidente) {
+    final estado = (incidente['estado'] ?? '').toString().toLowerCase();
+    return estado == 'finalizado' ||
+        estado == 'completado' ||
+        estado == 'cancelado';
+  }
+
+  Widget _actionCard(
+    BuildContext context, {
+    required Color color,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: color,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 30),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: 'Historial',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Perfil',
-          ),
-        ],
+        ),
       ),
     );
   }

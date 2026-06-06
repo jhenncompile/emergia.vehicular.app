@@ -95,7 +95,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
     AuthProvider authProvider,
   ) {
     if (perfil == null) {
-      final nombre = authProvider.userName ?? 'Cliente';
+      final nombre = authProvider.userName ?? authProvider.roleLabel;
       final correo = authProvider.userEmail ?? 'Correo no disponible';
 
       return Column(
@@ -117,6 +117,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
           _buildInfoCard(label: 'Nombre', value: nombre, icon: Icons.person),
           const SizedBox(height: 12),
           _buildInfoCard(label: 'Email', value: correo, icon: Icons.email),
+          const SizedBox(height: 12),
+          _buildInfoCard(
+            label: 'Rol',
+            value: authProvider.roleLabel,
+            icon: Icons.badge_outlined,
+          ),
         ],
       );
     }
@@ -133,6 +139,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
           label: 'Email',
           value: perfil['correo'] ?? 'N/A',
           icon: Icons.email,
+        ),
+        const SizedBox(height: 12),
+        _buildInfoCard(
+          label: 'Rol',
+          value: authProvider.roleLabel,
+          icon: Icons.badge_outlined,
         ),
         const SizedBox(height: 12),
         _buildInfoCard(

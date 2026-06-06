@@ -205,6 +205,47 @@ class IncidenteService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> obtenerIncidentesTecnico() async {
+    try {
+      final response = await apiService.get(
+        '/api/v1/incidentes/tecnico/mis-incidentes',
+      );
+
+      if (response is List) {
+        return List<Map<String, dynamic>>.from(
+          response.map((item) => item as Map<String, dynamic>),
+        );
+      }
+      if (response is Map<String, dynamic>) {
+        return [response];
+      }
+      throw Exception('Formato de respuesta inesperado');
+    } catch (e) {
+      throw Exception('Error al obtener incidentes del tecnico: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> cancelarIncidente({
+    required int incidenteId,
+    required String motivo,
+  }) async {
+    try {
+      final response = await apiService.patch(
+        '/api/v1/incidentes/$incidenteId/cancelar',
+        body: {
+          'motivo_cancelacion': motivo,
+        },
+      );
+
+      if (response is Map<String, dynamic>) {
+        return response;
+      }
+      throw Exception('Respuesta inesperada del servidor');
+    } catch (e) {
+      throw Exception('Error al cancelar incidente: $e');
+    }
+  }
+
   Future<List<Map<String, dynamic>>> obtenerEvidenciasPorIncidente({
     required int incidenteId,
   }) async {
@@ -262,6 +303,69 @@ class IncidenteService {
       throw Exception('Respuesta inesperada del servidor');
     } catch (e) {
       throw Exception('Error al crear evidencia: $e');
+    }
+  }
+
+  /// === MÉTODOS DE SEGUIMIENTO EN TIEMPO REAL ===
+  
+  /// Envía la ubicación actual del técnico al backend
+  Future<Map<String, dynamic>> enviarUbicacionTecnico({
+    required int incidenteId,
+    required double latitud,
+    required double longitud,
+  }) async {
+    try {
+      final response = await apiService.post(
+        '/api/v1/incidentes/$incidenteId/ubicacion-tecnico',
+        body: {
+          'latitud': latitud,
+          'longitud': longitud,
+        },
+      );
+
+      if (response is Map<String, dynamic>) {
+        return response;
+      }
+      throw Exception('Respuesta inesperada del servidor');
+    } catch (e) {
+      throw Exception('Error al enviar ubicación: $e');
+    }
+  }
+
+  /// Marca la llegada manual del técnico al incidente
+  Future<Map<String, dynamic>> marcarLlegadaTecnico({
+    required int incidenteId,
+  }) async {
+    try {
+      final response = await apiService.patch(
+        '/api/v1/incidentes/$incidenteId/marcar-llegada-tecnico',
+        body: {},
+      );
+
+      if (response is Map<String, dynamic>) {
+        return response;
+      }
+      throw Exception('Respuesta inesperada del servidor');
+    } catch (e) {
+      throw Exception('Error al marcar llegada: $e');
+    }
+  }
+
+  /// Obtiene la ruta recomendada desde la ubicación actual al incidente
+  Future<Map<String, dynamic>> obtenerRutaTecnico({
+    required int incidenteId,
+  }) async {
+    try {
+      final response = await apiService.get(
+        '/api/v1/incidentes/$incidenteId/ruta-tecnico',
+      );
+
+      if (response is Map<String, dynamic>) {
+        return response;
+      }
+      throw Exception('Respuesta inesperada del servidor');
+    } catch (e) {
+      throw Exception('Error al obtener ruta: $e');
     }
   }
 }

@@ -159,10 +159,11 @@ export class TecnicoIncidenteDetalleComponent implements OnInit, OnDestroy {
   getEstadoClass(estado: string): string {
     const estadoMap: { [key: string]: string } = {
       'pendiente': 'estado-pendiente',
-      'en_proceso': 'estado-en-proceso',
-      'en-proceso': 'estado-en-proceso',
-      'rechazado': 'estado-rechazado',
-      'atendido': 'estado-atendido',
+      'buscando_taller': 'estado-pendiente',
+      'asignado_taller': 'estado-en-proceso',
+      'en_camino': 'estado-en-proceso',
+      'en_atencion': 'estado-atendido',
+      'finalizado': 'estado-atendido',
       'completado': 'estado-completado',
       'cancelado': 'estado-cancelado'
     };

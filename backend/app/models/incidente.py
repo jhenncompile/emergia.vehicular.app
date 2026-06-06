@@ -28,7 +28,10 @@ class Incidente(Base):
     pago_estado = Column(String(20), default="pendiente")
     telefono_cliente = Column(String(20), nullable=True)
     motivo_cancelacion = Column(Text, nullable=True)
+    cancelado_por = Column(String(20), nullable=True)
+    tiempo_asignacion_segundos = Column(Integer, nullable=True)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
+    fecha_llegada_tecnico = Column(DateTime(timezone=True), nullable=True)
 
     # --- CAMPOS PARA LA IA ---
     transcripcion_audio = Column(Text)

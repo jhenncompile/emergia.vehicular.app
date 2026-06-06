@@ -40,7 +40,7 @@ export class TecnicoDashboardComponent implements OnInit, OnDestroy {
   filtroDistancia = '';
   
   // Estados disponibles (según backend)
-  estados = ['pendiente', 'en_proceso', 'rechazado', 'atendido', 'cancelado'];
+  estados = ['en_camino', 'en_atencion', 'finalizado', 'cancelado'];
   
   // Coordenadas del técnico (simulado - en producción vendrían del GPS)
   coordenadasTecnico = { lat: -17.8, lng: -63.2 };
@@ -150,13 +150,12 @@ export class TecnicoDashboardComponent implements OnInit, OnDestroy {
       });
     }
     
-    // Ordenamiento: primero por estado (en_proceso > atendido > pendiente > rechazado > cancelado)
+    // Ordenamiento: primero por estado operativo
     const ordenEstado: { [key: string]: number } = {
-      'en_proceso': 1,
-      'atendido': 2,
-      'pendiente': 3,
-      'rechazado': 4,
-      'cancelado': 5
+      'en_camino': 1,
+      'en_atencion': 2,
+      'finalizado': 3,
+      'cancelado': 4
     };
     
     // Ordenamiento por prioridad
@@ -236,10 +235,11 @@ export class TecnicoDashboardComponent implements OnInit, OnDestroy {
   getEstadoClass(estado: string): string {
     const estadoMap: { [key: string]: string } = {
       'pendiente': 'estado-pendiente',
-      'en_proceso': 'estado-en-proceso',
-      'en-proceso': 'estado-en-proceso',
-      'rechazado': 'estado-rechazado',
-      'atendido': 'estado-atendido',
+      'buscando_taller': 'estado-pendiente',
+      'asignado_taller': 'estado-en-proceso',
+      'en_camino': 'estado-en-proceso',
+      'en_atencion': 'estado-atendido',
+      'finalizado': 'estado-atendido',
       'completado': 'estado-completado',
       'cancelado': 'estado-cancelado'
     };
@@ -272,10 +272,10 @@ export class TecnicoDashboardComponent implements OnInit, OnDestroy {
     } else if (evento.includes('cancelado') || evento.includes('cancelada')) {
       claseToast = 'toast-danger';
       duracion = 8000;
-    } else if (evento.includes('en_proceso') || evento.includes('en_camino')) {
+    } else if (evento.includes('en_camino')) {
       claseToast = 'toast-info';
       duracion = 5000;
-    } else if (evento.includes('atendido') || evento.includes('completado')) {
+    } else if (evento.includes('en_atencion') || evento.includes('finalizado') || evento.includes('completado')) {
       claseToast = 'toast-success';
       duracion = 6000;
     } else if (evento.includes('asignado')) {

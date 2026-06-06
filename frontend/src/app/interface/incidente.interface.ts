@@ -25,6 +25,8 @@ export interface Incidente {
   pago_estado: string;
   telefono_cliente?: string;
   motivo_cancelacion?: string;
+  cancelado_por?: string;
+  tiempo_asignacion_segundos?: number;
   transcripcion_audio?: string;
   clasificacion_ia?: string;
   resumen_ia?: string;

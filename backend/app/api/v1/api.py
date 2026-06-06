@@ -1,15 +1,14 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth, usuario, incidentes, talleres, vehiculos, 
-    bitacora, notificaciones, pagos, roles, taller_detalles, evidencias, vehiculos
+    bitacora, notificaciones, pagos, roles, taller_detalles, evidencias, 
+    emergencia, seguimiento
 )
-
-from fastapi import APIRouter
-from app.api.v1.endpoints import emergencia # Importa el nuevo archivo
 
 api_router = APIRouter()
 
 api_router.include_router(emergencia.router, prefix="/emergencia", tags=["Emergencia"])
+api_router.include_router(seguimiento.router, tags=["Seguimiento"])
 
 api_router.include_router(auth.router, prefix="/auth", tags=["Autenticación"])
 api_router.include_router(usuario.router, prefix="/usuarios", tags=["Usuarios"])

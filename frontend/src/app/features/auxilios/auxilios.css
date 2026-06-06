@@ -164,12 +164,28 @@ body, h1, p, table, th, td, input, button {
   margin-right: 8px;
 }
 
-.en_proceso {
+.buscando_taller {
+  background: #f59e0b;
+}
+
+.asignado_taller {
+  background: #6366f1;
+}
+
+.en_camino {
   background: #3b82f6;
 }
 
-.atendido {
+.en_atencion {
+  background: #06b6d4;
+}
+
+.finalizado {
   background: #10b981;
+}
+
+.cancelado {
+  background: #ef4444;
 }
 
 .status-text {

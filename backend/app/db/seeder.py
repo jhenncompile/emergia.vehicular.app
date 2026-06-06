@@ -20,6 +20,7 @@ from app.models.notificacion import Notificacion
 from app.models.evidencia import Evidencia
 from app.models.taller_detalle import HorarioTaller
 
+from app.core.estados import CanceladoPor, EstadoIncidente
 from app.core.security import obtener_hash_clave as get_password_hash
 
 logging.basicConfig(level=logging.INFO)
@@ -324,15 +325,23 @@ def seed_db(db: Session) -> None:
     # ---------------------------------------------------------
     logger.info("🚨 Creando INCIDENTES (últimos 365 días - 1 AÑO)...")
     incidentes = []
-    estados_incidente = ["pendiente", "en_proceso", "atendido", "cancelado"]
+    estados_incidente = [
+        EstadoIncidente.PENDIENTE,
+        EstadoIncidente.BUSCANDO_TALLER,
+        EstadoIncidente.ASIGNADO_TALLER,
+        EstadoIncidente.EN_CAMINO,
+        EstadoIncidente.EN_ATENCION,
+        EstadoIncidente.FINALIZADO,
+        EstadoIncidente.CANCELADO,
+    ]
     prioridades = ["baja", "media", "alta"]
     
     # Calcular cuántos de cada estado
     num_incidentes = random.randint(250, 350)  # 250-350 incidentes en 1 año
-    num_en_proceso = 20  # Solo 20 en proceso
+    num_en_camino = 20  # Solo 20 en camino
     
-    # Crear primero los 20 en_proceso
-    incidentes_en_proceso = 0
+    # Crear primero los 20 en_camino
+    incidentes_en_camino = 0
     
     for inc_idx in range(num_incidentes):
         # Fecha aleatoria en los últimos 365 días (1 año)
@@ -349,15 +358,22 @@ def seed_db(db: Session) -> None:
         # Taller aleatorio
         taller = random.choice(talleres)
         
-        # Distribución de estados: 20 en_proceso, resto distribuidos
-        if incidentes_en_proceso < num_en_proceso:
-            estado = "en_proceso"
-            incidentes_en_proceso += 1
+        # Distribución de estados: 20 en_camino, resto distribuidos
+        if incidentes_en_camino < num_en_camino:
+            estado = EstadoIncidente.EN_CAMINO
+            incidentes_en_camino += 1
         else:
-            estado = random.choices(estados_incidente, weights=[25, 0, 50, 25])[0]
+            estado = random.choices(
+                estados_incidente,
+                weights=[12, 10, 8, 0, 12, 40, 18],
+            )[0]
         
         tecnico = None
-        if estado in ["en_proceso", "atendido"]:
+        if estado in [
+            EstadoIncidente.EN_CAMINO,
+            EstadoIncidente.EN_ATENCION,
+            EstadoIncidente.FINALIZADO,
+        ]:
             tecnicos_taller = [t for t in tecnicos if t.taller_id == taller.id]
             if tecnicos_taller:
                 tecnico = random.choice(tecnicos_taller)
@@ -367,18 +383,42 @@ def seed_db(db: Session) -> None:
         lat, lon = generar_coords_en_zona(zona)
         
         # Monto aleatorio
-        monto = random.randint(150, 1500) if estado != "pendiente" else 0
-        
+        monto = random.randint(150, 1500) if estado != EstadoIncidente.PENDIENTE else 0
+        tiene_taller = estado not in [
+            EstadoIncidente.PENDIENTE,
+            EstadoIncidente.BUSCANDO_TALLER,
+        ]
+
         incidente = Incidente(
             vehiculo_id=vehiculo.id,
             usuario_id=cliente.id,
-            taller_id=taller.id if estado != "pendiente" else None,
+            taller_id=taller.id if tiene_taller else None,
             tecnico_id=tecnico.id if tecnico else None,
             latitud=lat,
             longitud=lon,
             prioridad=random.choice(prioridades),
             estado=estado,
-            pago_estado="pagado" if estado == "atendido" else "pendiente",
+            pago_estado="pagado" if estado == EstadoIncidente.FINALIZADO else "pendiente",
+            cancelado_por=(
+                random.choice([CanceladoPor.CLIENTE, CanceladoPor.TALLER])
+                if estado == EstadoIncidente.CANCELADO
+                else None
+            ),
+            motivo_cancelacion=(
+                fake.sentence(nb_words=6)
+                if estado == EstadoIncidente.CANCELADO
+                else None
+            ),
+            tiempo_asignacion_segundos=(
+                random.randint(30, 600)
+                if estado in [
+                    EstadoIncidente.ASIGNADO_TALLER,
+                    EstadoIncidente.EN_CAMINO,
+                    EstadoIncidente.EN_ATENCION,
+                    EstadoIncidente.FINALIZADO,
+                ]
+                else None
+            ),
             clasificacion_ia=random.choice(CLASIFICACIONES_INCIDENTES),
             resumen_ia=fake.sentence(nb_words=8),
             fecha_creacion=fecha_incidente
@@ -387,15 +427,15 @@ def seed_db(db: Session) -> None:
         incidentes.append(incidente)
     
     db.commit()
-    logger.info(f"✅ Creados {len(incidentes)} incidentes (20 en_proceso)")
+    logger.info(f"✅ Creados {len(incidentes)} incidentes (20 en_camino)")
     
     # ---------------------------------------------------------
-    # 8. PAGOS (para incidentes atendidos)
+    # 8. PAGOS (para incidentes finalizados)
     # ---------------------------------------------------------
     logger.info("💰 Creando PAGOS...")
     pagos = []
     for incidente in incidentes:
-        if incidente.estado == "atendido" and incidente.taller_id:
+        if incidente.estado == EstadoIncidente.FINALIZADO and incidente.taller_id:
             taller = db.query(Taller).get(incidente.taller_id)
             monto = Decimal(str(random.randint(150, 1500)))
             comision = monto * Decimal(str(taller.comision_porcentaje / 100.0))
@@ -448,7 +488,7 @@ def seed_db(db: Session) -> None:
     evidencias = []
     
     for incidente in incidentes[:80]:  # 80 incidentes con evidencia (más con 1 año de datos)
-        if incidente.estado in ["en_proceso", "atendido"]:
+        if incidente.estado in [EstadoIncidente.EN_CAMINO, EstadoIncidente.FINALIZADO]:
             num_fotos = random.randint(1, 3)
             for foto_idx in range(num_fotos):
                 evidencia = Evidencia(

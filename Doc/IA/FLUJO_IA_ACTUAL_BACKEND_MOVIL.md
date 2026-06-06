@@ -296,10 +296,12 @@ Formula inicial:
 
 ```text
 score_total =
-  score_distancia * 0.45
-  + score_especialidad * 0.40
-  + score_disponibilidad * 0.15
+  score_disponibilidad * 0.45
+  + score_especialidad * 0.35
+  + score_distancia * 0.20
 ```
+
+Antes de calcular el score, se excluyen talleres fuera de horario laboral y talleres sin tecnicos activos.
 
 Endpoints agregados:
 
@@ -337,8 +339,9 @@ ofrecido
 Al aceptar:
 
 ```text
-incidente.estado = en_proceso
+incidente.estado = asignado_taller
 incidente.taller_id = taller_id
+incidente.tiempo_asignacion_segundos = segundos desde oferta hasta aceptacion
 candidato.estado = aceptado
 otros candidatos pendientes/ofrecidos = saltado
 ```

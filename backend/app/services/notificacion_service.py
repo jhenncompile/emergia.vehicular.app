@@ -19,6 +19,7 @@ from app.schemas.notificacion import NotificacionCreate
 from app.models.usuario import Usuario
 from app.models.incidente import Incidente
 from app.websocket.manager import manager
+from app.core.estados import EstadoIncidente
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +167,7 @@ class NotificacionService:
             incidente_id=incidente_id,
             extra_data={
                 "evento": "taller_acepto",
-                "estado_nuevo": "en_proceso",
+                "estado_nuevo": EstadoIncidente.ASIGNADO_TALLER,
                 "taller_nombre": taller_nombre,
                 "tecnico_nombre": tecnico_nombre,
             }
@@ -201,7 +202,7 @@ class NotificacionService:
             incidente_id=incidente_id,
             extra_data={
                 "evento": "taller_rechazo",
-                "estado_nuevo": "pendiente",
+                "estado_nuevo": EstadoIncidente.BUSCANDO_TALLER,
                 "taller_nombre": taller_nombre,
                 "motivo": motivo,
             }
@@ -218,10 +219,11 @@ class NotificacionService:
         Notifica a clientes y técnicos sobre cambios de estado.
         
         Estados y destinatarios:
-        - 'pendiente' → cliente
-        - 'en_proceso' → cliente (auxilio en camino)
-        - 'atendido' → cliente + técnico
-        - 'rechazado' → cliente
+        - 'buscando_taller' → cliente
+        - 'asignado_taller' → cliente
+        - 'en_camino' → cliente + técnico
+        - 'en_atencion' → cliente + técnico
+        - 'finalizado' → cliente + técnico
         - 'cancelado' → cliente + técnico
         """
         resultado = True
@@ -234,24 +236,34 @@ class NotificacionService:
 
         evento = "estado_cambiado"
 
-        if estado_nuevo == "en_proceso":
+        if estado_nuevo == EstadoIncidente.BUSCANDO_TALLER:
+            evento = "buscando_taller"
+            titulo_cliente = "Buscando taller"
+            mensaje_cliente = f"Estamos buscando un taller disponible para tu solicitud #{incidente_id}."
+
+        elif estado_nuevo == EstadoIncidente.ASIGNADO_TALLER:
+            evento = "taller_asignado"
+            titulo_cliente = "Taller asignado"
+            mensaje_cliente = f"Un taller acepto tu solicitud #{incidente_id}. Pronto asignara un tecnico."
+
+        elif estado_nuevo == EstadoIncidente.EN_CAMINO:
             evento = "auxilio_en_camino"
-            titulo_cliente = "🚗 Auxilio en camino"
+            titulo_cliente = "Auxilio en camino"
             mensaje_cliente = f"Tu solicitud #{incidente_id} está siendo atendida. El técnico está en camino."
             
-        elif estado_nuevo == "atendido":
-            evento = "servicio_atendido"
-            titulo_cliente = "✅ Servicio completado"
-            mensaje_cliente = f"Tu solicitud #{incidente_id} ha sido completada. Gracias por usar nuestro servicio."
+        elif estado_nuevo == EstadoIncidente.EN_ATENCION:
+            evento = "tecnico_llego"
+            titulo_cliente = "Tecnico en atencion"
+            mensaje_cliente = f"El tecnico llego al incidente #{incidente_id} y comenzo la atencion."
             
-        elif estado_nuevo == "rechazado":
-            evento = "taller_rechazo"
-            titulo_cliente = "⚠️ Servicio rechazado"
-            mensaje_cliente = f"Tu solicitud #{incidente_id} no pudo ser completada. Contáctanos para más detalles."
+        elif estado_nuevo == EstadoIncidente.FINALIZADO:
+            evento = "servicio_finalizado"
+            titulo_cliente = "Servicio finalizado"
+            mensaje_cliente = f"Tu solicitud #{incidente_id} ha sido finalizada. Gracias por usar nuestro servicio."
             
-        elif estado_nuevo == "cancelado":
+        elif estado_nuevo == EstadoIncidente.CANCELADO:
             evento = "servicio_cancelado"
-            titulo_cliente = "🚫 Solicitud cancelada"
+            titulo_cliente = "Solicitud cancelada"
             mensaje_cliente = f"Tu solicitud #{incidente_id} ha sido cancelada."
 
         # Crear notificación para cliente si hay mensaje
@@ -280,16 +292,20 @@ class NotificacionService:
                 titulo_tecnico = ""
                 mensaje_tecnico = ""
 
-                if estado_nuevo == "en_proceso":
-                    titulo_tecnico = "🚗 Marcaste como en camino"
-                    mensaje_tecnico = f"Incidente #{incidente_id} ahora está marcado como en proceso."
+                if estado_nuevo == EstadoIncidente.EN_CAMINO:
+                    titulo_tecnico = "Auxilio en camino"
+                    mensaje_tecnico = f"Incidente #{incidente_id} ahora esta marcado como en camino."
                     
-                elif estado_nuevo == "atendido":
-                    titulo_tecnico = "✅ Servicio marcado como completado"
-                    mensaje_tecnico = f"Has completado el incidente #{incidente_id}."
+                elif estado_nuevo == EstadoIncidente.EN_ATENCION:
+                    titulo_tecnico = "Atencion iniciada"
+                    mensaje_tecnico = f"Incidente #{incidente_id} ahora esta en atencion."
+
+                elif estado_nuevo == EstadoIncidente.FINALIZADO:
+                    titulo_tecnico = "Servicio finalizado"
+                    mensaje_tecnico = f"Has finalizado el incidente #{incidente_id}."
                     
-                elif estado_nuevo == "cancelado":
-                    titulo_tecnico = "🚫 Incidente cancelado"
+                elif estado_nuevo == EstadoIncidente.CANCELADO:
+                    titulo_tecnico = "Incidente cancelado"
                     mensaje_tecnico = f"El incidente #{incidente_id} ha sido cancelado."
 
                 if titulo_tecnico:

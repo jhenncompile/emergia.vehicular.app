@@ -22,10 +22,12 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
     // Cargar incidentes al abrir la pantalla
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final userId = context.read<AuthProvider>().userId;
+      final authProvider = context.read<AuthProvider>();
+      final userId = authProvider.userId;
       if (userId != null) {
         context.read<IncidenteProvider>().cargarMisIncidentes(
           usuarioId: userId,
+          esTecnico: authProvider.isTecnico,
         );
       }
     });
@@ -33,9 +35,11 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final esTecnico = context.watch<AuthProvider>().isTecnico;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mis Incidentes'),
+        title: Text(esTecnico ? 'Incidentes Asignados' : 'Mis Incidentes'),
         backgroundColor: AppColors.primaryColor,
       ),
       body: Consumer<IncidenteProvider>(
@@ -56,7 +60,9 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No tienes incidentes reportados',
+                    esTecnico
+                        ? 'No tienes incidentes asignados'
+                        : 'No tienes incidentes reportados',
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ],
@@ -69,7 +75,7 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
             itemCount: incidenteProvider.misIncidentes.length,
             itemBuilder: (context, index) {
               final incidente = incidenteProvider.misIncidentes[index];
-              return _buildIncidenteCard(context, incidente);
+              return _buildIncidenteCard(context, incidente, esTecnico);
             },
           );
         },
@@ -80,6 +86,7 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
   Widget _buildIncidenteCard(
     BuildContext context,
     Map<String, dynamic> incidente,
+    bool esTecnico,
   ) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -93,7 +100,9 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Incidente #${incidente['id']}',
+                  esTecnico
+                      ? 'Asignado #${incidente['id']}'
+                      : 'Incidente #${incidente['id']}',
                   style: Theme.of(
                     context,
                   ).textTheme.displayLarge?.copyWith(fontSize: 14),
@@ -121,6 +130,32 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
             ),
             const SizedBox(height: 12),
 
+            if (esTecnico) ...[
+              Row(
+                children: [
+                  const Icon(
+                    Icons.person_outline,
+                    size: 16,
+                    color: AppColors.secondaryColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _nombrePersona(incidente['usuario']) ??
+                          'Cliente no disponible',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+
             // Descripción
             Text(
               _textoIncidente(incidente) ?? 'Sin descripción',
@@ -140,7 +175,8 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  incidente['vehiculo']?['placa'] ?? 'Vehículo desconocido',
+                  _vehiculoLabel(incidente['vehiculo']) ??
+                      'Vehiculo desconocido',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -183,7 +219,7 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: () => _verDetalles(context, incidente),
-                child: const Text('Ver Detalles'),
+                child: Text(esTecnico ? 'Ver Datos' : 'Ver Detalles'),
               ),
             ),
           ],
@@ -196,12 +232,19 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
     switch (estado?.toLowerCase()) {
       case 'pendiente':
         return Colors.orange;
-      case 'en_proceso':
-      case 'en proceso':
+      case 'buscando_taller':
+        return Colors.amber.shade700;
+      case 'asignado_taller':
+        return Colors.indigo;
+      case 'en_camino':
         return Colors.blue;
-      case 'atendido':
+      case 'en_atencion':
+        return Colors.cyan;
+      case 'finalizado':
       case 'completado':
         return Colors.green;
+      case 'cancelado':
+        return AppColors.error;
       default:
         return Colors.grey;
     }
@@ -218,6 +261,7 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
   }
 
   void _verDetalles(BuildContext context, Map<String, dynamic> incidente) {
+    final esTecnico = context.read<AuthProvider>().isTecnico;
     final punto = _latLngDesdeValores(
       incidente['latitud'],
       incidente['longitud'],
@@ -225,7 +269,7 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text('Incidente #${incidente['id']}'),
         content: SingleChildScrollView(
           child: Column(
@@ -236,6 +280,16 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                 'Estado',
                 incidente['estado']?.toString().toUpperCase() ?? 'N/A',
               ),
+              if (esTecnico)
+                _buildDetalleRow(
+                  'Cliente',
+                  _nombrePersona(incidente['usuario']) ?? 'N/A',
+                ),
+              if (esTecnico)
+                _buildDetalleRow(
+                  'Telefono cliente',
+                  _telefonoCliente(incidente) ?? 'N/A',
+                ),
               _buildDetalleRow(
                 'Criticidad',
                 _labelPrioridad(_texto(incidente['prioridad'])),
@@ -264,12 +318,16 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
               else
                 _buildDetalleRow('Ubicación', incidente['ubicacion'] ?? 'N/A'),
               _EvidenciasIncidenteSection(
-                incidenteId: incidente['id'] is int ? incidente['id'] as int : 0,
-                incidenteService: context.read<IncidenteProvider>().incidenteService,
+                incidenteId: incidente['id'] is int
+                    ? incidente['id'] as int
+                    : 0,
+                incidenteService: context
+                    .read<IncidenteProvider>()
+                    .incidenteService,
               ),
               _buildDetalleRow(
-                'Vehículo',
-                incidente['vehiculo']?['placa'] ?? 'N/A',
+                'Vehiculo',
+                _vehiculoLabel(incidente['vehiculo']) ?? 'N/A',
               ),
               _buildDetalleRow(
                 'Fecha',
@@ -278,19 +336,109 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
               if (incidente['taller'] != null)
                 _buildDetalleRow(
                   'Taller Asignado',
-                  incidente['taller']['nombre'] ?? 'N/A',
+                  _tallerLabel(incidente['taller']) ?? 'N/A',
+                ),
+              if (!esTecnico && incidente['tecnico'] != null)
+                _buildDetalleRow(
+                  'Tecnico Asignado',
+                  _nombrePersona(incidente['tecnico']) ?? 'N/A',
+                ),
+              if (_texto(incidente['pago_estado']) != null)
+                _buildDetalleRow(
+                  'Estado pago',
+                  _texto(incidente['pago_estado'])!.toUpperCase(),
+                ),
+              if (_pagoLabel(incidente['pagos']) != null)
+                _buildDetalleRow('Pago', _pagoLabel(incidente['pagos'])!),
+              if (_texto(incidente['motivo_cancelacion']) != null)
+                _buildDetalleRow(
+                  'Motivo',
+                  _texto(incidente['motivo_cancelacion'])!,
                 ),
             ],
           ),
         ),
         actions: [
+          if (!esTecnico && _puedeCancelarCliente(incidente))
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _solicitarCancelacion(context, incidente);
+              },
+              child: const Text('Cancelar incidente'),
+            ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cerrar'),
           ),
         ],
       ),
     );
+  }
+
+  bool _puedeCancelarCliente(Map<String, dynamic> incidente) {
+    final estado = (incidente['estado'] ?? '').toString().toLowerCase();
+    return estado == 'pendiente' ||
+        estado == 'buscando_taller' ||
+        estado == 'asignado_taller' ||
+        estado == 'en_camino';
+  }
+
+  Future<void> _solicitarCancelacion(
+    BuildContext context,
+    Map<String, dynamic> incidente,
+  ) async {
+    final motivoController = TextEditingController();
+    try {
+      final confirmar = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Cancelar incidente'),
+          content: TextField(
+            controller: motivoController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Motivo',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Volver'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Cancelar incidente'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmar != true) return;
+      if (!context.mounted) return;
+      final motivo = motivoController.text.trim();
+      if (motivo.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Debes ingresar un motivo.')),
+        );
+        return;
+      }
+
+      final incidenteProvider = context.read<IncidenteProvider>();
+      final ok = await incidenteProvider.cancelarIncidente(
+        incidenteId: incidente['id'] as int,
+        motivo: motivo,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(ok ? 'Incidente cancelado.' : 'No se pudo cancelar.'),
+        ),
+      );
+    } finally {
+      motivoController.dispose();
+    }
   }
 
   Widget _buildDetalleMapa(LatLng punto) {
@@ -407,6 +555,68 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
     }
   }
 
+  String? _nombrePersona(dynamic value) {
+    if (value is! Map) return null;
+
+    final nombre = _texto(value['nombre']);
+    final apellido = _texto(value['apellido']);
+    final correo = _texto(value['correo']);
+    final partes = [nombre, apellido].whereType<String>().join(' ').trim();
+
+    if (partes.isNotEmpty) return partes;
+    return correo;
+  }
+
+  String? _telefonoCliente(Map<String, dynamic> incidente) {
+    final telefono = _texto(incidente['telefono_cliente']);
+    if (telefono != null) return telefono;
+
+    final usuario = incidente['usuario'];
+    if (usuario is Map) {
+      return _texto(usuario['telefono']);
+    }
+    return null;
+  }
+
+  String? _vehiculoLabel(dynamic value) {
+    if (value is! Map) return null;
+
+    final placa = _texto(value['placa']);
+    final marca = _texto(value['marca']);
+    final modelo = _texto(value['modelo']);
+    final detalle = [marca, modelo].whereType<String>().join(' ').trim();
+
+    if (placa == null && detalle.isEmpty) return null;
+    if (detalle.isEmpty) return placa;
+    if (placa == null) return detalle;
+    return '$placa - $detalle';
+  }
+
+  String? _tallerLabel(dynamic value) {
+    if (value is! Map) return null;
+
+    final nombre = _texto(value['nombre']);
+    final direccion = _texto(value['direccion']);
+    if (nombre == null) return direccion;
+    if (direccion == null) return nombre;
+    return '$nombre - $direccion';
+  }
+
+  String? _pagoLabel(dynamic value) {
+    dynamic pago = value;
+    if (pago is List && pago.isNotEmpty) {
+      pago = pago.first;
+    }
+    if (pago is! Map) return null;
+
+    final monto = _texto(pago['monto']);
+    final estado = _texto(pago['estado']);
+    if (monto == null && estado == null) return null;
+    if (monto == null) return estado!.toUpperCase();
+    if (estado == null) return 'Bs. $monto';
+    return 'Bs. $monto - ${estado.toUpperCase()}';
+  }
+
   String? _texto(dynamic value) {
     final text = value?.toString().trim();
     if (text == null || text.isEmpty) return null;
@@ -503,10 +713,7 @@ class _EvidenciasIncidenteSectionState
     );
   }
 
-  Widget _buildEvidencia(
-    BuildContext context,
-    Map<String, dynamic> evidencia,
-  ) {
+  Widget _buildEvidencia(BuildContext context, Map<String, dynamic> evidencia) {
     final tipo = evidencia['tipo_archivo']?.toString().toLowerCase() ?? '';
     final url = widget.incidenteService.resolverUrlArchivo(
       evidencia['url_archivo']?.toString(),
@@ -540,7 +747,7 @@ class _EvidenciasIncidenteSectionState
             child: Image.network(
               url,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _buildArchivoNoDisponible(
+              errorBuilder: (_, _, _) => _buildArchivoNoDisponible(
                 Icons.broken_image_outlined,
                 'Imagen no disponible',
               ),
@@ -625,7 +832,7 @@ class _EvidenciasIncidenteSectionState
           child: Image.network(
             url,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => _buildArchivoNoDisponible(
+            errorBuilder: (_, _, _) => _buildArchivoNoDisponible(
               Icons.broken_image_outlined,
               'Imagen no disponible',
             ),

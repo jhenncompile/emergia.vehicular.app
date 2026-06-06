@@ -35,6 +35,7 @@ export class AuxiliosComponent implements OnInit {
   montoCobro: number = 0;
   idTecnicoSeleccionado: number = 0;
   motivoRechazo: string = '';
+  accionMotivo: 'rechazar' | 'cancelar' = 'rechazar';
 
   ngOnInit() { 
     this.cargarDatos();
@@ -70,6 +71,39 @@ export class AuxiliosComponent implements OnInit {
     this.incidenteSeleccionado = inc;
   }
 
+  etiquetaEstado(estado: string): string {
+    const labels: Record<string, string> = {
+      pendiente: 'Pendiente',
+      buscando_taller: 'Buscando taller',
+      asignado_taller: 'Taller asignado',
+      en_camino: 'En camino',
+      en_atencion: 'En atención',
+      finalizado: 'Finalizado',
+      cancelado: 'Cancelado'
+    };
+    return labels[estado] || estado;
+  }
+
+  puedeAsignarTecnico(inc: any): boolean {
+  return inc?.estado === 'asignado_taller';
+}
+
+  puedeReasignarTecnico(inc: any): boolean {
+    return ['asignado_taller', 'en_camino'].includes(inc?.estado);
+  }
+
+  puedeMarcarLlegada(inc: any): boolean {
+    return inc?.estado === 'en_camino';
+  }
+
+  puedeCobrar(inc: any): boolean {
+    return inc?.estado === 'en_atencion' && inc?.pago_estado === 'pendiente';
+  }
+
+  puedeCancelar(inc: any): boolean {
+    return ['asignado_taller', 'en_camino'].includes(inc?.estado);
+  }
+
   // --- LÓGICA DE ASIGNACIÓN Y REASIGNACIÓN ---
 
   // Se usa cuando aceptas un incidente nuevo
@@ -88,6 +122,9 @@ export class AuxiliosComponent implements OnInit {
   // Se usa desde el panel lateral para cambiar al técnico
   abrirReasignacion() {
     if (!this.incidenteSeleccionado) return;
+    if (!this.puedeReasignarTecnico(this.incidenteSeleccionado)) {
+      return alert('Solo puedes asignar técnico cuando el incidente está asignado al taller o en camino.');
+    }
     this.incidenteAccion = this.incidenteSeleccionado;
     // Pre-seleccionamos el ID actual si ya tiene uno
     this.idTecnicoSeleccionado = this.incidenteSeleccionado.tecnico_id || 0;
@@ -123,18 +160,23 @@ export class AuxiliosComponent implements OnInit {
 
   // --- FLUJO DE RECHAZO ---
 
-  abrirModalRechazo(inc: any) {
+  abrirModalRechazo(inc: any, accion: 'rechazar' | 'cancelar' = 'rechazar') {
     this.incidenteAccion = inc;
     this.motivoRechazo = '';
+    this.accionMotivo = accion;
     this.mostrarModalRechazo = true;
   }
 
   confirmarRechazo() {
     if (!this.motivoRechazo.trim()) return alert('Por favor escribe un motivo.');
 
-    this.incidentesService.rechazarIncidente(this.incidenteAccion.id, this.motivoRechazo).subscribe({
+    const request$ = this.accionMotivo === 'cancelar'
+      ? this.incidentesService.cancelarIncidente(this.incidenteAccion.id, this.motivoRechazo)
+      : this.incidentesService.rechazarIncidente(this.incidenteAccion.id, this.motivoRechazo);
+
+    request$.subscribe({
       next: () => {
-        alert('Pedido rechazado con éxito.');
+        alert(this.accionMotivo === 'cancelar' ? 'Incidente cancelado con éxito.' : 'Oferta rechazada con éxito.');
         this.mostrarModalRechazo = false;
         if (this.incidenteSeleccionado?.id === this.incidenteAccion.id) {
           this.cerrarPanel();
@@ -145,19 +187,20 @@ export class AuxiliosComponent implements OnInit {
     });
   }
 
-  // --- FINALIZACIÓN Y COBRO ---
-
-  finalizarAyuda(id: number) {
-    if (!confirm('¿Marcar el servicio como completado?')) return;
-    this.incidentesService.actualizarEstado(id, { estado: 'atendido' }).subscribe({
+  marcarLlegada(id: number) {
+    if (!confirm('¿Marcar que el técnico llegó al incidente?')) return;
+    this.incidentesService.marcarLlegada(id).subscribe({
       next: () => {
         if (this.incidenteSeleccionado?.id === id) {
-          this.incidenteSeleccionado.estado = 'atendido';
+          this.incidenteSeleccionado.estado = 'en_atencion';
         }
         this.cargarDatos();
-      }
+      },
+      error: (e) => alert('Error al marcar llegada: ' + e.error?.detail)
     });
   }
+
+  // --- COBRO ---
 
   abrirModalCobro(incidente: any) {
     this.incidenteAccion = incidente;

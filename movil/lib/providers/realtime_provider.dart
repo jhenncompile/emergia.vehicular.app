@@ -38,7 +38,12 @@ class RealtimeProvider extends ChangeNotifier {
     _subscription = realtimeService.events.listen((event) {
       _lastEvent = event;
       _isConnected = realtimeService.isConnected;
-      _handleIncidentEvent(event, incidenteProvider, userId);
+      _handleIncidentEvent(
+        event,
+        incidenteProvider,
+        userId,
+        authProvider.isTecnico,
+      );
       notifyListeners();
     });
 
@@ -52,6 +57,7 @@ class RealtimeProvider extends ChangeNotifier {
     Map<String, dynamic> event,
     IncidenteProvider incidenteProvider,
     int userId,
+    bool esTecnico,
   ) {
     final incidentId = _readInt(event['incidente_id']);
     final newStatus = event['estado_nuevo']?.toString();
@@ -64,7 +70,10 @@ class RealtimeProvider extends ChangeNotifier {
     }
 
     if (_isIncidentEvent(event)) {
-      incidenteProvider.cargarMisIncidentes(usuarioId: userId);
+      incidenteProvider.cargarMisIncidentes(
+        usuarioId: userId,
+        esTecnico: esTecnico,
+      );
     }
   }
 

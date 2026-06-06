@@ -9,7 +9,7 @@ import 'package:flutter/foundation.dart';
 class BackendConfig {
   // ===== CONFIGURACIÓN GLOBAL =====
   static const String _defaultPort = '8000';
-  static const String _localNetworkIp = '192.168.56.1';
+  static const String _localNetworkIp = '192.168.100.9';
   static const String _androidEmulatorHost = '10.0.2.2';
 
   // ===== URLS CONSTRUIDAS =====

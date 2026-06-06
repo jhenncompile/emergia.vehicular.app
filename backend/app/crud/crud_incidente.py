@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import func, and_
 from app.models.usuario import Usuario
 from app.models.pago import Pago
+from app.core.estados import CanceladoPor, EstadoIncidente
 from math import radians, cos, sin, asin, sqrt
 
 class CRUDIncidente(CRUDBase[Incidente, IncidenteCreate, IncidenteUpdate]):
@@ -32,16 +33,25 @@ class CRUDIncidente(CRUDBase[Incidente, IncidenteCreate, IncidenteUpdate]):
         return c * r
     
     # Función para que un taller "tome" el incidente
-    def asignar_taller(self, db: Session, *, db_obj: Incidente, taller_id: int) -> Incidente:
+    def asignar_taller(
+        self,
+        db: Session,
+        *,
+        db_obj: Incidente,
+        taller_id: int,
+        tiempo_asignacion_segundos: Optional[int] = None,
+    ) -> Incidente:
         update_data = {
             "taller_id": taller_id,
-            "estado": "en_proceso"
+            "estado": EstadoIncidente.ASIGNADO_TALLER,
         }
+        if tiempo_asignacion_segundos is not None:
+            update_data["tiempo_asignacion_segundos"] = tiempo_asignacion_segundos
         return self.update(db, db_obj=db_obj, obj_in=update_data)
 
     # Función para obtener incidentes pendientes (Para que los talleres los vean)
     def obtener_pendientes(self, db: Session):
-        return db.query(self.model).filter(self.model.estado == "pendiente").all()
+        return db.query(self.model).filter(self.model.estado == EstadoIncidente.PENDIENTE).all()
     
     def obtener_por_taller(self, db: Session, *, taller_id: int):
         return db.query(self.model).filter(self.model.taller_id == taller_id).all()
@@ -53,14 +63,21 @@ class CRUDIncidente(CRUDBase[Incidente, IncidenteCreate, IncidenteUpdate]):
     
     def asignar_tecnico(self, db: Session, *, db_obj: Incidente, tecnico_id: int) -> Incidente:
         """Asigna un técnico específico del taller al incidente."""
-        return self.update(db, db_obj=db_obj, obj_in={"tecnico_id": tecnico_id})
+        return self.update(
+            db,
+            db_obj=db_obj,
+            obj_in={
+                "tecnico_id": tecnico_id,
+                "estado": EstadoIncidente.EN_CAMINO,
+            },
+        )
 
     def rechazar_incidente(self, db: Session, *, db_obj: Incidente, motivo: str) -> Incidente:
-        """Marca el incidente como rechazado por el taller."""
+        """Compatibilidad: marca el incidente como cancelado por el taller."""
         update_data = {
-            "estado": "rechazado",
+            "estado": EstadoIncidente.CANCELADO,
+            "cancelado_por": CanceladoPor.TALLER,
             "motivo_cancelacion": motivo,
-            "taller_id": None # Lo liberamos para que otros talleres NO lo vean o se sepa que fue devuelto
         }
         return self.update(db, db_obj=db_obj, obj_in=update_data)
     
@@ -84,7 +101,10 @@ class CRUDIncidente(CRUDBase[Incidente, IncidenteCreate, IncidenteUpdate]):
             query = query.filter(self.model.estado.in_(estados))
         else:
             # Comportamiento por defecto si no hay nada seleccionado
-            query = query.filter(self.model.estado.in_(["atendido", "cancelado"]))
+            query = query.filter(self.model.estado.in_([
+                EstadoIncidente.FINALIZADO,
+                EstadoIncidente.CANCELADO,
+            ]))
 
         # Filtrado por técnico
         if tecnico_id:
@@ -105,7 +125,7 @@ class CRUDIncidente(CRUDBase[Incidente, IncidenteCreate, IncidenteUpdate]):
         query_tecnico = db.query(
             Usuario.nombre, func.count(self.model.id).label("total")
         ).join(Usuario, self.model.tecnico_id == Usuario.id)\
-         .filter(self.model.taller_id == taller_id, self.model.estado == "atendido")
+         .filter(self.model.taller_id == taller_id, self.model.estado == EstadoIncidente.FINALIZADO)
         
         # Aplicar filtros a atenciones por técnico
         if tecnico_id:
@@ -144,12 +164,27 @@ class CRUDIncidente(CRUDBase[Incidente, IncidenteCreate, IncidenteUpdate]):
         total_bruto = sum(p.monto for p in pagos) if pagos else 0
         total_comision = sum(p.comision_plataforma for p in pagos) if pagos else 0
 
+        tiempo_query = db.query(func.avg(self.model.tiempo_asignacion_segundos)).filter(
+            self.model.taller_id == taller_id,
+            self.model.tiempo_asignacion_segundos.isnot(None),
+        )
+        if fecha_inicio:
+            tiempo_query = tiempo_query.filter(self.model.fecha_creacion >= fecha_inicio)
+        if fecha_fin:
+            tiempo_query = tiempo_query.filter(self.model.fecha_creacion <= fecha_fin)
+        tiempo_promedio = tiempo_query.scalar()
+
         return {
             "atenciones_por_tecnico": [{"tecnico": t[0], "cantidad": t[1]} for t in por_tecnico],
             "finanzas": {
                 "recaudado_neto": float(total_bruto - total_comision),
                 "recaudado_bruto": float(total_bruto)
-            }
+            },
+            "tiempo_promedio_asignacion_segundos": (
+                round(float(tiempo_promedio), 2)
+                if tiempo_promedio is not None
+                else None
+            ),
         }
     
 incidente_crud = CRUDIncidente(Incidente)

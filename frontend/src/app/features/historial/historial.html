@@ -46,6 +46,12 @@
       <h3>Atenciones Finalizadas</h3>
       <p class="kpi-value">{{ historial.length }}</p>
     </div>
+    <div class="kpi-card">
+      <h3>Promedio de Asignación</h3>
+      <p class="kpi-value">
+        {{ metricas.tiempo_promedio_asignacion_segundos || 0 | number:'1.0-0' }} s
+      </p>
+    </div>
   </div>
 
   <div class="table-container">
@@ -70,11 +76,11 @@
           <td>{{ item.fecha_creacion | date:'dd/MM/yyyy HH:mm' }}</td>
           <td>
             <span class="badge" [ngClass]="{
-              'badge-success': item.estado === 'atendido',
+              'badge-success': item.estado === 'finalizado',
               'badge-danger': item.estado === 'cancelado',
-              'badge-warning': item.estado === 'en_proceso'
+              'badge-warning': ['asignado_taller', 'en_camino', 'en_atencion'].includes(item.estado)
             }">
-              {{ item.estado | uppercase }}
+              {{ etiquetaEstado(item.estado) | uppercase }}
             </span>
           </td>
           <td>{{ item.prioridad }}</td>
@@ -83,9 +89,9 @@
             {{ item.pagos?.monto | number:'1.2-2' }} Bs. | <span style="color: #999; font-size: 0.85em;">-{{ item.pagos?.comision_plataforma | number:'1.2-2' }} Bs.</span>
           </td>
           <td>
-            <button 
-              *ngIf="item.estado === 'atendido'" 
-              class="btn-reporte" 
+            <button
+              *ngIf="item.estado === 'finalizado'"
+              class="btn-reporte"
               (click)="descargarPDF(item.id)"
               [disabled]="descargas[item.id]">
               <span>📄</span> {{ descargas[item.id] ? 'Generando...' : 'Reporte' }}

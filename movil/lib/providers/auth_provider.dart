@@ -27,6 +27,13 @@ class AuthProvider extends ChangeNotifier {
   int? get userId => _userId;
   int? get roleId => _roleId;
   String? get userName => _userName;
+  bool get isCliente => _roleId == AuthService.clienteRoleId;
+  bool get isTecnico => _roleId == AuthService.tecnicoRoleId;
+  String get roleLabel {
+    if (isTecnico) return 'Tecnico';
+    if (isCliente) return 'Cliente';
+    return 'Usuario';
+  }
 
   /// Verifica si hay sesión activa al iniciar
   Future<void> _checkAuthentication() async {

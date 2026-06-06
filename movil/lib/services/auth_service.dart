@@ -13,6 +13,7 @@ class AuthService {
   static const String _userNameKey = 'auth_user_name';
   static const String _userEmailKey = 'auth_user_email';
   static const int clienteRoleId = 2;
+  static const int tecnicoRoleId = 3;
 
   AuthService({required this.apiService});
 
@@ -23,63 +24,121 @@ class AuthService {
     required String password,
   }) async {
     try {
-      // Hacer petición POST directamente con form-encoded
-      final response = await http.post(
-        Uri.parse('${apiService.baseUrl}/api/v1/auth/login'),
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-        },
-        body: {
-          'username': email,
-          'password': password,
-          'client_id': 'movil', // Indica que es desde la app móvil
-        },
-      );
+      Map<String, dynamic> data;
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final roleId = _readInt(data['rol_id']);
-
-        if (roleId != clienteRoleId) {
-          await logout();
-          throw Exception('Acceso denegado: esta app es solo para clientes.');
-        }
-        // Guardar token localmente
-        if (data['access_token'] != null) {
-          final prefs = await SharedPreferences.getInstance();
-          final token = data['access_token'] as String;
-          await prefs.setString(_tokenKey, token);
-          apiService.setAuthToken(token);
-          await prefs.setInt(_userRoleKey, AuthService.clienteRoleId);
-
-          final userId =
-              _readInt(data['usuario_id']) ?? _extractUserIdFromToken(token);
-          if (userId != null) {
-            await prefs.setInt(_userIdKey, userId);
-            data['user_id'] = userId;
-          }
-
-          if (data['user'] != null) {
-            await prefs.setString(_userKey, data['user'].toString());
-          }
-          if (data['nombre'] != null) {
-            await prefs.setString(_userNameKey, data['nombre'].toString());
-          }
-          await prefs.setString(_userEmailKey, email);
+      try {
+        data = await _loginConPlataforma(
+          email: email,
+          password: password,
+          plataforma: 'movil',
+        );
+      } on _LoginAttemptException catch (e) {
+        if (!_debeReintentarComoTecnico(e)) {
+          rethrow;
         }
 
-        return data;
-      } else {
-        final errorData = jsonDecode(response.body);
-        throw Exception(
-          errorData['detail'] ??
-              'Error al iniciar sesión: ${response.statusCode}',
+        data = await _loginConPlataforma(
+          email: email,
+          password: password,
+          plataforma: 'web',
         );
       }
+
+      final roleId = _readInt(data['rol_id']);
+      if (!_rolPermitido(roleId)) {
+        await logout();
+        throw _LoginAttemptException(
+          statusCode: 403,
+          message:
+              'Acceso denegado: esta app movil es solo para clientes y tecnicos.',
+        );
+      }
+
+      await _guardarSesion(data: data, email: email, roleId: roleId!);
+      return data;
+    } on _LoginAttemptException catch (e) {
+      throw Exception(e.message);
     } catch (e) {
       throw Exception('Error al iniciar sesión: $e');
     }
+  }
+
+  Future<Map<String, dynamic>> _loginConPlataforma({
+    required String email,
+    required String password,
+    required String plataforma,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${apiService.baseUrl}/api/v1/auth/login'),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: {
+        'username': email,
+        'password': password,
+        'client_id': plataforma,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+
+    throw _LoginAttemptException(
+      statusCode: response.statusCode,
+      message: _readErrorMessage(response),
+    );
+  }
+
+  Future<void> _guardarSesion({
+    required Map<String, dynamic> data,
+    required String email,
+    required int roleId,
+  }) async {
+    if (data['access_token'] == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = data['access_token'] as String;
+    await prefs.setString(_tokenKey, token);
+    apiService.setAuthToken(token);
+    await prefs.setInt(_userRoleKey, roleId);
+
+    final userId = _readInt(data['usuario_id']) ?? _extractUserIdFromToken(token);
+    if (userId != null) {
+      await prefs.setInt(_userIdKey, userId);
+      data['user_id'] = userId;
+    }
+
+    if (data['user'] != null) {
+      await prefs.setString(_userKey, data['user'].toString());
+    }
+    if (data['nombre'] != null) {
+      await prefs.setString(_userNameKey, data['nombre'].toString());
+    }
+    await prefs.setString(_userEmailKey, email);
+  }
+
+  bool _debeReintentarComoTecnico(_LoginAttemptException error) {
+    final message = error.message.toLowerCase();
+    return error.statusCode == 403 && message.contains('solo para clientes');
+  }
+
+  bool _rolPermitido(int? roleId) {
+    return roleId == clienteRoleId || roleId == tecnicoRoleId;
+  }
+
+  String _readErrorMessage(http.Response response) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic> && decoded['detail'] != null) {
+        return decoded['detail'].toString();
+      }
+    } catch (_) {
+      // Usa el fallback de abajo si el backend no envio JSON.
+    }
+
+    return 'Error al iniciar sesion: ${response.statusCode}';
   }
 
   /// Obtiene el token guardado localmente
@@ -106,14 +165,14 @@ class AuthService {
   Future<bool> isAuthenticated() async {
     final token = await getToken();
     final roleId = await getCurrentUserRoleId();
-    final isClientSession =
-        token != null && token.isNotEmpty && roleId == clienteRoleId;
+    final isValidMobileSession =
+        token != null && token.isNotEmpty && _rolPermitido(roleId);
 
-    if (token != null && token.isNotEmpty && !isClientSession) {
+    if (token != null && token.isNotEmpty && !isValidMobileSession) {
       await logout();
     }
 
-    return isClientSession;
+    return isValidMobileSession;
   }
 
   /// Obtiene datos del usuario guardados localmente
@@ -164,4 +223,14 @@ class AuthService {
       return null;
     }
   }
+}
+
+class _LoginAttemptException implements Exception {
+  final int statusCode;
+  final String message;
+
+  _LoginAttemptException({required this.statusCode, required this.message});
+
+  @override
+  String toString() => message;
 }

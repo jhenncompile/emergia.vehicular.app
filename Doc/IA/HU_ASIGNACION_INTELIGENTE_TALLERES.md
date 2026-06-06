@@ -271,10 +271,12 @@ Para la primera entrega implementada se usa:
 
 ```text
 score_total =
-  score_distancia * 0.45
-  + score_especialidad * 0.40
-  + score_disponibilidad * 0.15
+  score_disponibilidad * 0.45
+  + score_especialidad * 0.35
+  + score_distancia * 0.20
 ```
+
+Antes de calcular el score, se excluyen talleres fuera de horario laboral y talleres sin tecnicos activos.
 
 Luego se puede ampliar con historial y carga.
 
@@ -350,7 +352,8 @@ Si acepta:
 
 ```text
 incidente.taller_id = taller_id
-incidente.estado = en_proceso
+incidente.estado = asignado_taller
+incidente.tiempo_asignacion_segundos = segundos desde oferta hasta aceptacion
 candidato.estado = aceptado
 ```
 
@@ -358,7 +361,7 @@ El cliente recibe:
 
 ```text
 taller_acepto
-auxilio_en_camino
+taller_asignado
 ```
 
 ### 6. Taller rechaza
@@ -484,7 +487,7 @@ taller_rechazo
 taller_no_responde
 buscando_otro_taller
 auxilio_en_camino
-servicio_atendido
+servicio_finalizado
 sin_talleres_disponibles
 ```
 
@@ -496,7 +499,7 @@ taller_acepto
 taller_rechazo
 buscando_otro_taller
 auxilio_en_camino
-servicio_atendido
+servicio_finalizado
 sin_talleres_disponibles
 ```
 

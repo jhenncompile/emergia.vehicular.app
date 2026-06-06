@@ -22,15 +22,22 @@ class IncidenteProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   /// Cargar mis incidentes
-  Future<void> cargarMisIncidentes({required int usuarioId}) async {
+  Future<void> cargarMisIncidentes({
+    required int usuarioId,
+    bool esTecnico = false,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final remotosUsuario = await incidenteService.obtenerMisIncidentes();
+      final remotosUsuario = esTecnico
+          ? await incidenteService.obtenerIncidentesTecnico()
+          : await incidenteService.obtenerMisIncidentes();
 
-      final combinados = [..._localIncidentes, ...remotosUsuario];
+      final combinados = esTecnico
+          ? remotosUsuario
+          : [..._localIncidentes, ...remotosUsuario];
       final Map<int, Map<String, dynamic>> porId = {};
       for (final incidente in combinados) {
         final id = incidente['id'];
@@ -121,6 +128,36 @@ class IncidenteProvider extends ChangeNotifier {
     if (index != -1) {
       _misIncidentes[index] = {..._misIncidentes[index], 'estado': estado};
       notifyListeners();
+    }
+  }
+
+  Future<bool> cancelarIncidente({
+    required int incidenteId,
+    required String motivo,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final actualizado = await incidenteService.cancelarIncidente(
+        incidenteId: incidenteId,
+        motivo: motivo,
+      );
+
+      final index = _misIncidentes.indexWhere((inc) => inc['id'] == incidenteId);
+      if (index != -1) {
+        _misIncidentes[index] = actualizado;
+      }
+      _incidenteSeleccionado = actualizado;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 

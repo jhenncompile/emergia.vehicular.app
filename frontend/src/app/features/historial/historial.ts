@@ -31,11 +31,25 @@ export class HistorialComponent implements OnInit {
   tecnicoSeleccionado: number | null = null;
   
   estadosDisponibles = [
-    { value: 'atendido', label: 'Atendido' },
+    { value: 'finalizado', label: 'Finalizado' },
     { value: 'cancelado', label: 'Cancelado' },
-    { value: 'en_proceso', label: 'En Proceso' }
+    { value: 'en_atencion', label: 'En Atención' },
+    { value: 'en_camino', label: 'En Camino' },
+    { value: 'asignado_taller', label: 'Taller Asignado' }
   ];
-  estadosSeleccionados: string[] = ['atendido', 'cancelado'];
+  estadosSeleccionados: string[] = ['finalizado', 'cancelado'];
+
+  etiquetaEstado(estado: string): string {
+    const labels: Record<string, string> = {
+      buscando_taller: 'Buscando taller',
+      asignado_taller: 'Taller asignado',
+      en_camino: 'En camino',
+      en_atencion: 'En atención',
+      finalizado: 'Finalizado',
+      cancelado: 'Cancelado'
+    };
+    return labels[estado] || estado;
+  }
 
   ngOnInit() {
     this.cargarTecnicos(); // 👈 Cargamos los técnicos reales

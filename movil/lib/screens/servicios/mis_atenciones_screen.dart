@@ -41,13 +41,15 @@ class _MisAtencionesScreenState extends State<MisAtencionesScreen> {
         final activos = incidentes.where((i) {
           final estado = (i['estado'] ?? '').toString().toLowerCase();
           return estado == 'pendiente' ||
-              estado == 'en_proceso' ||
-              estado == 'en proceso';
+              estado == 'buscando_taller' ||
+              estado == 'asignado_taller' ||
+              estado == 'en_camino' ||
+              estado == 'en_atencion';
         }).toList();
 
         final pendientesPago = incidentes.where((i) {
           final pagoEstado = (i['pago_estado'] ?? '').toString().toLowerCase();
-          return pagoEstado == 'por_cobrar' || pagoEstado == 'pendiente';
+          return pagoEstado == 'por_cobrar';
         }).toList();
 
         return RefreshIndicator(

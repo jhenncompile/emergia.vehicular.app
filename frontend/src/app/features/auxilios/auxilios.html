@@ -15,7 +15,7 @@
 
   <div class="content-wrapper">
     <ng-container *ngIf="tabActiva === 'pendientes'">
-      <div *ngIf="incidentesPendientes.length === 0" class="empty-state">📭 No hay solicitudes pendientes.</div>
+      <div *ngIf="incidentesPendientes.length === 0" class="empty-state">📭 No hay ofertas disponibles.</div>
       <table *ngIf="incidentesPendientes.length > 0" class="modern-table">
         <thead>
           <tr>
@@ -46,7 +46,7 @@
             <td>
               <div class="action-cell">
                 <button class="btn-primary" (click)="aceptarIncidente(inc.id); $event.stopPropagation()">Aceptar</button>
-                <button class="btn-reject" (click)="abrirModalRechazo(inc); $event.stopPropagation()">Rechazar</button>
+                <button class="btn-reject" (click)="abrirModalRechazo(inc, 'rechazar'); $event.stopPropagation()">Rechazar</button>
               </div>
             </td>
           </tr>
@@ -70,8 +70,8 @@
           <tr *ngFor="let inc of misAtenciones" (click)="seleccionarIncidente(inc)" class="clickable-row">
             <td><strong>#{{ inc.id }}</strong></td>
             <td>
-              <span class="status-dot" [ngClass]="inc.estado"></span> 
-              <span class="status-text">{{ inc.estado | titlecase }}</span>
+              <span class="status-dot" [ngClass]="inc.estado"></span>
+              <span class="status-text">{{ etiquetaEstado(inc.estado) }}</span>
             </td>
             <td>
               <div *ngIf="inc.tecnico" class="tec-tag">🔧 {{ inc.tecnico.nombre }}</div>
@@ -88,17 +88,21 @@
             </td>
             <td>
               <div class="action-cell">
-                <button *ngIf="inc.estado !== 'atendido'" 
-                        class="btn-success" 
-                        (click)="finalizarAyuda(inc.id); $event.stopPropagation()">✅ Finalizar</button>
-                
-                <button *ngIf="inc.estado === 'atendido' && inc.pago_estado === 'pendiente'" 
-                        class="btn-pay" 
-                        (click)="abrirModalCobro(inc); $event.stopPropagation()">💵 Cobrar</button>
+                <button *ngIf="puedeAsignarTecnico(inc)"
+                        class="btn-success"
+                        (click)="incidenteAccion = inc; idTecnicoSeleccionado = inc.tecnico_id || 0; mostrarModalAsignar = true; $event.stopPropagation()">Asignar técnico</button>
 
-                <button *ngIf="inc.estado !== 'atendido' && inc.pago_estado === 'pendiente'" 
-                        class="btn-reject" 
-                        (click)="abrirModalRechazo(inc); $event.stopPropagation()">Rechazar</button>
+                <button *ngIf="puedeMarcarLlegada(inc)"
+                        class="btn-primary"
+                        (click)="marcarLlegada(inc.id); $event.stopPropagation()">Llegó</button>
+                
+                <button *ngIf="puedeCobrar(inc)"
+                        class="btn-pay"
+                        (click)="abrirModalCobro(inc); $event.stopPropagation()">Cobrar</button>
+
+                <button *ngIf="puedeCancelar(inc)"
+                        class="btn-reject"
+                        (click)="abrirModalRechazo(inc, 'cancelar'); $event.stopPropagation()">Cancelar</button>
 
                 <span *ngIf="inc.pago_estado === 'por_cobrar'" style="color: #d97706; font-weight: bold;">⏳ Cobro Emitido</span>
                 <span *ngIf="inc.pago_estado === 'pagado'" style="color: #10b981; font-weight: bold; background: #dcfce7; padding: 4px 8px; border-radius: 6px;">Pagado ✅</span>
@@ -129,7 +133,7 @@
         <label>🔧 Técnico Asignado:</label>
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
           <p style="margin: 0;"><strong>{{ incidenteSeleccionado.tecnico?.nombre || 'Sin asignar' }}</strong></p>
-          <button *ngIf="incidenteSeleccionado.estado !== 'atendido'" (click)="abrirReasignacion()" class="btn-link-action" style="color: #2563eb; background: none; border: none; cursor: pointer; text-decoration: underline; font-size: 0.8rem;">🔄 Reasignar</button>
+          <button *ngIf="puedeReasignarTecnico(incidenteSeleccionado)" (click)="abrirReasignacion()" class="btn-link-action" style="color: #2563eb; background: none; border: none; cursor: pointer; text-decoration: underline; font-size: 0.8rem;">🔄 Reasignar</button>
         </div>
         
         <label>🚗 Vehículo:</label>
@@ -183,14 +187,14 @@
 
   <div class="modal-overlay" *ngIf="mostrarModalRechazo">
     <div class="modal-card">
-      <div class="modal-header"><h3>🚫 Rechazar Servicio</h3></div>
+      <div class="modal-header"><h3>{{ accionMotivo === 'cancelar' ? 'Cancelar Incidente' : 'Rechazar Oferta' }}</h3></div>
       <div class="modal-body">
         <label>Escribe el motivo del rechazo:</label>
         <textarea [(ngModel)]="motivoRechazo" class="modern-input" rows="3"></textarea>
       </div>
       <div class="modal-footer">
         <button class="btn-outline" (click)="mostrarModalRechazo = false">Cancelar</button>
-        <button class="btn-primary" style="background: #e11d48;" (click)="confirmarRechazo()">Rechazar</button>
+        <button class="btn-primary" style="background: #e11d48;" (click)="confirmarRechazo()">{{ accionMotivo === 'cancelar' ? 'Cancelar' : 'Rechazar' }}</button>
       </div>
     </div>
   </div>

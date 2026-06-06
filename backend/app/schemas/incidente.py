@@ -62,7 +62,10 @@ class IncidenteBase(BaseModel):
     pago_estado: str = "pendiente"
     telefono_cliente: str = "No disponible"
     motivo_cancelacion: Optional[str] = None
+    cancelado_por: Optional[str] = None
+    tiempo_asignacion_segundos: Optional[int] = None
     fecha_creacion: Optional[datetime] = None
+    fecha_llegada_tecnico: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -81,7 +84,15 @@ class IncidenteUpdate(BaseModel):
     estado: Optional[str] = None 
     pago_estado: Optional[str] = None
     motivo_cancelacion: Optional[str] = None
+    cancelado_por: Optional[str] = None
+    tiempo_asignacion_segundos: Optional[int] = None
+    fecha_llegada_tecnico: Optional[datetime] = None
     resumen_ia: Optional[str] = None
+
+
+class IncidenteCancel(BaseModel):
+    motivo_cancelacion: str
+    cancelado_por: Optional[str] = None
 
 class Incidente(IncidenteBase):
     id: int
@@ -96,6 +107,9 @@ class Incidente(IncidenteBase):
     pagos: Optional[PagoInfo] = None  # Relación con el pago asociado
     taller: Optional[TallerInfo] = None  # 🏢 Taller asignado
     distancia_metros: Optional[float] = None  # 📏 Distancia al taller en metros 
+    mensaje_asignacion: Optional[str] = None
+    taller_ofrecido: Optional[TallerInfo] = None
+    candidato_ofrecido_id: Optional[int] = None
 
     @root_validator(pre=True)
     def extraer_datos_virtuales(cls, obj):
@@ -120,15 +134,25 @@ class Incidente(IncidenteBase):
                 "pago_estado": obj.pago_estado,
                 "telefono_cliente": tel,
                 "motivo_cancelacion": obj.motivo_cancelacion,
+                "cancelado_por": getattr(obj, "cancelado_por", None),
+                "tiempo_asignacion_segundos": getattr(
+                    obj,
+                    "tiempo_asignacion_segundos",
+                    None,
+                ),
                 "transcripcion_audio": obj.transcripcion_audio,
                 "clasificacion_ia": obj.clasificacion_ia,
                 "resumen_ia": obj.resumen_ia,
                 "fecha_creacion": obj.fecha_creacion,
+                "fecha_llegada_tecnico": getattr(obj, "fecha_llegada_tecnico", None),
                 "usuario": getattr(obj, "usuario", None),  # 👤 AGREGADO: cliente
                 "tecnico": getattr(obj, "tecnico", None),  # 👨‍🔧 técnico
                 "vehiculo": getattr(obj, "vehiculo", None),  # 🚗 vehículo
                 "pagos": getattr(obj, "pagos", None),  # pago
                 "taller": getattr(obj, "taller", None),  # 🏢 taller
-                "distancia_metros": getattr(obj, "distancia_metros", None)  # 📏 distancia
+                "distancia_metros": getattr(obj, "distancia_metros", None),  # 📏 distancia
+                "mensaje_asignacion": getattr(obj, "mensaje_asignacion", None),
+                "taller_ofrecido": getattr(obj, "taller_ofrecido", None),
+                "candidato_ofrecido_id": getattr(obj, "candidato_ofrecido_id", None),
             }
         return obj

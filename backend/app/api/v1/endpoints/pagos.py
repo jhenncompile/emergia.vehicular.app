@@ -9,6 +9,7 @@ from app.api import deps
 from app.crud.crud_pago import pago_crud
 from app.crud.crud_bitacora import bitacora_crud # 🚩 Importamos la bitácora
 from app.schemas.pago import Pago, PagoCreate
+from app.core.estados import EstadoIncidente
 
 router = APIRouter()
 
@@ -81,6 +82,7 @@ def confirmar_pago(
     incidente = db.query(Incidente).filter(Incidente.id == pago.incidente_id).first()
     if incidente:
         incidente.pago_estado = "pagado"
+        incidente.estado = EstadoIncidente.FINALIZADO
         db.add(incidente)
 
     db.commit()
@@ -120,6 +122,8 @@ def cancelar_pago(
     incidente = db.query(Incidente).filter(Incidente.id == pago.incidente_id).first()
     if incidente:
         incidente.pago_estado = "pendiente"
+        if incidente.estado == EstadoIncidente.FINALIZADO:
+            incidente.estado = EstadoIncidente.EN_ATENCION
         db.add(incidente)
 
     db.commit()
@@ -172,11 +176,14 @@ def editar_pago(
         incidente = db.query(Incidente).filter(Incidente.id == pago.incidente_id).first()
         if incidente:
             incidente.pago_estado = "pagado"
+            incidente.estado = EstadoIncidente.FINALIZADO
             db.add(incidente)
     elif datos.estado == "cancelado":
         incidente = db.query(Incidente).filter(Incidente.id == pago.incidente_id).first()
         if incidente:
             incidente.pago_estado = "pendiente" # Vuelve a poder cobrarse
+            if incidente.estado == EstadoIncidente.FINALIZADO:
+                incidente.estado = EstadoIncidente.EN_ATENCION
             db.add(incidente)
 
     # 5. Guardamos en BD y registramos en la Bitácora

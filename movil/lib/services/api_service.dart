@@ -115,7 +115,7 @@ class ApiService {
 
   /// PUT: Actualiza recursos existentes en el backend
   /// Ej: var incidenteActualizado = await apiService.put('/incidentes/5', body: {
-  ///       'estado': 'en_proceso',
+  ///       'estado': 'en_camino',
   ///       'taller_id': 3,
   ///     });
   ///     → PUT http://localhost:5000/api/v1/incidentes/5

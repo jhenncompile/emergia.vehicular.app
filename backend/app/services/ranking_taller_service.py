@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session, joinedload
 
 from app.crud.crud_incidente import incidente_crud
+from app.core.estados import EstadoIncidente
 from app.models.asignacion_inteligente import (
     CategoriaEspecialidad,
     CategoriaIncidente,
@@ -202,9 +203,9 @@ class RankingTallerService:
             score_distancia = self._score_distancia(distancia_metros, radio_max_km)
             score_disponibilidad = self._score_disponibilidad(taller, tecnicos_activos)
             score_total = (
-                score_distancia * 0.45
-                + score_especialidad * 0.40
-                + score_disponibilidad * 0.15
+                score_disponibilidad * 0.45
+                + score_especialidad * 0.35
+                + score_distancia * 0.20
             )
 
             calculados.append(
@@ -239,6 +240,12 @@ class RankingTallerService:
         ).delete(synchronize_session=False)
 
         ahora = _ahora()
+        incidente.estado = (
+            EstadoIncidente.BUSCANDO_TALLER
+            if calculados
+            else EstadoIncidente.PENDIENTE
+        )
+        self.db.add(incidente)
         for index, item in enumerate(calculados, start=1):
             es_primero = index == 1
             self.db.add(
@@ -371,10 +378,14 @@ class RankingTallerService:
             .first()
         )
         if not siguiente:
+            incidente.estado = EstadoIncidente.PENDIENTE
+            self.db.add(incidente)
             self.db.commit()
             self._notificar_sin_talleres(incidente)
             return None
 
+        incidente.estado = EstadoIncidente.BUSCANDO_TALLER
+        self.db.add(incidente)
         siguiente.estado = "ofrecido"
         siguiente.fecha_oferta = ahora
         siguiente.expira_en = ahora + timedelta(minutes=timeout_minutos)
