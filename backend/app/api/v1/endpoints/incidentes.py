@@ -1035,6 +1035,30 @@ def _adjuntar_mensaje_oferta(
     return incidente
 
 
+def _clasificacion_visible_incidente(incidente: Incidente) -> str:
+    if incidente.clasificacion_ia:
+        return incidente.clasificacion_ia
+
+    texto_base = " ".join(
+        parte
+        for parte in [
+            incidente.descripcion,
+            incidente.transcripcion_audio,
+            incidente.resumen_ia,
+        ]
+        if parte
+    )
+    if texto_base:
+        return _clasificar_por_texto(texto_base)
+    return "Otro / No clasificado"
+
+
+def _adjuntar_clasificacion_visible(incidente: Incidente) -> Incidente:
+    if not incidente.clasificacion_ia:
+        incidente.clasificacion_ia = _clasificacion_visible_incidente(incidente)
+    return incidente
+
+
 def _adjuntar_mensaje_oferta_actual(db: Session, incidente: Incidente) -> Incidente:
     candidato = (
         db.query(IncidenteAsignacionCandidato)
@@ -1055,10 +1079,9 @@ def _generar_ranking_automatico(
 ) -> Incidente:
     incidente_id = incidente.id
     try:
-        candidatos = RankingTallerService(db).generar_candidatos_sin_ofrecer(incidente)
+        candidatos = RankingTallerService(db).generar_y_ofrecer(incidente)
         db.refresh(incidente)
-        # Ya no ofrecemos el candidato automaticamente aca,
-        # esperamos que el cliente llame al endpoint seleccionar-taller.
+        # Ofrecemos el primer candidato automáticamente y notificamos al cliente y taller.
     except Exception as exc:
         db.rollback()
         logger.exception(
@@ -1291,15 +1314,35 @@ def listar_candidatos_incidente(
         raise HTTPException(status_code=404, detail="Incidente no encontrado")
         
     candidatos = RankingTallerService(db).obtener_candidatos(incidente_id)
+    clasificacion_ia = _clasificacion_visible_incidente(incidente)
     resultado = []
     for c in candidatos:
+        distancia_km = None
+        if (
+            c.taller
+            and c.taller.latitud is not None
+            and c.taller.longitud is not None
+            and incidente.latitud is not None
+            and incidente.longitud is not None
+        ):
+            distancia_metros = incidente_crud.calcular_distancia_haversine(
+                float(c.taller.latitud),
+                float(c.taller.longitud),
+                float(incidente.latitud),
+                float(incidente.longitud),
+            )
+            distancia_km = round(distancia_metros / 1000, 1)
+
         resultado.append({
+            "incidente_id": incidente.id,
+            "clasificacion_ia": clasificacion_ia,
+            "prioridad": incidente.prioridad,
             "taller_id": c.taller_id,
             "taller_nombre": c.taller.nombre if c.taller else "Desconocido",
             "score_total": c.score_total,
             "estado": c.estado,
             "explicacion": c.explicacion,
-            "distancia_km": round((c.score_distancia or 0) * 40, 1), # Estimado basado en radio_max_km=40
+            "distancia_km": distancia_km,
             "calificacion_promedio": c.taller.calificacion_promedio if c.taller else 0.0,
         })
     return resultado
@@ -1425,6 +1468,7 @@ def leer_mis_incidentes_cliente(
 
     for incidente in incidentes:
         _adjuntar_mensaje_oferta_actual(db, incidente)
+        _adjuntar_clasificacion_visible(incidente)
 
     return incidentes
 
@@ -1450,25 +1494,7 @@ def generar_ranking_incidente(
     return RankingTallerService(db).generar_y_ofrecer(incidente_db)
 
 
-@router.get(
-    "/{id}/candidatos",
-    response_model=List[IncidenteAsignacionCandidatoOut],
-)
-def listar_candidatos_incidente(
-    *,
-    db: Session = Depends(deps.get_db),
-    id: int,
-    current_user = Depends(deps.get_current_active_user),
-):
-    """Lista los talleres candidatos ordenados por relevancia."""
-    incidente_db = incidente_crud.get(db, id=id)
-    if not incidente_db:
-        raise HTTPException(status_code=404, detail="Incidente no encontrado")
 
-    if current_user.rol_id == 2 and incidente_db.usuario_id != current_user.id:
-        raise HTTPException(status_code=403, detail="No puedes ver este ranking.")
-
-    return RankingTallerService(db).obtener_candidatos(id)
 
 
 @router.post(
@@ -1634,10 +1660,10 @@ def asignar_tecnico_a_incidente(
     incidente_db = incidente_crud.get(db, id=id)
     if not incidente_db or incidente_db.taller_id != current_user.taller_id:
         raise HTTPException(status_code=403, detail="No puedes asignar técnicos a este incidente.")
-    if incidente_db.estado not in [EstadoIncidente.ASIGNADO_TALLER, EstadoIncidente.EN_CAMINO]:
+    if incidente_db.estado not in [EstadoIncidente.ASIGNADO_TALLER, EstadoIncidente.EN_CAMINO, EstadoIncidente.EN_ATENCION]:
         raise HTTPException(
             status_code=400,
-            detail="Solo puedes asignar tecnico cuando el incidente esta asignado al taller o en camino.",
+            detail="Solo puedes asignar tecnico cuando el incidente esta asignado, en camino o en atencion.",
         )
 
     # Opcional: Validar que el técnico pertenezca al mismo taller
@@ -1825,7 +1851,7 @@ def cancelar_incidente(
         if incidente_db.estado not in ESTADOS_CANCELABLES_TALLER:
             raise HTTPException(
                 status_code=400,
-                detail="El taller solo puede cancelar antes de que inicie la atencion.",
+                detail="El taller no puede cancelar un incidente que ya fue finalizado o cancelado.",
             )
         cancelado_por = CanceladoPor.TALLER
     elif current_user.rol_id == 1 and obj_in.cancelado_por:

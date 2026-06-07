@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, root_validator
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from decimal import Decimal
 from datetime import datetime
 
@@ -45,6 +45,14 @@ class TallerInfo(BaseModel):
     latitud: Decimal
     longitud: Decimal
     comision_porcentaje: Optional[Decimal] = None
+    class Config:
+        from_attributes = True
+
+# Esquema para mostrar evidencia
+class EvidenciaInfo(BaseModel):
+    id: int
+    tipo_archivo: Optional[str] = None
+    url_archivo: Optional[str] = None
     class Config:
         from_attributes = True
 
@@ -110,6 +118,7 @@ class Incidente(IncidenteBase):
     mensaje_asignacion: Optional[str] = None
     taller_ofrecido: Optional[TallerInfo] = None
     candidato_ofrecido_id: Optional[int] = None
+    evidencias: Optional[List[EvidenciaInfo]] = None
 
     @root_validator(pre=True)
     def extraer_datos_virtuales(cls, obj):
@@ -148,11 +157,12 @@ class Incidente(IncidenteBase):
                 "usuario": getattr(obj, "usuario", None),  # 👤 AGREGADO: cliente
                 "tecnico": getattr(obj, "tecnico", None),  # 👨‍🔧 técnico
                 "vehiculo": getattr(obj, "vehiculo", None),  # 🚗 vehículo
-                "pagos": getattr(obj, "pagos", None),  # pago
+                "pagos": getattr(obj, "pagos", None),  # 💵 pago asociado
                 "taller": getattr(obj, "taller", None),  # 🏢 taller
                 "distancia_metros": getattr(obj, "distancia_metros", None),  # 📏 distancia
                 "mensaje_asignacion": getattr(obj, "mensaje_asignacion", None),
                 "taller_ofrecido": getattr(obj, "taller_ofrecido", None),
                 "candidato_ofrecido_id": getattr(obj, "candidato_ofrecido_id", None),
+                "evidencias": getattr(obj, "evidencias", []), # 📷 evidencias
             }
         return obj

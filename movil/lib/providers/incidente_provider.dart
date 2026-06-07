@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/incidente_service.dart';
+import '../services/offline_incidente_service.dart';
 
 class IncidenteProvider extends ChangeNotifier {
   final IncidenteService incidenteService;
@@ -10,6 +11,7 @@ class IncidenteProvider extends ChangeNotifier {
   Map<String, dynamic>? _ultimoIncidenteReportado;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _guardadoOffline = false;
   final Map<int, Map<String, double>> _ubicacionTecnicosEnVivo = {};
 
   IncidenteProvider({required this.incidenteService});
@@ -34,6 +36,7 @@ class IncidenteProvider extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get guardadoOffline => _guardadoOffline;
 
   Map<String, double>? getUbicacionTecnicoEnVivo(int incidenteId) {
     return _ubicacionTecnicosEnVivo[incidenteId];
@@ -97,6 +100,7 @@ class IncidenteProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     _errorMessage = null;
+    _guardadoOffline = false;
     notifyListeners();
 
     try {
@@ -118,6 +122,33 @@ class IncidenteProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
+      // Si es error de conexión, guardar localmente (CU-N03)
+      if (OfflineIncidenteService.esErrorDeConexion(e)) {
+        try {
+          final incidenteLocal = await OfflineIncidenteService.guardarLocalmente(
+            usuarioId: usuarioId,
+            vehiculoId: vehiculoId,
+            descripcion: descripcion,
+            ubicacion: ubicacion,
+            latitud: latitud,
+            longitud: longitud,
+            audioPath: audioPath,
+            imagenPath: imagenPath,
+          );
+          _ultimoIncidenteReportado = incidenteLocal;
+          _localIncidentes.insert(0, incidenteLocal);
+          _misIncidentes.insert(0, incidenteLocal);
+          _guardadoOffline = true;
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        } catch (localError) {
+          _errorMessage = 'Sin conexión y no se pudo guardar localmente.';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
+      }
       _errorMessage = e.toString();
       _isLoading = false;
       notifyListeners();
@@ -186,18 +217,15 @@ class IncidenteProvider extends ChangeNotifier {
 
   /// Obtener lista de talleres candidatos para un incidente
   Future<List<Map<String, dynamic>>> obtenerCandidatos(int incidenteId) async {
-    _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    // No usamos _isLoading = true aqui para evitar que la UI principal se reconstruya
+    // y desmonte los dialogos (showDialog) que se hayan abierto.
 
     try {
       final candidatos = await incidenteService.obtenerCandidatos(incidenteId);
-      _isLoading = false;
-      notifyListeners();
       return candidatos;
     } catch (e) {
       _errorMessage = e.toString();
-      _isLoading = false;
       notifyListeners();
       return [];
     }

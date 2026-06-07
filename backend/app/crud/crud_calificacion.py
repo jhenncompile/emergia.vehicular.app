@@ -1,7 +1,11 @@
 from sqlalchemy.orm import Session
+import app.db.base
 from sqlalchemy import func
+from datetime import datetime
+from typing import Optional
 from app.models.calificacion import Calificacion
 from app.models.incidente import Incidente
+from app.models.vehiculo import Vehiculo
 from app.models.taller import Taller
 from app.schemas.calificacion import CalificacionCreate
 from fastapi import HTTPException, status
@@ -65,15 +69,24 @@ class CRUDCalificacion:
             .first()
         )
 
-    def promedio_taller(self, db: Session, taller_id: int) -> dict:
-        resultado = (
+    def promedio_taller(self, db: Session, taller_id: int, fecha_inicio: Optional[datetime] = None, fecha_fin: Optional[datetime] = None, tecnico_id: Optional[int] = None) -> dict:
+        query = (
             db.query(
                 func.avg(Calificacion.puntuacion).label("promedio"),
                 func.count(Calificacion.id).label("total"),
             )
             .filter(Calificacion.taller_id == taller_id)
-            .one()
         )
+        if fecha_inicio or fecha_fin or tecnico_id:
+            query = query.join(Incidente, Calificacion.incidente_id == Incidente.id)
+            if fecha_inicio:
+                query = query.filter(Incidente.fecha_creacion >= fecha_inicio)
+            if fecha_fin:
+                query = query.filter(Incidente.fecha_creacion <= fecha_fin)
+            if tecnico_id:
+                query = query.filter(Incidente.tecnico_id == tecnico_id)
+
+        resultado = query.one()
         return {
             "taller_id": taller_id,
             "promedio": round(float(resultado.promedio), 2) if resultado.promedio else None,
@@ -91,19 +104,26 @@ class CRUDCalificacion:
         if taller:
             taller.calificacion_promedio = round(float(resultado), 2) if resultado else None
 
-    def obtener_por_taller(self, db: Session, taller_id: int):
+    def obtener_por_taller(self, db: Session, taller_id: int, fecha_inicio: Optional[datetime] = None, fecha_fin: Optional[datetime] = None, tecnico_id: Optional[int] = None):
         from app.models.usuario import Usuario
         from app.models.vehiculo import Vehiculo
         
-        calificaciones = (
+        query = (
             db.query(Calificacion, Usuario, Vehiculo)
             .join(Usuario, Calificacion.usuario_id == Usuario.id)
             .join(Incidente, Calificacion.incidente_id == Incidente.id)
             .outerjoin(Vehiculo, Incidente.vehiculo_id == Vehiculo.id)
             .filter(Calificacion.taller_id == taller_id)
-            .order_by(Calificacion.fecha_creacion.desc())
-            .all()
         )
+
+        if fecha_inicio:
+            query = query.filter(Incidente.fecha_creacion >= fecha_inicio)
+        if fecha_fin:
+            query = query.filter(Incidente.fecha_creacion <= fecha_fin)
+        if tecnico_id:
+            query = query.filter(Incidente.tecnico_id == tecnico_id)
+
+        calificaciones = query.order_by(Calificacion.fecha_creacion.desc()).all()
         
         resultado = []
         for cal, usu, veh in calificaciones:

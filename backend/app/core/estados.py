@@ -30,6 +30,7 @@ ESTADOS_CANCELABLES_CLIENTE = {
 ESTADOS_CANCELABLES_TALLER = {
     EstadoIncidente.ASIGNADO_TALLER,
     EstadoIncidente.EN_CAMINO,
+    EstadoIncidente.EN_ATENCION,
 }
 
 

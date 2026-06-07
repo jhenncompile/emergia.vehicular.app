@@ -15,6 +15,7 @@ import '../../providers/incidente_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/vehiculo_provider.dart';
 import '../../theme/colors.dart';
+import 'map_screen.dart';
 
 class ReportarIncidenteScreen extends StatefulWidget {
   const ReportarIncidenteScreen({super.key});
@@ -897,23 +898,54 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
 
     if (!context.mounted) return;
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('¡Incidente reportado exitosamente!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      await _mostrarResultadoIA(
-        context,
-        incidenteProvider.ultimoIncidenteReportado,
-      );
-      if (!context.mounted) return;
-      final incidenteId = incidenteProvider.ultimoIncidenteReportado?['id'];
-      if (incidenteId != null) {
-        await _mostrarSeleccionTaller(context, incidenteProvider, incidenteId);
+      final guardadoOffline = incidenteProvider.guardadoOffline;
+
+      if (guardadoOffline) {
+        // CU-N03: Sin internet, guardado localmente
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.wifi_off, color: Colors.orange),
+                SizedBox(width: 8),
+                Text('Sin conexión'),
+              ],
+            ),
+            content: const Text(
+              'No se detectó conexión a internet.\n\n'
+              'Tu emergencia fue guardada localmente y está marcada como '
+              '"Pendiente de sincronización". Se enviará al servidor automáticamente '
+              'cuando vuelvas a tener conexión.',
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Entendido'),
+              ),
+            ],
+          ),
+        );
+        if (!context.mounted) return;
+        Navigator.of(context).pop();
+      } else {
+        // Online: mostrar resultado IA y navegar al mapa
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('¡Incidente reportado! Buscando taller...'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await _mostrarResultadoIA(
+          context,
+          incidenteProvider.ultimoIncidenteReportado,
+        );
+        if (!context.mounted) return;
+        // Navegar al mapa de seguimiento
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MapScreen()),
+        );
       }
-      if (!context.mounted) return;
-      Navigator.of(context).pop();
     }
   }
 

@@ -33,6 +33,17 @@
         <span *ngIf="notificacionesNoLeidas > 0" class="notification-badge">{{ notificacionesNoLeidas }}</span>
       </a>
 
+      <p class="nav-label">CONTROL Y QA</p>
+      <a routerLink="/historial" routerLinkActive="active" class="nav-link">
+        <span>📋</span> Historial
+      </a>
+      <a routerLink="/analisis" routerLinkActive="active" class="nav-link">
+        <span>🗺️</span> Análisis Geográfico
+      </a>
+      <a routerLink="/ranking" routerLinkActive="active" class="nav-link">
+        <span>🏆</span> Ranking de Talleres
+      </a>
+
       <p class="nav-label">CONFIGURACIÓN</p>
       <a routerLink="/perfil-taller" routerLinkActive="active" class="nav-link">
         <span>🏢</span> Mi Taller
@@ -50,6 +61,9 @@
       </a>
       <a routerLink="/historial" routerLinkActive="active" class="nav-link">
         <span>📈</span> Historial y Métricas
+      </a>
+      <a routerLink="/analisis" routerLinkActive="active" class="nav-link">
+        <span>🗺️</span> Análisis Geográfico
       </a>
     </div>
   </nav>

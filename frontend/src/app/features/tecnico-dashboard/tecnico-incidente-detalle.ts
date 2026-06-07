@@ -7,7 +7,7 @@ import { NotificacionContadorService } from '../../core/services/notificacion-co
 import { WebSocketNotificacionService } from '../../core/services/websocket-notificacion.service';
 import { Subscription } from 'rxjs';
 import * as L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+
 
 @Component({
   selector: 'app-tecnico-incidente-detalle',

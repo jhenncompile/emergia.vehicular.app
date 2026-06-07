@@ -1,0 +1,53 @@
+<div class="analisis-container">
+  <!-- Header -->
+  <header class="analisis-header">
+    <div class="header-titles">
+      <h1>Análisis de Incidentes Vehiculares</h1>
+      <p class="subtitle">Distribución y demanda geográfica en Santa Cruz</p>
+    </div>
+    
+    <div class="controls">
+      <div class="periodo-selector">
+        <label for="periodo">Período de Tiempo</label>
+        <select id="periodo" [(ngModel)]="periodoSeleccionado" (change)="onPeriodoChange()">
+          <option [value]="1">Hoy</option>
+          <option [value]="7">Última Semana</option>
+          <option [value]="30">Último Mes</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="analisis-content">
+    
+    <!-- Chart Section -->
+    <section class="card chart-card">
+      <div class="card-header">
+        <h2>Distribución por Tipo</h2>
+        <span class="badge">Total de Incidentes</span>
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <canvas baseChart
+            [data]="barChartData"
+            [options]="barChartOptions"
+            [type]="barChartType">
+          </canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Map Section -->
+    <section class="card map-card">
+      <div class="card-header">
+        <h2>Zonas de Demanda (Mapa de Calor)</h2>
+        <span class="badge">Densidad Geográfica</span>
+      </div>
+      <div class="card-body">
+        <div class="map-container" #mapElement></div>
+      </div>
+    </section>
+
+  </main>
+</div>

@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import func, and_
 from app.models.usuario import Usuario
 from app.models.pago import Pago
+from app.models.calificacion import Calificacion
 from app.core.estados import CanceladoPor, EstadoIncidente
 from math import radians, cos, sin, asin, sqrt
 
@@ -164,15 +165,65 @@ class CRUDIncidente(CRUDBase[Incidente, IncidenteCreate, IncidenteUpdate]):
         total_bruto = sum(p.monto for p in pagos) if pagos else 0
         total_comision = sum(p.comision_plataforma for p in pagos) if pagos else 0
 
-        tiempo_query = db.query(func.avg(self.model.tiempo_asignacion_segundos)).filter(
+        tiempo_query = db.query(
+            self.model.tiempo_asignacion_segundos,
+            self.model.fecha_creacion,
+            self.model.fecha_llegada_tecnico
+        ).filter(
             self.model.taller_id == taller_id,
-            self.model.tiempo_asignacion_segundos.isnot(None),
         )
         if fecha_inicio:
             tiempo_query = tiempo_query.filter(self.model.fecha_creacion >= fecha_inicio)
         if fecha_fin:
             tiempo_query = tiempo_query.filter(self.model.fecha_creacion <= fecha_fin)
-        tiempo_promedio = tiempo_query.scalar()
+            
+        tiempos = tiempo_query.all()
+        
+        asignaciones = [t[0] for t in tiempos if t[0] is not None]
+        tiempo_promedio = sum(asignaciones) / len(asignaciones) if asignaciones else None
+        
+        llegadas = []
+        llegadas_dentro_sla = 0
+        SLA_LLEGADA_SEGUNDOS = 60 * 60 # 60 minutos como meta de SLA
+
+        for t_asig, f_creacion, f_llegada in tiempos:
+            if f_llegada and f_creacion and t_asig is not None:
+                delta = (f_llegada - f_creacion).total_seconds() - t_asig
+                if delta >= 0:
+                    llegadas.append(delta)
+                    if delta <= SLA_LLEGADA_SEGUNDOS:
+                        llegadas_dentro_sla += 1
+        
+        tiempo_promedio_llegada = sum(llegadas) / len(llegadas) if llegadas else None
+        cumplimiento_sla_porcentaje = (llegadas_dentro_sla / len(llegadas)) * 100 if llegadas else 0.0
+
+        # 3. Conteo de incidentes por estado
+        query_estados = db.query(
+            self.model.estado, func.count(self.model.id).label("total")
+        ).filter(self.model.taller_id == taller_id)
+        if fecha_inicio:
+            query_estados = query_estados.filter(self.model.fecha_creacion >= fecha_inicio)
+        if fecha_fin:
+            query_estados = query_estados.filter(self.model.fecha_creacion <= fecha_fin)
+        if tecnico_id:
+            query_estados = query_estados.filter(self.model.tecnico_id == tecnico_id)
+        conteo_estados = query_estados.group_by(self.model.estado).all()
+        
+        # 4. Calificación Promedio del Taller
+        query_calif = db.query(func.avg(Calificacion.puntuacion))\
+                        .join(Incidente, Calificacion.incidente_id == Incidente.id)\
+                        .filter(Incidente.taller_id == taller_id)
+        
+        if fecha_inicio:
+            query_calif = query_calif.filter(Incidente.fecha_creacion >= fecha_inicio)
+        if fecha_fin:
+            query_calif = query_calif.filter(Incidente.fecha_creacion <= fecha_fin)
+        if tecnico_id:
+            query_calif = query_calif.filter(Incidente.tecnico_id == tecnico_id)
+                                     
+        promedio_calif = query_calif.scalar()
+
+        print(f"DEBUG METRICAS: Taller={taller_id}, FI={fecha_inicio}, FF={fecha_fin}, Estados={conteo_estados}", flush=True)
 
         return {
             "atenciones_por_tecnico": [{"tecnico": t[0], "cantidad": t[1]} for t in por_tecnico],
@@ -185,6 +236,15 @@ class CRUDIncidente(CRUDBase[Incidente, IncidenteCreate, IncidenteUpdate]):
                 if tiempo_promedio is not None
                 else None
             ),
+            "tiempo_promedio_llegada_segundos": (
+                round(float(tiempo_promedio_llegada), 2)
+                if tiempo_promedio_llegada is not None
+                else None
+            ),
+            "cumplimiento_sla_porcentaje": round(cumplimiento_sla_porcentaje, 1),
+            "promedio_calificacion": round(float(promedio_calif), 1) if promedio_calif is not None else 0.0,
+            "conteo_por_estado": [{"estado": e[0], "cantidad": e[1]} for e in conteo_estados],
+            "total_incidentes": sum(e[1] for e in conteo_estados),
         }
     
 incidente_crud = CRUDIncidente(Incidente)

@@ -197,8 +197,7 @@ class RankingTallerService:
                 taller,
                 especialidades_requeridas,
             )
-            if score_especialidad <= 0 and categoria.nombre != "Otro / No clasificado":
-                continue
+            # Se permite fallback
 
             score_distancia = self._score_distancia(distancia_metros, radio_max_km)
             score_disponibilidad = self._score_disponibilidad(taller, tecnicos_activos)
@@ -227,13 +226,14 @@ class RankingTallerService:
                 }
             )
 
-        calculados.sort(
-            key=lambda item: (
-                item["score_total"],
-                -(item["distancia_metros"] or 999999),
-            ),
-            reverse=True,
-        )
+        def sort_key(item):
+            tiene_especialidad = item["score_especialidad"] > 0
+            if tiene_especialidad:
+                return (1, item["score_total"], -(item["distancia_metros"] or 999999))
+            else:
+                return (0, -(item["distancia_metros"] or 999999), 0)
+
+        calculados.sort(key=sort_key, reverse=True)
 
         self.db.query(IncidenteAsignacionCandidato).filter(
             IncidenteAsignacionCandidato.incidente_id == incidente.id
@@ -314,8 +314,7 @@ class RankingTallerService:
                 taller,
                 especialidades_requeridas,
             )
-            if score_especialidad <= 0 and categoria.nombre != "Otro / No clasificado":
-                continue
+            # Se permite que talleres sin la especialidad sean considerados como fallback
 
             score_distancia = self._score_distancia(distancia_metros, radio_max_km)
             score_disponibilidad = self._score_disponibilidad(taller, tecnicos_activos)
@@ -344,13 +343,14 @@ class RankingTallerService:
                 }
             )
 
-        calculados.sort(
-            key=lambda item: (
-                item["score_total"],
-                -(item["distancia_metros"] or 999999),
-            ),
-            reverse=True,
-        )
+        def sort_key(item):
+            tiene_especialidad = item["score_especialidad"] > 0
+            if tiene_especialidad:
+                return (1, item["score_total"], -(item["distancia_metros"] or 999999))
+            else:
+                return (0, -(item["distancia_metros"] or 999999), 0)
+
+        calculados.sort(key=sort_key, reverse=True)
 
         self.db.query(IncidenteAsignacionCandidato).filter(
             IncidenteAsignacionCandidato.incidente_id == incidente.id
@@ -393,7 +393,20 @@ class RankingTallerService:
         """El cliente elige manualmente el taller. Lo pasamos a ofrecido."""
         candidato = self.obtener_candidato_taller(incidente.id, taller_id)
         if not candidato:
-            return None
+            # Si el cliente lo seleccionó manualmente pero no era candidato, lo creamos
+            candidato = IncidenteAsignacionCandidato(
+                incidente_id=incidente.id,
+                taller_id=taller_id,
+                orden=1,
+                score_total=1.0,
+                score_distancia=1.0,
+                score_especialidad=1.0,
+                score_disponibilidad=1.0,
+                estado="pendiente",
+                explicacion="Seleccionado manualmente por el cliente."
+            )
+            self.db.add(candidato)
+            self.db.flush()
 
         ahora = _ahora()
         candidato.estado = "ofrecido"

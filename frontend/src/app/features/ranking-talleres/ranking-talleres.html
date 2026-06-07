@@ -1,0 +1,76 @@
+<div class="ranking-container">
+  <header class="ranking-header">
+    <div class="header-titles">
+      <h1>🏆 Ranking de Eficiencia</h1>
+      <p class="subtitle">Evaluación de talleres en la red de asistencia</p>
+    </div>
+    
+    <div class="controls">
+      <div class="periodo-selector">
+        <label for="periodo">Evaluar</label>
+        <select id="periodo" [(ngModel)]="periodoSeleccionado" (change)="onPeriodoChange()">
+          <option [value]="7">Última Semana</option>
+          <option [value]="30">Último Mes</option>
+          <option [value]="90">Último Trimestre</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <div class="ranking-content">
+    <div class="card leaderboard-card">
+      <div class="card-header">
+        <h2>Top Desempeño</h2>
+        <span class="badge">Ranking Global</span>
+      </div>
+      <div class="card-body">
+        
+        <div *ngIf="cargando" class="loading-state">
+          Calculando posiciones...
+        </div>
+
+        <div *ngIf="!cargando && ranking.length === 0" class="empty-state">
+          No hay datos suficientes para el período seleccionado.
+        </div>
+
+        <table *ngIf="!cargando && ranking.length > 0" class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>Posición</th>
+              <th>Taller</th>
+              <th>Servicios Atendidos</th>
+              <th>Tasa de Éxito</th>
+              <th>Respuesta Promedio</th>
+              <th>Puntaje (0-100)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let taller of ranking; let i = index" [class.top-three]="i < 3">
+              <td class="position-cell">
+                <span class="medal-icon" [class.gold]="i===0" [class.silver]="i===1" [class.bronze]="i===2">
+                  {{ getMedal(i) }}
+                </span>
+              </td>
+              <td class="name-cell">
+                <strong>{{ taller.nombre }}</strong>
+              </td>
+              <td class="metric-cell">{{ taller.total_atenciones }}</td>
+              <td class="metric-cell">
+                <span class="success-rate" [class.high]="taller.tasa_exito >= 80" [class.low]="taller.tasa_exito < 50">
+                  {{ taller.tasa_exito }}%
+                </span>
+              </td>
+              <td class="metric-cell">{{ taller.tiempo_promedio }} seg</td>
+              <td class="score-cell">
+                <div class="score-badge" [class.gold-score]="i===0">
+                  {{ taller.puntaje }}
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+      </div>
+    </div>
+  </div>
+</div>

@@ -137,6 +137,23 @@ def elegir_taller_para_clasificacion(talleres: list[Taller], clasificacion: str)
     return random.choice(compatibles or talleres)
 
 
+def garantizar_cobertura_especialidades(
+    tecnicos: list[Usuario],
+    especialidades: list[Especialidad],
+) -> None:
+    if not tecnicos:
+        return
+
+    for index, especialidad in enumerate(especialidades):
+        tecnico = tecnicos[index % len(tecnicos)]
+        nombres_actuales = {
+            normalizar_especialidad(item.nombre)
+            for item in tecnico.especialidades
+        }
+        if normalizar_especialidad(especialidad.nombre) not in nombres_actuales:
+            tecnico.especialidades.append(especialidad)
+
+
 def generar_coords_en_zona(zona):
     """Genera coordenadas GPS dentro de una zona de SC"""
     lat = zona["lat"] + random.uniform(-zona["radio"], zona["radio"])
@@ -361,6 +378,9 @@ def seed_db(
                 usuarios.append(usuario)
                 tecnicos.append(usuario)
                 usuario_id_counter += 1
+    db.commit()
+
+    garantizar_cobertura_especialidades(tecnicos, especialidades)
     db.commit()
     
     # Clientes que no tienen taller

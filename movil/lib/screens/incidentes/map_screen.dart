@@ -9,8 +9,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/incidente_provider.dart';
 import '../../providers/tecnico_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/taller_service.dart';
 import '../../theme/colors.dart';
+import 'mis_incidentes_screen.dart'; // Para reutilizar logica o navegar, aunque es mejor importar el modal
+
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -114,6 +117,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           );
         }
 
+        final esTecnico = context.watch<AuthProvider>().isTecnico;
+
         final estado = (activo['estado'] ?? '').toString().toLowerCase();
         final double lat = activo['latitud'] is double ? activo['latitud'] : double.tryParse(activo['latitud']?.toString() ?? '0') ?? 0.0;
         final double lng = activo['longitud'] is double ? activo['longitud'] : double.tryParse(activo['longitud']?.toString() ?? '0') ?? 0.0;
@@ -142,7 +147,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    const Icon(Icons.build_circle, color: Colors.blue, size: 36),
+                    const Icon(Icons.build_circle, color: Colors.orange, size: 36),
                     // Circular loading indicator over the marker
                     SizedBox(
                       width: 36,
@@ -279,7 +284,7 @@ if (tallerData.isNotEmpty) {
               // Bottom sheet and controls will be stacked on top
               Align(
                 alignment: Alignment.bottomCenter,
-                child: _buildBottomSheet(activo, tallerNombre, isBuscando, isAsignado, isEnCamino, isEnAtencion),
+                child: _buildBottomSheet(activo, tallerNombre, isBuscando, isAsignado, isEnCamino, isEnAtencion, esTecnico),
               ),
               if (isAsignado && tallerLocation != null)
                 Positioned(
@@ -298,7 +303,7 @@ if (tallerData.isNotEmpty) {
     );
   }
 
-  Widget _buildBottomSheet(Map<String, dynamic> activo, String tallerNombre, bool isBuscando, bool isAsignado, bool isEnCamino, bool isEnAtencion) {
+  Widget _buildBottomSheet(Map<String, dynamic> activo, String tallerNombre, bool isBuscando, bool isAsignado, bool isEnCamino, bool isEnAtencion, bool esTecnico) {
     if (isBuscando) {
       return Container(
         padding: const EdgeInsets.all(24),
@@ -324,6 +329,33 @@ if (tallerData.isNotEmpty) {
               "Contactando talleres cercanos...",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                if (!esTecnico)
+                  ElevatedButton.icon(
+                    onPressed: () => _mostrarSeleccionTallerMapa(context, activo['id'] as int),
+                    icon: const Icon(Icons.build_circle),
+                    label: const Text('Talleres'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                  ),
+                ElevatedButton.icon(
+                  onPressed: () => _mostrarDialogoCancelar(context, activo['id'] as int, esTecnico),
+                  icon: const Icon(Icons.cancel),
+                  label: const Text('Cancelar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       );
@@ -343,6 +375,17 @@ if (tallerData.isNotEmpty) {
             Text(
               "$tallerNombre evaluando tu caso...",
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => _mostrarDialogoCancelar(context, activo['id'] as int, esTecnico),
+              icon: const Icon(Icons.cancel),
+              label: const Text('Cancelar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
             ),
           ],
         ),
@@ -395,25 +438,29 @@ if (tallerData.isNotEmpty) {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                ElevatedButton.icon(
-                  onPressed: () => _mostrarDialogoFinalizar(context),
-                  icon: const Icon(Icons.done_all),
-                  label: const Text('Finalizar'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade700,
-                    foregroundColor: Colors.white,
+                if (esTecnico)
+                  ElevatedButton.icon(
+                    onPressed: () => _mostrarDialogoFinalizar(context),
+                    icon: const Icon(Icons.done_all),
+                    label: const Text('Finalizar'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
                   ),
-                ),
                 const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: () => _mostrarDialogoCancelar(context),
-                  icon: const Icon(Icons.cancel),
-                  label: const Text('Cancelar'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.shade600,
-                    foregroundColor: Colors.white,
+                if (esTecnico || (!esTecnico && !isEnAtencion))
+                  ElevatedButton.icon(
+                    onPressed: () => _mostrarDialogoCancelar(context, activo['id'] as int, esTecnico),
+                    icon: const Icon(Icons.cancel),
+                    label: const Text('Cancelar'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade600,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -479,7 +526,7 @@ if (tallerData.isNotEmpty) {
     }
   }
 
-  Future<void> _mostrarDialogoCancelar(BuildContext context) async {
+  Future<void> _mostrarDialogoCancelar(BuildContext context, int incidenteId, bool esTecnico) async {
     final TextEditingController motivoCtrl = TextEditingController();
     final confirm = await showDialog<bool>(
       context: context,
@@ -514,17 +561,138 @@ if (tallerData.isNotEmpty) {
       );
       return;
     }
-    final provider = context.read<TecnicoProvider>();
-    try {
-      await provider.cancelarIncidente(motivo);
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
+    if (esTecnico) {
+      final provider = context.read<TecnicoProvider>();
+      try {
+        await provider.cancelarIncidente(motivo);
+        if (mounted) Navigator.pop(context);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } else {
+      final provider = context.read<IncidenteProvider>();
+      try {
+        final success = await provider.cancelarIncidente(incidenteId: incidenteId, motivo: motivo);
+        if (success && mounted) {
+           Navigator.pop(context);
+        } else if (!success && mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(provider.errorMessage ?? 'Error al cancelar'), backgroundColor: Colors.red),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
       }
     }
+  }
+
+  Future<void> _mostrarSeleccionTallerMapa(BuildContext context, int incidenteId) async {
+    final provider = context.read<IncidenteProvider>();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final candidatos = await provider.obtenerCandidatos(incidenteId);
+
+    if (!context.mounted) return;
+    Navigator.of(context).pop(); // Cerrar loader
+
+    if (candidatos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se encontraron talleres candidatos.')),
+      );
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (ctx, scrollController) {
+            return Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'Selecciona un Taller',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: candidatos.length,
+                    itemBuilder: (ctx, i) {
+                      final c = candidatos[i];
+                      final distanceStr = c['distancia_km'] != null
+                          ? '${c['distancia_km']} km'
+                          : 'Desconocido';
+
+                      return ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: AppColors.primaryColor,
+                          child: Icon(Icons.build, color: Colors.white),
+                        ),
+                        title: Text(c['taller_nombre'] ?? 'Taller sin nombre'),
+                        subtitle: Text('Distancia: $distanceStr\nCalificación: ${c['calificacion_promedio']} ⭐'),
+                        isThreeLine: true,
+                        trailing: ElevatedButton(
+                          onPressed: () async {
+                            final tallerId = c['taller_id'] as int;
+                            final ok = await provider.seleccionarTaller(
+                              incidenteId: incidenteId,
+                              tallerId: tallerId,
+                            );
+
+                            if (!ctx.mounted) return;
+                            if (ok) {
+                              Navigator.of(ctx).pop(); // Cierra el modal inferior
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Solicitud enviada al taller.'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(
+                                  content: Text(provider.errorMessage ?? 'Error al enviar solicitud.'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text('Elegir'),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 }
 

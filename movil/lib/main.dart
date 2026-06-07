@@ -33,6 +33,7 @@ import 'services/usuario_service.dart';
 import 'services/vehiculo_service.dart';
 import 'theme/colors.dart';
 import 'services/local_notification_service.dart';
+import 'services/sync_service.dart';
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
@@ -136,6 +137,11 @@ class MyApp extends StatelessWidget {
             incidenteService: context.read<IncidenteService>(),
             locationService: context.read<LocationTrackingService>(),
             trackingService: context.read<TrackingService>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => SyncService(
+            incidenteService: context.read<IncidenteService>(),
           ),
         ),
         ChangeNotifierProxyProvider2<
@@ -319,6 +325,8 @@ class _HomePageState extends State<HomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _registrarTokenDispositivo();
+      // Iniciar monitoreo de sincronización offline
+      context.read<SyncService>().iniciarMonitoreo();
     });
   }
 
@@ -411,6 +419,71 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(esTecnico ? 'Panel Tecnico' : 'Asistencia Vehicular'),
+        actions: [
+          // Indicador de sincronización offline
+          Consumer<SyncService>(
+            builder: (context, syncService, _) {
+              if (syncService.sincronizando) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Tooltip(
+                    message: 'Sincronizando datos...',
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                );
+              }
+              if (syncService.pendientesCount > 0) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Tooltip(
+                    message: '${syncService.pendientesCount} incidente(s) pendiente(s) de sincronizar',
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.wifi_off, color: Colors.orange),
+                          onPressed: () async {
+                            final result = await syncService.intentarSincronizar();
+                            if (!context.mounted) return;
+                            final msg = result.sincronizados > 0
+                                ? '✅ ${result.sincronizados} sincronizado(s)'
+                                : '❌ Sin conexión aún';
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(msg)),
+                            );
+                          },
+                        ),
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '${syncService.pendientesCount}',
+                              style: const TextStyle(fontSize: 9, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
       ),
       body: pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(

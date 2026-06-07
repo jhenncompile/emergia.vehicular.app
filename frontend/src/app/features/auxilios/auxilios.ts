@@ -91,7 +91,7 @@ export class AuxiliosComponent implements OnInit {
 }
 
   puedeReasignarTecnico(inc: any): boolean {
-    return ['asignado_taller', 'en_camino'].includes(inc?.estado);
+    return ['asignado_taller', 'en_camino', 'en_atencion'].includes(inc?.estado);
   }
 
   puedeMarcarLlegada(inc: any): boolean {
@@ -103,7 +103,30 @@ export class AuxiliosComponent implements OnInit {
   }
 
   puedeCancelar(inc: any): boolean {
-    return ['asignado_taller', 'en_camino'].includes(inc?.estado);
+    return ['asignado_taller', 'en_camino', 'en_atencion'].includes(inc?.estado);
+  }
+
+  // --- HELPERS PARA CARDS ---
+  tieneFotos(inc: any): boolean {
+    if (!inc?.evidencias) return false;
+    return inc.evidencias.some((e: any) => e.tipo_archivo === 'imagen');
+  }
+
+  tieneAudio(inc: any): boolean {
+    if (!inc?.evidencias) return false;
+    return inc.evidencias.some((e: any) => e.tipo_archivo === 'audio');
+  }
+
+  calcularTiempo(fecha: string | undefined): string {
+    if (!fecha) return '';
+    const date = new Date(fecha);
+    const diffMs = new Date().getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 60) return `${diffMins} min ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs} hr ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    return `${diffDays} d ago`;
   }
 
   // --- LÓGICA DE ASIGNACIÓN Y REASIGNACIÓN ---
@@ -125,7 +148,7 @@ export class AuxiliosComponent implements OnInit {
   abrirReasignacion() {
     if (!this.incidenteSeleccionado) return;
     if (!this.puedeReasignarTecnico(this.incidenteSeleccionado)) {
-      return alert('Solo puedes asignar técnico cuando el incidente está asignado al taller o en camino.');
+      return alert('Solo puedes asignar técnico cuando el incidente está asignado, en camino o en atención.');
     }
     this.incidenteAccion = this.incidenteSeleccionado;
     // Pre-seleccionamos el ID actual si ya tiene uno
