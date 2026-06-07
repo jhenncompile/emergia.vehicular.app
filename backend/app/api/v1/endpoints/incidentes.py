@@ -1055,24 +1055,21 @@ def _generar_ranking_automatico(
 ) -> Incidente:
     incidente_id = incidente.id
     try:
-        candidatos = RankingTallerService(db).generar_y_ofrecer(incidente)
+        candidatos = RankingTallerService(db).generar_candidatos_sin_ofrecer(incidente)
         db.refresh(incidente)
-        candidato_ofrecido = next(
-            (candidato for candidato in candidatos if candidato.estado == "ofrecido"),
-            candidatos[0] if candidatos else None,
-        )
-        _adjuntar_mensaje_oferta(incidente, candidato_ofrecido)
+        # Ya no ofrecemos el candidato automaticamente aca,
+        # esperamos que el cliente llame al endpoint seleccionar-taller.
     except Exception as exc:
         db.rollback()
         logger.exception(
-            "No se pudo generar ranking automatico para incidente %s: %s",
+            "No se pudo generar ranking de candidatos para incidente %s: %s",
             incidente_id,
             exc,
         )
         incidente = incidente_crud.get(db, id=incidente_id)
         if incidente:
             incidente.mensaje_asignacion = (
-                "El incidente se creo, pero no se pudo generar la oferta automatica. "
+                "El incidente se creo, pero no se pudo generar candidatos. "
                 "Revisa los logs del backend."
             )
     return incidente
@@ -1282,9 +1279,55 @@ async def crear_incidente_con_evidencias(
         imagen=imagen,
     )
 
-# 2. Pendientes: Solo los que no tienen taller asignado
-# Reemplaza tu función leer_incidentes_pendientes por esta:
+@router.get("/{incidente_id}/candidatos")
+def listar_candidatos_incidente(
+    incidente_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user),
+):
+    """Devuelve la lista de talleres candidatos para un incidente."""
+    incidente = incidente_crud.get(db, id=incidente_id)
+    if not incidente:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado")
+        
+    candidatos = RankingTallerService(db).obtener_candidatos(incidente_id)
+    resultado = []
+    for c in candidatos:
+        resultado.append({
+            "taller_id": c.taller_id,
+            "taller_nombre": c.taller.nombre if c.taller else "Desconocido",
+            "score_total": c.score_total,
+            "estado": c.estado,
+            "explicacion": c.explicacion,
+            "distancia_km": round((c.score_distancia or 0) * 40, 1), # Estimado basado en radio_max_km=40
+            "calificacion_promedio": c.taller.calificacion_promedio if c.taller else 0.0,
+        })
+    return resultado
 
+@router.post("/{incidente_id}/seleccionar-taller/{taller_id}")
+def seleccionar_taller_para_incidente(
+    incidente_id: int,
+    taller_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_cliente),
+):
+    """El cliente elige manualmente a que taller enviar su solicitud."""
+    incidente = incidente_crud.get(db, id=incidente_id)
+    if not incidente:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado")
+        
+    if incidente.usuario_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tienes permiso para modificar este incidente")
+        
+    candidato_ofrecido = RankingTallerService(db).seleccionar_candidato(incidente, taller_id)
+    if not candidato_ofrecido:
+        raise HTTPException(status_code=404, detail="El taller no es un candidato valido para este incidente")
+        
+    db.refresh(incidente)
+    _adjuntar_mensaje_oferta(incidente, candidato_ofrecido)
+    return {"mensaje": "Solicitud enviada al taller exitosamente"}
+
+# 2. Pendientes: Solo los que no tienen taller asignado
 @router.get("/pendientes", response_model=List[IncidenteSchema])
 def leer_incidentes_pendientes(
     db: Session = Depends(deps.get_db),
@@ -1678,7 +1721,7 @@ def marcar_llegada_tecnico(
         estado_nuevo=actualizado.estado,
     )
 
-    return actualizado
+    return jsonable_encoder(actualizado)
 
 
 @router.patch("/{id}/rechazar", response_model=IncidenteSchema)

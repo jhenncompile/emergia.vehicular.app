@@ -41,4 +41,15 @@ export class NotificacionContadorService {
   limpiar() {
     this.noLeidasSubject.next(0);
   }
+
+  marcarLeida(notificacionId: number) {
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
+    
+    return this.http.patch(`${environment.apiUrl}/notificaciones/${notificacionId}/leer`, {}, { headers });
+  }
+
+  refrescar() {
+    this.cargarPendientes();
+  }
 }

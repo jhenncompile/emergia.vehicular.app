@@ -23,6 +23,7 @@
       </a>
       <a routerLink="/incidentes" routerLinkActive="active" class="nav-link">
         <span>🚨</span> Auxilios y Emergencias
+        <span *ngIf="incidentesPendientesCount > 0" class="red-dot"></span>
       </a>
       <a routerLink="/finanzas" routerLinkActive="active" class="nav-link">
         <span>💰</span> Finanzas y Cobros
@@ -35,6 +36,9 @@
       <p class="nav-label">CONFIGURACIÓN</p>
       <a routerLink="/perfil-taller" routerLinkActive="active" class="nav-link">
         <span>🏢</span> Mi Taller
+      </a>
+      <a routerLink="/calificaciones" routerLinkActive="active" class="nav-link">
+        <span>⭐</span> Calificaciones
       </a>
       <a routerLink="/administradores" routerLinkActive="active" class="nav-link">
         <span>👥</span> Gestión de Admins

@@ -58,3 +58,4 @@ class Incidente(Base):
     )
     pagos = relationship("Pago", back_populates="incidente", uselist=False, cascade="all, delete-orphan")
     notificaciones = relationship("Notificacion", back_populates="incidente")
+    calificacion = relationship("Calificacion", back_populates="incidente", uselist=False, cascade="all, delete-orphan")

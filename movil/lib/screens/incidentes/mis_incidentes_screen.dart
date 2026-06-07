@@ -7,6 +7,8 @@ import '../../providers/incidente_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/incidente_service.dart';
 import '../../theme/colors.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../calificacion/calificacion_screen.dart';
 
 class MisIncidentesScreen extends StatefulWidget {
   const MisIncidentesScreen({super.key});
@@ -22,15 +24,19 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
     // Cargar incidentes al abrir la pantalla
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final authProvider = context.read<AuthProvider>();
-      final userId = authProvider.userId;
-      if (userId != null) {
-        context.read<IncidenteProvider>().cargarMisIncidentes(
-          usuarioId: userId,
-          esTecnico: authProvider.isTecnico,
-        );
-      }
+      _cargarDatos(context);
     });
+  }
+
+  void _cargarDatos(BuildContext context) {
+    final authProvider = context.read<AuthProvider>();
+    final userId = authProvider.userId;
+    if (userId != null) {
+      context.read<IncidenteProvider>().cargarMisIncidentes(
+        usuarioId: userId,
+        esTecnico: authProvider.isTecnico,
+      );
+    }
   }
 
   @override
@@ -222,9 +228,185 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                 child: Text(esTecnico ? 'Ver Datos' : 'Ver Detalles'),
               ),
             ),
+
+            // Botón calificar taller (solo cliente, solo finalizado)
+            if (!esTecnico &&
+                (incidente['estado']?.toString().toLowerCase() == 'finalizado' ||
+                    incidente['estado']?.toString().toLowerCase() == 'completado') &&
+                incidente['taller'] != null) ...
+              [
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final taller = incidente['taller'] as Map<String, dynamic>?;
+                      final nombreTaller = taller?['nombre']?.toString();
+                      final result = await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(
+                          builder: (_) => CalificacionScreen(
+                            incidenteId: incidente['id'] as int,
+                            nombreTaller: nombreTaller,
+                          ),
+                        ),
+                      );
+                      // Si calificó, podemos refrescar si es necesario
+                      if (result == true && mounted) {
+                        _cargarDatos(context);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Calificación enviada. ¡Gracias!'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.star_rounded, size: 18),
+                    label: const Text('Calificar Taller'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFC107),
+                      foregroundColor: Colors.black87,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+
+            // Botón Seleccionar Taller (solo cliente, estado pendiente)
+            if (!esTecnico && incidente['estado']?.toString().toLowerCase() == 'pendiente') ...
+              [
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber.shade700,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () => _mostrarSeleccionTaller(context, incidente['id'] as int),
+                    icon: const Icon(Icons.build_circle),
+                    label: const Text('Seleccionar Taller'),
+                  ),
+                ),
+              ],
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _mostrarSeleccionTaller(BuildContext context, int incidenteId) async {
+    final provider = Provider.of<IncidenteProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final candidatos = await provider.obtenerCandidatos(incidenteId);
+
+    if (!context.mounted) return;
+    Navigator.of(context).pop(); // Cerrar loader
+
+    if (candidatos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se encontraron talleres candidatos.')),
+      );
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (ctx, scrollController) {
+            return Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'Selecciona un Taller',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: candidatos.length,
+                    itemBuilder: (ctx, i) {
+                      final c = candidatos[i];
+                      final distanceStr = c['distancia_km'] != null
+                          ? '${c['distancia_km']} km'
+                          : 'Distancia desconocida';
+                      final rating = c['calificacion_promedio'] ?? 0.0;
+
+                      return ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: Colors.blueAccent,
+                          child: Icon(Icons.build, color: Colors.white),
+                        ),
+                        title: Text(c['taller_nombre'] ?? 'Taller'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Distancia: $distanceStr'),
+                            Row(
+                              children: [
+                                const Icon(Icons.star, size: 16, color: Colors.amber),
+                                const SizedBox(width: 4),
+                                Text(rating.toStringAsFixed(1)),
+                              ],
+                            ),
+                          ],
+                        ),
+                        trailing: ElevatedButton(
+                          onPressed: () async {
+                            final success = await provider.seleccionarTaller(
+                              incidenteId: incidenteId,
+                              tallerId: c['taller_id'],
+                            );
+                            if (!ctx.mounted) return;
+                            Navigator.of(ctx).pop();
+                            if (success) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Taller seleccionado exitosamente.'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                              _cargarDatos(context); // Refrescar lista
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(provider.errorMessage ?? 'Error al seleccionar taller'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text('Elegir'),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

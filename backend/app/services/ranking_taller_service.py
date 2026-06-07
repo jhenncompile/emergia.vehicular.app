@@ -279,6 +279,136 @@ class RankingTallerService:
 
         return candidatos
 
+    def generar_candidatos_sin_ofrecer(
+        self,
+        incidente: Incidente,
+        *,
+        radio_max_km: float = 40,
+    ) -> list[IncidenteAsignacionCandidato]:
+        """Genera y guarda la lista de candidatos en estado pendiente, sin notificar talleres."""
+        self.asegurar_catalogo_base()
+        categoria = self._resolver_categoria(incidente.clasificacion_ia)
+        especialidades_requeridas = self._obtener_especialidades_requeridas(categoria)
+
+        talleres = (
+            self.db.query(Taller)
+            .options(
+                joinedload(Taller.usuarios).joinedload(Usuario.especialidades),
+                joinedload(Taller.horarios),
+            )
+            .filter(Taller.estado == True)
+            .all()
+        )
+
+        calculados = []
+        for taller in talleres:
+            tecnicos_activos = self._tecnicos_activos(taller)
+            if not tecnicos_activos:
+                continue
+
+            distancia_metros = self._distancia_metros(incidente, taller)
+            if distancia_metros is not None and distancia_metros > radio_max_km * 1000:
+                continue
+
+            score_especialidad = self._score_especialidad(
+                taller,
+                especialidades_requeridas,
+            )
+            if score_especialidad <= 0 and categoria.nombre != "Otro / No clasificado":
+                continue
+
+            score_distancia = self._score_distancia(distancia_metros, radio_max_km)
+            score_disponibilidad = self._score_disponibilidad(taller, tecnicos_activos)
+            score_total = (
+                score_disponibilidad * 0.45
+                + score_especialidad * 0.35
+                + score_distancia * 0.20
+            )
+
+            calculados.append(
+                {
+                    "taller": taller,
+                    "distancia_metros": distancia_metros,
+                    "score_total": round(score_total, 4),
+                    "score_distancia": round(score_distancia, 4),
+                    "score_especialidad": round(score_especialidad, 4),
+                    "score_disponibilidad": round(score_disponibilidad, 4),
+                    "explicacion": self._explicacion(
+                        taller,
+                        categoria,
+                        especialidades_requeridas,
+                        distancia_metros,
+                        score_especialidad,
+                        score_disponibilidad,
+                    ),
+                }
+            )
+
+        calculados.sort(
+            key=lambda item: (
+                item["score_total"],
+                -(item["distancia_metros"] or 999999),
+            ),
+            reverse=True,
+        )
+
+        self.db.query(IncidenteAsignacionCandidato).filter(
+            IncidenteAsignacionCandidato.incidente_id == incidente.id
+        ).delete(synchronize_session=False)
+
+        # Estado del incidente se mantiene o cambia a un estado intermedio de seleccion
+        incidente.estado = EstadoIncidente.PENDIENTE
+        self.db.add(incidente)
+
+        for index, item in enumerate(calculados, start=1):
+            self.db.add(
+                IncidenteAsignacionCandidato(
+                    incidente_id=incidente.id,
+                    taller_id=item["taller"].id,
+                    orden=index,
+                    score_total=item["score_total"],
+                    score_distancia=item["score_distancia"],
+                    score_especialidad=item["score_especialidad"],
+                    score_disponibilidad=item["score_disponibilidad"],
+                    estado="pendiente",  # Todos pendientes hasta que el cliente elija
+                    explicacion=item["explicacion"],
+                )
+            )
+
+        self.db.commit()
+
+        candidatos = self.obtener_candidatos(incidente.id)
+        if not candidatos:
+            self._notificar_sin_talleres(incidente)
+            
+        return candidatos
+
+    def seleccionar_candidato(
+        self,
+        incidente: Incidente,
+        taller_id: int,
+        *,
+        timeout_minutos: int = 5,
+    ) -> IncidenteAsignacionCandidato | None:
+        """El cliente elige manualmente el taller. Lo pasamos a ofrecido."""
+        candidato = self.obtener_candidato_taller(incidente.id, taller_id)
+        if not candidato:
+            return None
+
+        ahora = _ahora()
+        candidato.estado = "ofrecido"
+        candidato.fecha_oferta = ahora
+        candidato.expira_en = ahora + timedelta(minutes=timeout_minutos)
+        
+        incidente.estado = EstadoIncidente.BUSCANDO_TALLER
+        self.db.add(candidato)
+        self.db.add(incidente)
+        self.db.commit()
+        
+        self.db.refresh(candidato)
+        self._notificar_oferta_taller(incidente, candidato)
+        return candidato
+
     def obtener_candidatos(self, incidente_id: int) -> list[IncidenteAsignacionCandidato]:
         return (
             self.db.query(IncidenteAsignacionCandidato)

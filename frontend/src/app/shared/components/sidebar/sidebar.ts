@@ -7,6 +7,7 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth';
 import { NotificacionContadorService } from '../../../core/services/notificacion-contador.service';
 import { WebSocketNotificacionService } from '../../../core/services/websocket-notificacion.service';
+import { IncidentesService } from '../../../core/services/incidentes';
 
 @Component({
   selector: 'app-sidebar',
@@ -21,12 +22,14 @@ export class SidebarComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private contadorNotificaciones = inject(NotificacionContadorService);
   public wsService = inject(WebSocketNotificacionService);
+  private incidentesService = inject(IncidentesService);
   private notificacionSub: Subscription | null = null;
   private contadorSub: Subscription | null = null;
 
   // 🚩 Variable que alimenta el HTML
   public usuario: string = 'Cargando...';
   public notificacionesNoLeidas: number = 0;
+  public incidentesPendientesCount: number = 0;
 
   ngOnInit() {
     this.cargarDatosUsuario();
@@ -36,12 +39,23 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.contadorNotificaciones.cargarPendientes();
     this.notificacionSub = this.wsService.notificaciones$.subscribe(() => {
       this.contadorNotificaciones.cargarPendientes();
+      this.cargarIncidentesPendientes();
     });
+    this.cargarIncidentesPendientes();
   }
 
   ngOnDestroy() {
     this.notificacionSub?.unsubscribe();
     this.contadorSub?.unsubscribe();
+  }
+
+  cargarIncidentesPendientes() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    this.incidentesService.getPendientes().subscribe({
+      next: (data) => this.incidentesPendientesCount = data.length,
+      error: () => {}
+    });
   }
 
   cargarDatosUsuario() {

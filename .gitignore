@@ -5,6 +5,7 @@ env/
 
 # Variables de entorno (¡NO SUBIR CONTRASEÑAS!)
 .env
+backend/serviceAccountKey.json
 
 # Archivos compilados de Python
 __pycache__/

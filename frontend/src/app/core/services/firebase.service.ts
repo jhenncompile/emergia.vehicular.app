@@ -46,10 +46,11 @@ export class FirebaseService {
       const data = payload.data || {};
       
       const notificacion = {
+        id: data['id'],
         tipo: data['tipo'] || 'notificacion',
         timestamp: new Date().toISOString(),
         incidente: {
-          id: data['id'] || '',
+          id: data['incidente_id'] || '',
           placa_vehiculo: data['placa_vehiculo'] || 'N/A',
           latitud: parseFloat(data['latitud'] || '0'),
           longitud: parseFloat(data['longitud'] || '0'),

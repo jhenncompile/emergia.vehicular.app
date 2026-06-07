@@ -317,7 +317,7 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> {
                 ),
               const SizedBox(height: 12),
 
-              // Botón de marcar llegada
+              // Botones según estado
               if (tecnicoProvider.puedeMarcarLlegada())
                 ElevatedButton.icon(
                   onPressed: () async {
@@ -336,35 +336,132 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> {
                     backgroundColor: const Color(0xFF10B981),
                     foregroundColor: Colors.white,
                   ),
-                )
-              else if (tecnicoProvider.llego)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.green.shade700),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Llegada registrada',
-                        style: TextStyle(
-                          color: Colors.green.shade700,
-                          fontWeight: FontWeight.bold,
+                ),
+              
+              if (['asignado', 'en_camino', 'en_atencion'].contains(incidente['estado'])) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _mostrarDialogoFinalizar(context, tecnicoProvider),
+                        icon: const Icon(Icons.done_all),
+                        label: const Text('Finalizar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade700,
+                          foregroundColor: Colors.white,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _mostrarDialogoCancelar(context, tecnicoProvider),
+                        icon: const Icon(Icons.cancel),
+                        label: const Text('Cancelar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade600,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+              ],
             ],
           );
         },
       ),
     );
+  }
+
+  Future<void> _mostrarDialogoFinalizar(BuildContext context, TecnicoProvider provider) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Finalizar Incidente'),
+        content: const Text('¿Estás seguro de que deseas finalizar este incidente?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sí, finalizar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      if (!context.mounted) return;
+      try {
+        await provider.finalizarIncidente();
+        if (!context.mounted) return;
+        Navigator.pop(context); // Volver al dashboard
+      } catch (e) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _mostrarDialogoCancelar(BuildContext context, TecnicoProvider provider) async {
+    final TextEditingController motivoCtrl = TextEditingController();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancelar Incidente'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Ingresa el motivo de cancelación:'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: motivoCtrl,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Atrás'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (motivoCtrl.text.trim().isEmpty) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('El motivo es obligatorio')),
+                );
+                return;
+              }
+              Navigator.pop(ctx, true);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Cancelar Incidente', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      if (!context.mounted) return;
+      try {
+        await provider.cancelarIncidente(motivoCtrl.text.trim());
+        if (!context.mounted) return;
+        Navigator.pop(context); // Volver al dashboard
+      } catch (e) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Color _colorEstadoConexion(String estado) {

@@ -90,6 +90,18 @@ async def actualizar_ubicacion_tecnico(
                 )
             except Exception as e:
                 print(f"Error al notificar cliente: {e}")
+                
+        # 6. Broadcast ubicación a Taller
+        if incidente.taller_id:
+            await NotificacionService.broadcast_ubicacion_tecnico(
+                db,
+                incidente_id=incidente_id,
+                latitud=request.latitud,
+                longitud=request.longitud,
+                taller_id=incidente.taller_id,
+                tecnico_id=incidente.tecnico_id,
+                cliente_id=incidente.usuario_id
+            )
         
         return LocationTecnicoResponse(**resultado)
     

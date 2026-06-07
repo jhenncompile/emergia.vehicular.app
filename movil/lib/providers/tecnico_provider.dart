@@ -227,6 +227,43 @@ class TecnicoProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> finalizarIncidente() async {
+    if (_incidenteActivo == null) return;
+    try {
+      _errorMessage = null;
+      await incidenteService.finalizarIncidente(
+        incidenteId: _incidenteActivo!['id'] as int,
+      );
+      _incidenteActivo!['estado'] = 'finalizado';
+      await detenerTracking();
+      _incidenteActivo = null; // Clear active incident
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = 'Error al finalizar incidente: $e';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> cancelarIncidente(String motivo) async {
+    if (_incidenteActivo == null) return;
+    try {
+      _errorMessage = null;
+      await incidenteService.cancelarIncidente(
+        incidenteId: _incidenteActivo!['id'] as int,
+        motivo: motivo,
+      );
+      _incidenteActivo!['estado'] = 'cancelado';
+      await detenerTracking();
+      _incidenteActivo = null; // Clear active incident
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = 'Error al cancelar incidente: $e';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   /// Descarga todo y limpia recursos
   @override
   Future<void> dispose() async {

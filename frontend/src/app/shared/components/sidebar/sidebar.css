@@ -163,6 +163,16 @@
   animation: pulse 2s infinite;
 }
 
+.red-dot {
+  width: 10px;
+  height: 10px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: auto;
+  box-shadow: 0 0 5px rgba(239, 68, 68, 0.8);
+}
+
 @keyframes pulse {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);

@@ -40,6 +40,7 @@ export const routes: Routes = [
       { path: 'finanzas', component: FinanzasComponent },
       { path: 'incidentes', component: AuxiliosComponent },
       { path: 'perfil-taller', component: PerfilTallerComponent }, // 👈 Revisa que el nombre sea IDÉNTICO al routerLink
+      { path: 'calificaciones', loadComponent: () => import('./features/calificaciones/calificaciones').then(m => m.CalificacionesComponent) },
       { path: 'administradores', component: GestionAdminsComponent },
       { path: 'notificaciones', component: NotificacionesComponent },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },

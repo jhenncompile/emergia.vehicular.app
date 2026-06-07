@@ -10,6 +10,7 @@ class RealtimeService {
 
   final String baseUrl;
   final _eventsController = StreamController<Map<String, dynamic>>.broadcast();
+  final _connectionStatusController = StreamController<bool>.broadcast();
 
   WebSocket? _socket;
   Timer? _heartbeatTimer;
@@ -18,6 +19,7 @@ class RealtimeService {
   bool _manualClose = false;
 
   Stream<Map<String, dynamic>> get events => _eventsController.stream;
+  Stream<bool> get connectionStatus => _connectionStatusController.stream;
 
   bool get isConnected => _socket?.readyState == WebSocket.open;
 
@@ -26,11 +28,13 @@ class RealtimeService {
 
     _manualClose = false;
     _usuarioId = usuarioId;
+    _connectionStatusController.add(false);
     await _closeSocket();
 
     try {
       final socket = await WebSocket.connect(_buildWsUri(usuarioId).toString());
       _socket = socket;
+      _connectionStatusController.add(true);
       _startHeartbeat();
 
       socket.listen(
@@ -40,6 +44,7 @@ class RealtimeService {
         cancelOnError: true,
       );
     } catch (_) {
+      _connectionStatusController.add(false);
       _scheduleReconnect();
     }
   }
@@ -49,12 +54,14 @@ class RealtimeService {
     _usuarioId = null;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
+    _connectionStatusController.add(false);
     await _closeSocket();
   }
 
   Future<void> dispose() async {
     await disconnect();
     await _eventsController.close();
+    await _connectionStatusController.close();
   }
 
   Uri _buildWsUri(int usuarioId) {
@@ -93,6 +100,7 @@ class RealtimeService {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = null;
     _socket = null;
+    _connectionStatusController.add(false);
 
     if (_manualClose || _usuarioId == null) return;
 

@@ -10,6 +10,7 @@ class IncidenteProvider extends ChangeNotifier {
   Map<String, dynamic>? _ultimoIncidenteReportado;
   bool _isLoading = false;
   String? _errorMessage;
+  final Map<int, Map<String, double>> _ubicacionTecnicosEnVivo = {};
 
   IncidenteProvider({required this.incidenteService});
 
@@ -18,8 +19,30 @@ class IncidenteProvider extends ChangeNotifier {
   Map<String, dynamic>? get incidenteSeleccionado => _incidenteSeleccionado;
   Map<String, dynamic>? get ultimoIncidenteReportado =>
       _ultimoIncidenteReportado;
+  
+  Map<String, dynamic>? get incidenteActivoCliente {
+    final index = _misIncidentes.indexWhere((inc) {
+      final estado = (inc['estado'] ?? '').toString().toLowerCase();
+      return estado == 'pendiente' ||
+          estado == 'buscando_taller' ||
+          estado == 'asignado_taller' ||
+          estado == 'en_camino' ||
+          estado == 'en_atencion';
+    });
+    return index != -1 ? _misIncidentes[index] : null;
+  }
+
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+
+  Map<String, double>? getUbicacionTecnicoEnVivo(int incidenteId) {
+    return _ubicacionTecnicosEnVivo[incidenteId];
+  }
+
+  void actualizarUbicacionTecnico(int incidenteId, double lat, double lng) {
+    _ubicacionTecnicosEnVivo[incidenteId] = {'lat': lat, 'lng': lng};
+    notifyListeners();
+  }
 
   /// Cargar mis incidentes
   Future<void> cargarMisIncidentes({
@@ -150,6 +173,52 @@ class IncidenteProvider extends ChangeNotifier {
         _misIncidentes[index] = actualizado;
       }
       _incidenteSeleccionado = actualizado;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Obtener lista de talleres candidatos para un incidente
+  Future<List<Map<String, dynamic>>> obtenerCandidatos(int incidenteId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final candidatos = await incidenteService.obtenerCandidatos(incidenteId);
+      _isLoading = false;
+      notifyListeners();
+      return candidatos;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return [];
+    }
+  }
+
+  /// Seleccionar manualmente el taller para el incidente
+  Future<bool> seleccionarTaller({
+    required int incidenteId,
+    required int tallerId,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await incidenteService.seleccionarTaller(
+        incidenteId: incidenteId,
+        tallerId: tallerId,
+      );
+      // Actualizar estado local a BUSCANDO_TALLER
+      actualizarEstadoLocal(id: incidenteId, estado: 'buscando_taller');
       _isLoading = false;
       notifyListeners();
       return true;

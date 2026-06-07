@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'backend_config.dart';
 import 'providers/auth_provider.dart';
@@ -13,6 +15,7 @@ import 'providers/vehiculo_provider.dart';
 import 'screens/historial/historial_screen.dart';
 import 'screens/incidentes/mis_incidentes_screen.dart';
 import 'screens/incidentes/reportar_incidente_screen.dart';
+import 'screens/incidentes/map_screen.dart';
 import 'screens/pagos/pagos_screen.dart';
 import 'screens/perfil/perfil_screen.dart';
 import 'screens/servicios/mis_atenciones_screen.dart';
@@ -29,8 +32,27 @@ import 'services/tracking_service.dart';
 import 'services/usuario_service.dart';
 import 'services/vehiculo_service.dart';
 import 'theme/colors.dart';
+import 'services/local_notification_service.dart';
 
-void main() {
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint("Manejando mensaje FCM en segundo plano: ${message.messageId}");
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    debugPrint("Error inicializando Firebase: $e");
+  }
+  await LocalNotificationService().initialize();
   runApp(const MyApp());
 }
 
@@ -121,6 +143,7 @@ class MyApp extends StatelessWidget {
           IncidenteProvider,
           RealtimeProvider
         >(
+          lazy: false,
           create: (context) => RealtimeProvider(
             realtimeService: context.read<RealtimeService>(),
           ),
@@ -139,6 +162,8 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
+        navigatorKey: navigatorKey,
+        scaffoldMessengerKey: scaffoldMessengerKey,
         debugShowCheckedModeBanner: false,
         title: 'Emergencia Vehicular',
         theme: appTheme,
@@ -287,6 +312,44 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _registrarTokenDispositivo();
+    });
+  }
+
+  Future<void> _registrarTokenDispositivo() async {
+    final authProvider = context.read<AuthProvider>();
+    final notificacionProvider = context.read<NotificacionProvider>();
+    final userId = authProvider.userId;
+    if (userId != null) {
+      try {
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token == null) {
+          debugPrint('[FCM] No se pudo obtener el token de Firebase');
+          return;
+        }
+        
+        final plataforma = Theme.of(context).platform == TargetPlatform.android
+            ? 'android'
+            : 'ios';
+            
+        debugPrint('[FCM] Intentando registrar token FCM para usuario $userId...');
+        await notificacionProvider.registrarTokenDispositivo(
+          usuarioId: userId,
+          tokenFCM: token,
+          plataforma: plataforma,
+        );
+        debugPrint('[FCM] Token FCM registrado exitosamente');
+      } catch (e) {
+        debugPrint('[FCM] Error al registrar token: $e');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -450,7 +513,15 @@ class _TecnicoDashboardState extends State<TecnicoDashboard> {
                 icon: Icons.assignment_outlined,
                 title: 'Incidentes asignados',
                 subtitle: '$activos activos de ${incidentes.length} asignados',
-                onTap: () => widget.onNavigate(1),
+                onTap: () {
+                  if (activos == 1) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const MapScreen()),
+                    );
+                  } else {
+                    widget.onNavigate(1);
+                  }
+                },
               ),
               _actionCard(
                 context,
@@ -565,37 +636,121 @@ class _TecnicoDashboardState extends State<TecnicoDashboard> {
   }
 }
 
-class HomeDashboard extends StatelessWidget {
+class HomeDashboard extends StatefulWidget {
   const HomeDashboard({super.key});
 
   @override
+  State<HomeDashboard> createState() => _HomeDashboardState();
+}
+
+class _HomeDashboardState extends State<HomeDashboard> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _cargarIncidentes();
+    });
+  }
+
+  Future<void> _cargarIncidentes() async {
+    final authProvider = context.read<AuthProvider>();
+    final userId = authProvider.userId;
+    if (userId == null) return;
+    await context.read<IncidenteProvider>().cargarMisIncidentes(
+      usuarioId: userId,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.success,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Estado: Activo. Listo para reportar incidentes.',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+    return Consumer<IncidenteProvider>(
+      builder: (context, incidenteProvider, child) {
+        final activo = incidenteProvider.incidenteActivoCliente;
+        
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            if (activo != null)
+              Card(
+                color: Colors.orange.shade700,
+                elevation: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const MapScreen(),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 28),
+                            const SizedBox(width: 8),
+                            const Text('Incidente Activo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(12)),
+                              child: Text(
+                                (activo['estado'] ?? '').toString().toUpperCase(),
+                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            )
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          activo['descripcion'] ?? 'Sin descripción',
+                          style: const TextStyle(color: Colors.white),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 12),
+                        const Row(
+                          children: [
+                            Text('Toca para ver el mapa en tiempo real', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                            Spacer(),
+                            Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 14)
+                          ],
+                        )
+                      ],
+                    ),
                   ),
                 ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.all(14),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.success,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Estado: Activo. Listo para reportar incidentes.',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
         _actionCard(
           context,
           color: AppColors.secondaryColor,
@@ -658,7 +813,9 @@ class HomeDashboard extends StatelessWidget {
         ),
       ],
     );
-  }
+   },
+  );
+ }
 
   Widget _actionCard(
     BuildContext context, {

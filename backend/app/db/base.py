@@ -15,3 +15,4 @@ from app.models.asignacion_inteligente import (
     CategoriaIncidente,
     IncidenteAsignacionCandidato,
 )
+from app.models.calificacion import Calificacion  # noqa

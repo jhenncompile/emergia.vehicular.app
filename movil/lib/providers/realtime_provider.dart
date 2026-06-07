@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-
+import '../main.dart';
+import '../services/local_notification_service.dart';
 import '../services/realtime_service.dart';
 import 'auth_provider.dart';
 import 'incidente_provider.dart';
@@ -12,6 +13,7 @@ class RealtimeProvider extends ChangeNotifier {
   final RealtimeService realtimeService;
 
   StreamSubscription<Map<String, dynamic>>? _subscription;
+  StreamSubscription<bool>? _statusSubscription;
   int? _connectedUserId;
   bool _isConnected = false;
   Map<String, dynamic>? _lastEvent;
@@ -31,7 +33,7 @@ class RealtimeProvider extends ChangeNotifier {
       return;
     }
 
-    if (_connectedUserId == userId) return;
+    if (_connectedUserId == userId && _isConnected) return;
 
     _connectedUserId = userId;
     _subscription?.cancel();
@@ -44,6 +46,12 @@ class RealtimeProvider extends ChangeNotifier {
         userId,
         authProvider.isTecnico,
       );
+      notifyListeners();
+    });
+
+    _statusSubscription?.cancel();
+    _statusSubscription = realtimeService.connectionStatus.listen((isConnected) {
+      _isConnected = isConnected;
       notifyListeners();
     });
 
@@ -67,6 +75,34 @@ class RealtimeProvider extends ChangeNotifier {
         id: incidentId,
         estado: newStatus,
       );
+    }
+
+    // Mostrar notificacion push local
+    final title = event['titulo']?.toString();
+    final body = event['mensaje']?.toString();
+
+    if (title != null && title.isNotEmpty && body != null && body.isNotEmpty) {
+      LocalNotificationService().showNotification(
+        id: incidentId ?? DateTime.now().millisecondsSinceEpoch % 100000,
+        title: title,
+        body: body,
+        payload: incidentId?.toString(),
+      );
+    } else if (incidentId != null && newStatus != null && newStatus.isNotEmpty) {
+      LocalNotificationService().showNotification(
+        id: incidentId,
+        title: 'Actualización de Incidente',
+        body: 'El incidente #$incidentId ahora está: $newStatus',
+        payload: incidentId.toString(),
+      );
+    }
+
+    if (event['tipo'] == 'ubicacion_tecnico' && incidentId != null) {
+      final lat = _readDouble(event['latitud']);
+      final lng = _readDouble(event['longitud']);
+      if (lat != null && lng != null) {
+        incidenteProvider.actualizarUbicacionTecnico(incidentId, lat, lng);
+      }
     }
 
     if (_isIncidentEvent(event)) {
@@ -96,12 +132,21 @@ class RealtimeProvider extends ChangeNotifier {
     return null;
   }
 
+  double? _readDouble(dynamic value) {
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
   Future<void> disconnect() async {
     _connectedUserId = null;
     _isConnected = false;
     _lastEvent = null;
     await _subscription?.cancel();
     _subscription = null;
+    await _statusSubscription?.cancel();
+    _statusSubscription = null;
     await realtimeService.disconnect();
     notifyListeners();
   }
@@ -109,6 +154,7 @@ class RealtimeProvider extends ChangeNotifier {
   @override
   void dispose() {
     _subscription?.cancel();
+    _statusSubscription?.cancel();
     realtimeService.dispose();
     super.dispose();
   }

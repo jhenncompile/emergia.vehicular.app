@@ -1,15 +1,17 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms'; 
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { IncidentesService } from '../../core/services/incidentes';
 import { UsuariosService } from '../../core/services/usuarios'; 
+import { WebSocketNotificacionService } from '../../core/services/websocket-notificacion.service';
 import { environment } from '../../../environments/environment';
+import { MapaTecnicoComponent } from './mapa-tecnico/mapa-tecnico.component';
 
 @Component({
   selector: 'app-auxilios',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MapaTecnicoComponent],
   templateUrl: './auxilios.html',
   styleUrl: './auxilios.css'
 })
@@ -44,9 +46,9 @@ export class AuxiliosComponent implements OnInit {
 
   cargarDatos() {
     this.cargando = true;
-    this.incidentesService.getPendientes().subscribe(data => this.incidentesPendientes = data);
+    this.incidentesService.getPendientes().subscribe(data => this.incidentesPendientes = data.sort((a, b) => b.id - a.id));
     this.incidentesService.getMisAtenciones().subscribe(data => {
-      this.misAtenciones = data;
+      this.misAtenciones = data.sort((a, b) => b.id - a.id);
       this.cargando = false;
     });
   }
@@ -187,14 +189,28 @@ export class AuxiliosComponent implements OnInit {
     });
   }
 
+  private wsNotificacionService = inject(WebSocketNotificacionService);
+  private cd = inject(ChangeDetectorRef);
+
+  actualizarLista(lista: any[], actualizado: any): any[] {
+    return lista.map(inc => inc.id === actualizado.id ? actualizado : inc);
+  }
+
   marcarLlegada(id: number) {
     if (!confirm('¿Marcar que el técnico llegó al incidente?')) return;
     this.incidentesService.marcarLlegada(id).subscribe({
-      next: () => {
+      next: (actualizado) => {
+        // Actualizamos localmente para no recargar toda la tabla
+        this.incidentesPendientes = this.actualizarLista(this.incidentesPendientes, actualizado);
+        this.misAtenciones = this.actualizarLista(this.misAtenciones, actualizado);
+        
         if (this.incidenteSeleccionado?.id === id) {
-          this.incidenteSeleccionado.estado = 'en_atencion';
+          this.incidenteSeleccionado = { ...this.incidenteSeleccionado, ...actualizado };
         }
-        this.cargarDatos();
+        
+        // Forzamos actualización visual y avisamos al servidor WS
+        this.cd.detectChanges();
+        this.wsNotificacionService.enviarCambioEstado(id, 'en_atencion');
       },
       error: (e) => alert('Error al marcar llegada: ' + e.error?.detail)
     });

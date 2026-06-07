@@ -5,6 +5,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
 interface Notificacion {
+  id: number;
   tipo: string;
   timestamp: string;
   incidente: {
@@ -190,7 +191,14 @@ export class NotificacionesComponent implements OnInit, OnDestroy {
     }, 10000);
   }
 
+  private contadorNotificaciones = inject(import('../../core/services/notificacion-contador.service').NotificacionContadorService);
+  
   cerrarNotificacion() {
+    if (this.notificacionActiva) {
+      this.contadorNotificaciones.marcarLeida(this.notificacionActiva.id).subscribe(() => {
+        this.contadorNotificaciones.refrescar();
+      });
+    }
     this.notificacionActiva = null;
     if (this.autoDismissTimer) {
       clearTimeout(this.autoDismissTimer);

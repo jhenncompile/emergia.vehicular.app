@@ -136,6 +136,19 @@ export class WebSocketNotificacionService implements OnDestroy {
     return this.conectado;
   }
 
+  /**
+   * Envía un cambio de estado de incidente a otros clientes.
+   */
+  enviarCambioEstado(incidenteId: number, estado: string) {
+    if (this.websocket?.readyState === WebSocket.OPEN) {
+      this.websocket.send(JSON.stringify({
+        tipo: 'cambio_estado',
+        incidente_id: incidenteId,
+        estado: estado
+      }));
+    }
+  }
+
   ngOnDestroy() {
     this.desconectar();
   }

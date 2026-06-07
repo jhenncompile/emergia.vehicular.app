@@ -246,6 +246,26 @@ class IncidenteService {
     }
   }
 
+  Future<Map<String, dynamic>> finalizarIncidente({
+    required int incidenteId,
+  }) async {
+    try {
+      final response = await apiService.patch(
+        '/api/v1/incidentes/$incidenteId/estado',
+        body: {
+          'estado': 'finalizado',
+        },
+      );
+
+      if (response is Map<String, dynamic>) {
+        return response;
+      }
+      throw Exception('Respuesta inesperada del servidor');
+    } catch (e) {
+      throw Exception('Error al finalizar incidente: $e');
+    }
+  }
+
   Future<List<Map<String, dynamic>>> obtenerEvidenciasPorIncidente({
     required int incidenteId,
   }) async {
@@ -366,6 +386,40 @@ class IncidenteService {
       throw Exception('Respuesta inesperada del servidor');
     } catch (e) {
       throw Exception('Error al obtener ruta: $e');
+    }
+  }
+  /// Obtiene los candidatos para un incidente
+  Future<List<Map<String, dynamic>>> obtenerCandidatos(int incidenteId) async {
+    try {
+      final response = await apiService.get('/api/v1/incidentes/$incidenteId/candidatos');
+      if (response is List) {
+        return List<Map<String, dynamic>>.from(
+          response.map((item) => item as Map<String, dynamic>),
+        );
+      }
+      return [];
+    } catch (e) {
+      throw Exception('Error al obtener candidatos: $e');
+    }
+  }
+
+  /// Selecciona el taller para un incidente
+  Future<Map<String, dynamic>> seleccionarTaller({
+    required int incidenteId,
+    required int tallerId,
+  }) async {
+    try {
+      final response = await apiService.post(
+        '/api/v1/incidentes/$incidenteId/seleccionar-taller/$tallerId',
+        body: {},
+      );
+
+      if (response is Map<String, dynamic>) {
+        return response;
+      }
+      throw Exception('Respuesta inesperada del servidor');
+    } catch (e) {
+      throw Exception('Error al seleccionar taller: $e');
     }
   }
 }

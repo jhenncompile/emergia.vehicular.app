@@ -13,6 +13,7 @@ class Taller(Base):
     telefono = Column(String(20))
     estado = Column(Boolean, default=True) # Activo o Inactivo
     comision_porcentaje = Column(Float, default=10.0) # Tu ganancia [Audio]
+    calificacion_promedio = Column(Float, nullable=True, default=None)  # Promedio de calificaciones
 
     # Relaciones
     usuarios = relationship("Usuario", back_populates="taller")
@@ -25,6 +26,7 @@ class Taller(Base):
     )
     pagos = relationship("Pago", back_populates="taller")
     bitacoras = relationship("Bitacora", back_populates="taller")
+    calificaciones = relationship("Calificacion", back_populates="taller")
 
 
     @property

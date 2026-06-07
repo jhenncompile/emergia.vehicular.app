@@ -15,14 +15,13 @@ import os
 import logging
 import asyncio
 from pathlib import Path
-from typing import List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import PlainTextResponse
 from app.db.session import SessionLocal, engine
-from app.db.base import Base  # Importamos el que tiene todos los modelos
+from app.db.base import Base
 from app.api.v1.api import api_router
 from app.websocket.manager import manager
 from app.core.config import settings
@@ -34,18 +33,11 @@ logger = logging.getLogger(__name__)
 
 # Environment configuration
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-cors_origins = ["*"]  # Allow all origins in development
+
 
 # ============================================================
-# APPLICATION INITIALIZATION
+# BACKGROUND WORKER
 # ============================================================
-app = FastAPI(
-    title="VialIA - Sistema de Asistencia Vehicular",
-    description="Emergency vehicle reporting with AI-powered multimodal analysis",
-    version="1.0.0",
-)
-
-
 async def assignment_timeout_worker():
     """Avanza ofertas de taller vencidas sin esperar una accion manual."""
     interval_seconds = int(os.getenv("ASSIGNMENT_TIMEOUT_CHECK_SECONDS", "30"))
@@ -63,40 +55,35 @@ async def assignment_timeout_worker():
 
 
 # ============================================================
+# APPLICATION INITIALIZATION
+# ============================================================
+app = FastAPI(
+    title="VialIA - Sistema de Asistencia Vehicular",
+    description="Emergency vehicle reporting with AI-powered multimodal analysis",
+    version="1.0.0",
+)
+
+
+# ============================================================
 # MIDDLEWARE PERSONALIZADO PARA WEBSOCKET PREFLIGHT
 # ============================================================
 class WebSocketCORSMiddleware(BaseHTTPMiddleware):
     """Middleware para manejar preflight requests de WebSocket"""
     async def dispatch(self, request: Request, call_next):
-        # Si es OPTIONS request (preflight), responder OK
         if request.method == "OPTIONS":
             return PlainTextResponse("OK", status_code=200, headers={
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
                 "Access-Control-Allow-Headers": "*",
             })
-        
-        # Para WebSocket, dejar pasar sin modificar headers
-        # (WebSocket no es una respuesta HTTP normal y no soporta header modification)
         if request.url.path.startswith("/ws/"):
             return await call_next(request)
-        
-        # Para otros requests, procesar normalmente
         return await call_next(request)
 
 
 app.add_middleware(WebSocketCORSMiddleware)
 
-# ============================================================
-# CORS CONFIGURATION
-# Middleware personalizado ya maneja WebSocket preflight
-# ============================================================
-
-# Log CORS configuration
-logger.info(f"Environment: development")
-logger.info("✅ WebSocket CORS manejado por middleware personalizado")
-
-# CORS para HTTP requests (no WebSocket)
+# CORS para HTTP requests
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -107,10 +94,10 @@ app.add_middleware(
     max_age=3600,
 )
 
+
 # ============================================================
 # API ROUTES
 # ============================================================
-# Incluimos el router maestro con todos los endpoints
 app.include_router(api_router, prefix="/api/v1")
 
 UPLOADS_ROOT = Path("uploads")
@@ -142,16 +129,25 @@ def health_check():
     }
 
 
+@app.get("/api/v1/health")
+def legacy_health_check():
+    """Endpoint para el revividor de GitHub Actions.
+    No requiere auth y no genera registros en Bitácora."""
+    return {
+        "status": "online",
+        "service": "Taller Pro API",
+        "tenant_mode": "multi-tenant-enabled"
+    }
+
+
 @app.get("/ready")
 def readiness_check():
-    """Readiness check endpoint - ensures all dependencies are available."""
+    """Readiness check endpoint."""
     try:
-        # Check database connection
         from app.db.session import SessionLocal
         db = SessionLocal()
         db.execute("SELECT 1")
         db.close()
-        
         return {
             "ready": True,
             "database": "connected",
@@ -159,10 +155,7 @@ def readiness_check():
         }
     except Exception as e:
         logger.error(f"Readiness check failed: {str(e)}")
-        return {
-            "ready": False,
-            "error": str(e),
-        }
+        return {"ready": False, "error": str(e)}
 
 
 @app.get("/ws-test")
@@ -172,59 +165,53 @@ def ws_test():
 
 
 # ============================================================
-# WEBSOCKET ENDPOINT (Direct on app, not in router)
+# WEBSOCKET ENDPOINT
 # ============================================================
 @app.websocket("/ws/{usuario_id}")
 async def websocket_endpoint(websocket: WebSocket, usuario_id: int):
     """
-    WebSocket endpoint for real-time notifications.
-    
-    Connect with: ws://localhost:8000/ws/{usuario_id}
-    
-    Sends JSON notifications:
+    WebSocket endpoint para notificaciones en tiempo real.
+
+    Conectar con: ws://host:8000/ws/{usuario_id}
+
+    Envía notificaciones JSON:
     {
         "titulo": "...",
         "mensaje": "...",
-        "tipo": "incident_type",
-        "incidente_id": 5
+        "tipo": "incidente_aceptado",
+        "incidente_id": 5,
+        "estado_nuevo": "asignado_taller"
     }
+
+    El cliente puede enviar "ping" para mantener viva la conexión.
     """
-    # Debug headers
-    print(f"\n🔍 DEBUG WebSocket Request:")
-    print(f"  Path: {websocket.url.path}")
-    print(f"  Headers: {dict(websocket.headers)}")
-    print(f"  usuario_id: {usuario_id}")
-    logger.info(f"🔌 WebSocket request: usuario_id={usuario_id}, origin={websocket.headers.get('origin', 'N/A')}")
-    
+    logger.info(f"🔌 WebSocket request: usuario_id={usuario_id}")
+
     try:
-        print(f"✅ Acceptando conexión para usuario {usuario_id}")
         await manager.connect(usuario_id, websocket)
         logger.info(f"✅ Usuario {usuario_id} conectado a WebSocket")
-        
-        # Mantener conexión abierta (escuchar heartbeat del cliente)
-        try:
-            while True:
-                try:
-                    data = await websocket.receive_text()
-                    # El cliente envía "ping" para mantener viva la conexión
-                    if data == "ping":
-                        await websocket.send_text("pong")
-                except Exception as receive_error:
-                    logger.debug(f"Error recibiendo datos WebSocket usuario {usuario_id}: {str(receive_error)}")
-                    break
-        except Exception as e:
-            logger.error(f"Error en loop WebSocket usuario {usuario_id}: {str(e)}")
-    
-    except WebSocketDisconnect:
-        manager.disconnect(usuario_id, websocket)
-        logger.info(f"👋 WebSocket desconectado para usuario {usuario_id}")
+
+        # Mantener conexión abierta y escuchar heartbeat del cliente
+        while True:
+            try:
+                data = await websocket.receive_text()
+                if data == "ping":
+                    await websocket.send_text("pong")
+            except WebSocketDisconnect:
+                logger.info(f"👋 Usuario {usuario_id} se desconectó limpiamente")
+                break
+            except Exception as receive_error:
+                logger.debug(f"Error recibiendo datos WS usuario {usuario_id}: {str(receive_error)}")
+                break
+
     except Exception as e:
         logger.error(f"❌ Error en WebSocket usuario {usuario_id}: {str(e)}")
-        try:
-            manager.disconnect(usuario_id, websocket)
-        except:
-            pass
+
+    finally:
+        # SIEMPRE limpiar la conexión del manager, sin importar cómo terminó.
+        # Esto previene zombie connections que bloquean notificaciones futuras.
         manager.disconnect(usuario_id, websocket)
+        logger.info(f"🧹 Conexión WS limpiada para usuario {usuario_id}")
 
 
 # ============================================================
@@ -235,15 +222,23 @@ async def startup_event():
     """Initialize application on startup."""
     logger.info("=== VialIA Backend Starting ===")
     logger.info(f"Environment: {ENVIRONMENT}")
-    logger.info(f"CORS Configuration: {len(cors_origins)} allowed origins")
-    
+
     # Check AI service configuration
     hf_token = os.getenv("HF_API_TOKEN")
     if hf_token:
         logger.info("✓ Hugging Face API Token configured - AI features enabled")
     else:
         logger.warning("✗ Hugging Face API Token not configured - AI features disabled")
-    
+
+    # Inicializar Firebase (FCM) si hay credenciales configuradas
+    try:
+        from app.core.firebase_config import inicializar_firebase
+        inicializar_firebase()
+    except ImportError:
+        logger.info("ℹ️  Módulo firebase_config no encontrado - FCM deshabilitado")
+    except Exception as e:
+        logger.warning(f"⚠️  Firebase no inicializado: {str(e)}")
+
     # Initialize database
     logger.info("Initializing database tables...")
     Base.metadata.create_all(bind=engine)

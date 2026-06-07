@@ -1,0 +1,80 @@
+<div class="calificaciones-container">
+  <div class="header">
+    <h1>Calificaciones Recibidas</h1>
+    <p class="subtitle">Descubre qué opinan tus clientes sobre tus servicios</p>
+  </div>
+
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Cargando calificaciones...</p>
+  </div>
+
+  <div *ngIf="errorMessage" class="error-state">
+    <p>{{ errorMessage }}</p>
+  </div>
+
+  <ng-container *ngIf="!isLoading && !errorMessage">
+    
+    <!-- TARJETA RESUMEN -->
+    <div class="summary-card" *ngIf="promedioInfo">
+      <div class="score-box">
+        <h2 class="score">{{ promedioInfo.promedio | number:'1.1-1' }}</h2>
+        <div class="stars-big">
+          <span *ngFor="let s of getStarsArray(promedioInfo.promedio)" class="star" [class.filled]="s === 1">★</span>
+        </div>
+        <p class="total">{{ promedioInfo.total_calificaciones }} reseñas en total</p>
+      </div>
+      <div class="filters-box">
+        <div class="filter-group">
+          <label>Filtrar por estrellas:</label>
+          <select [(ngModel)]="estrellasFiltro" (change)="onFiltroChange()">
+            <option value="TODAS">Todas las estrellas</option>
+            <option [ngValue]="5">5 Estrellas</option>
+            <option [ngValue]="4">4 Estrellas</option>
+            <option [ngValue]="3">3 Estrellas</option>
+            <option [ngValue]="2">2 Estrellas</option>
+            <option [ngValue]="1">1 Estrella</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Ordenar por:</label>
+          <select [(ngModel)]="fechaOrden" (change)="onFiltroChange()">
+            <option value="NUEVAS">Más recientes</option>
+            <option value="ANTIGUAS">Más antiguas</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- LISTADO -->
+    <div class="reviews-list">
+      <div *ngIf="calificacionesFiltradas.length === 0" class="empty-state">
+        <p>No se encontraron calificaciones con los filtros actuales.</p>
+      </div>
+
+      <div class="review-card" *ngFor="let cal of calificacionesFiltradas">
+        <div class="review-header">
+          <div class="client-info">
+            <div class="avatar">{{ cal.cliente_nombre ? cal.cliente_nombre[0] : 'U' }}</div>
+            <div>
+              <h3 class="client-name">{{ cal.cliente_nombre }} {{ cal.cliente_apellido }}</h3>
+              <p class="client-vehicle" *ngIf="cal.vehiculo_marca">🚗 {{ cal.vehiculo_marca }} {{ cal.vehiculo_modelo }}</p>
+            </div>
+          </div>
+          <div class="review-meta">
+            <div class="stars-small">
+              <span *ngFor="let s of getStarsArray(cal.puntuacion)" class="star" [class.filled]="s === 1">★</span>
+            </div>
+            <span class="date">{{ cal.fecha_creacion | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+        </div>
+        <div class="review-body">
+          <p class="comment" [class.no-comment]="!cal.comentario">
+            {{ cal.comentario ? '"' + cal.comentario + '"' : 'El cliente no dejó ningún comentario adicional.' }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </ng-container>
+</div>

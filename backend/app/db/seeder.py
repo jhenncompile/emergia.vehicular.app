@@ -1,4 +1,5 @@
 import logging
+import unicodedata
 from datetime import datetime, timedelta, time
 from sqlalchemy.orm import Session
 from decimal import Decimal
@@ -19,9 +20,11 @@ from app.models.bitacora import Bitacora
 from app.models.notificacion import Notificacion
 from app.models.evidencia import Evidencia
 from app.models.taller_detalle import HorarioTaller
+from app.models.calificacion import Calificacion
 
 from app.core.estados import CanceladoPor, EstadoIncidente
 from app.core.security import obtener_hash_clave as get_password_hash
+from app.services.ranking_taller_service import MAPEO_CATEGORIA_ESPECIALIDADES
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -78,6 +81,62 @@ ESPECIALIDADES_NOMBRE = [
     "Transmisiones",
 ]
 
+CLASIFICACION_ASIGNACION_ALIAS = {
+    "Escaneo Computarizado": "Falla Eléctrica",
+    "Pastillas de Freno": "Sistema de Frenos",
+    "Radiador": "Fuga de refrigerante",
+}
+
+
+def normalizar_especialidad(texto: str) -> str:
+    texto = unicodedata.normalize("NFD", texto.lower().strip())
+    return "".join(char for char in texto if unicodedata.category(char) != "Mn")
+
+
+def criterio_especialidades_por_clasificacion(clasificacion: str) -> tuple[set[str], bool]:
+    categoria = CLASIFICACION_ASIGNACION_ALIAS.get(clasificacion, clasificacion)
+    requeridas = MAPEO_CATEGORIA_ESPECIALIDADES.get(categoria, [])
+    obligatorias = [
+        nombre
+        for nombre, _peso, es_obligatoria in requeridas
+        if es_obligatoria
+    ]
+    if obligatorias:
+        return {normalizar_especialidad(nombre) for nombre in obligatorias}, True
+    return {
+        normalizar_especialidad(nombre)
+        for nombre, _peso, _es_obligatoria in requeridas
+    }, False
+
+
+def especialidades_taller_seed(taller: Taller) -> set[str]:
+    especialidades = set()
+    for usuario in taller.usuarios:
+        if usuario.rol_id == 3 and usuario.esta_activo:
+            for especialidad in usuario.especialidades:
+                especialidades.add(normalizar_especialidad(especialidad.nombre))
+    return especialidades
+
+
+def taller_cubre_clasificacion(taller: Taller, clasificacion: str) -> bool:
+    requeridas, exige_todas = criterio_especialidades_por_clasificacion(clasificacion)
+    if not requeridas:
+        return True
+    especialidades = especialidades_taller_seed(taller)
+    if exige_todas:
+        return requeridas.issubset(especialidades)
+    return bool(requeridas & especialidades)
+
+
+def elegir_taller_para_clasificacion(talleres: list[Taller], clasificacion: str) -> Taller:
+    compatibles = [
+        taller
+        for taller in talleres
+        if taller_cubre_clasificacion(taller, clasificacion)
+    ]
+    return random.choice(compatibles or talleres)
+
+
 def generar_coords_en_zona(zona):
     """Genera coordenadas GPS dentro de una zona de SC"""
     lat = zona["lat"] + random.uniform(-zona["radio"], zona["radio"])
@@ -85,8 +144,56 @@ def generar_coords_en_zona(zona):
     return Decimal(str(round(lat, 6))), Decimal(str(round(lon, 6)))
 
 
-def seed_db(db: Session) -> None:
-    logger.info("🌱 Iniciando sembrado avanzado con FAKER (3 meses de movimiento)...")
+def seed_db(
+    db: Session,
+    *,
+    talleres_count: int = 6,
+    clientes_count: int = 12,
+    incidentes_count: int | None = None,
+    incidentes_min: int = 250,
+    incidentes_max: int = 350,
+    tecnicos_por_taller_min: int = 2,
+    tecnicos_por_taller_max: int = 3,
+    vehiculos_por_cliente_min: int = 1,
+    vehiculos_por_cliente_max: int = 2,
+    bitacoras_count: int = 100,
+    evidencias_count: int = 80,
+    notificaciones_count: int = 60,
+    dias_historial: int = 365,
+    seed: int | None = None,
+) -> None:
+    talleres_count = max(1, talleres_count)
+    clientes_count = max(1, clientes_count)
+    incidentes_min = max(0, incidentes_min)
+    incidentes_max = max(incidentes_min, incidentes_max)
+    tecnicos_por_taller_min = max(1, tecnicos_por_taller_min)
+    tecnicos_por_taller_max = max(tecnicos_por_taller_min, tecnicos_por_taller_max)
+    vehiculos_por_cliente_min = max(1, vehiculos_por_cliente_min)
+    vehiculos_por_cliente_max = max(
+        vehiculos_por_cliente_min,
+        vehiculos_por_cliente_max,
+    )
+    bitacoras_count = max(0, bitacoras_count)
+    evidencias_count = max(0, evidencias_count)
+    notificaciones_count = max(0, notificaciones_count)
+    dias_historial = max(1, dias_historial)
+
+    if seed is None:
+        seed = random.SystemRandom().randint(1, 999_999_999)
+    random.seed(seed)
+    Faker.seed(seed)
+    fake.seed_instance(seed)
+
+    logger.info("🌱 Iniciando sembrado avanzado con FAKER")
+    logger.info(f"🎲 Semilla de datos: {seed}")
+    logger.info(
+        "⚙️ Configuración: "
+        f"talleres={talleres_count}, "
+        f"clientes={clientes_count}, "
+        f"incidentes={incidentes_count or f'{incidentes_min}-{incidentes_max}'}, "
+        f"técnicos/taller={tecnicos_por_taller_min}-{tecnicos_por_taller_max}, "
+        f"vehículos/cliente={vehiculos_por_cliente_min}-{vehiculos_por_cliente_max}"
+    )
     
     hash_clave = get_password_hash("password123")
     hoy = datetime.now()
@@ -121,7 +228,7 @@ def seed_db(db: Session) -> None:
     db.commit()
     
     # ---------------------------------------------------------
-    # 3. TALLERES (6 talleres en SC)
+    # 3. TALLERES
     # ---------------------------------------------------------
     logger.info("🏢 Creando TALLERES en Santa Cruz...")
     talleres_data = [
@@ -162,6 +269,18 @@ def seed_db(db: Session) -> None:
             "zona": ZONAS_SC[5]
         },
     ]
+
+    for idx in range(len(talleres_data) + 1, talleres_count + 1):
+        zona = random.choice(ZONAS_SC)
+        talleres_data.append(
+            {
+                "nombre": f"{fake.company()} Taller {idx}",
+                "direccion": f"{fake.street_address()} - {zona['nombre']}",
+                "comision": round(random.uniform(8.0, 14.0), 2),
+                "zona": zona,
+            }
+        )
+    talleres_data = talleres_data[:talleres_count]
     
     talleres = []
     for idx, t_data in enumerate(talleres_data, start=1):
@@ -177,6 +296,7 @@ def seed_db(db: Session) -> None:
                 longitud=lon,
                 estado=True
             )
+            taller.zona = t_data["zona"]
             db.add(taller)
             talleres.append(taller)
         else:
@@ -213,9 +333,12 @@ def seed_db(db: Session) -> None:
             usuario_id_counter += 1
     db.commit()
     
-    # Técnicos por taller (2-3 por taller)
+    # Técnicos por taller
     for taller in talleres:
-        num_tecnicos = random.randint(2, 3)
+        num_tecnicos = random.randint(
+            tecnicos_por_taller_min,
+            tecnicos_por_taller_max,
+        )
         for t_idx in range(num_tecnicos):
             usuario = db.query(Usuario).filter(
                 Usuario.correo == f"tec_{taller.id}_{t_idx}@taller.com"
@@ -240,8 +363,8 @@ def seed_db(db: Session) -> None:
                 usuario_id_counter += 1
     db.commit()
     
-    # Clientes (12-15 clientes que no tienen taller)
-    for c_idx in range(12):
+    # Clientes que no tienen taller
+    for c_idx in range(clientes_count):
         usuario = db.query(Usuario).filter(
             Usuario.correo == f"cliente_{c_idx}@correo.com"
         ).first()
@@ -265,7 +388,7 @@ def seed_db(db: Session) -> None:
     logger.info(f"✅ Creados {len(usuarios)} usuarios")
     
     # ---------------------------------------------------------
-    # 5. VEHÍCULOS (2-3 por cliente)
+    # 5. VEHÍCULOS
     # ---------------------------------------------------------
     logger.info("🚗 Creando VEHÍCULOS...")
     vehiculos = []
@@ -273,7 +396,10 @@ def seed_db(db: Session) -> None:
     modelos = ["Corolla", "Civic", "Focus", "Spark", "Versa", "Elantra", "Picanto", "320i", "C200"]
     
     for cliente in clientes:
-        num_vehiculos = random.randint(1, 2)
+        num_vehiculos = random.randint(
+            vehiculos_por_cliente_min,
+            vehiculos_por_cliente_max,
+        )
         for v_idx in range(num_vehiculos):
             placa = f"{random.randint(1000, 9999)}-{fake.bothify('???', letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ')}"
             vehiculo = db.query(Vehiculo).filter(Vehiculo.placa == placa).first()
@@ -307,45 +433,34 @@ def seed_db(db: Session) -> None:
                     horario = HorarioTaller(
                         taller_id=taller.id,
                         dia=dia,
-                        hora_apertura="09:00",
-                        hora_cierre="14:00"
+                        hora_apertura=time(9, 0),
+                        hora_cierre=time(14, 0),
                     )
                 else:
                     horario = HorarioTaller(
                         taller_id=taller.id,
                         dia=dia,
-                        hora_apertura="08:00",
-                        hora_cierre="18:00"
+                        hora_apertura=time(8, 0),
+                        hora_cierre=time(18, 0),
                     )
                 db.add(horario)
     db.commit()
     
     # ---------------------------------------------------------
-    # 7. INCIDENTES (200-300 incidentes en 1 año)
+    # 7. INCIDENTES FINALIZADOS
     # ---------------------------------------------------------
-    logger.info("🚨 Creando INCIDENTES (últimos 365 días - 1 AÑO)...")
+    logger.info("🚨 Creando INCIDENTES FINALIZADOS...")
     incidentes = []
-    estados_incidente = [
-        EstadoIncidente.PENDIENTE,
-        EstadoIncidente.BUSCANDO_TALLER,
-        EstadoIncidente.ASIGNADO_TALLER,
-        EstadoIncidente.EN_CAMINO,
-        EstadoIncidente.EN_ATENCION,
-        EstadoIncidente.FINALIZADO,
-        EstadoIncidente.CANCELADO,
-    ]
     prioridades = ["baja", "media", "alta"]
     
-    # Calcular cuántos de cada estado
-    num_incidentes = random.randint(250, 350)  # 250-350 incidentes en 1 año
-    num_en_camino = 20  # Solo 20 en camino
-    
-    # Crear primero los 20 en_camino
-    incidentes_en_camino = 0
+    if incidentes_count is None:
+        num_incidentes = random.randint(incidentes_min, incidentes_max)
+    else:
+        num_incidentes = max(0, incidentes_count)
     
     for inc_idx in range(num_incidentes):
-        # Fecha aleatoria en los últimos 365 días (1 año)
-        dias_atras = random.randint(0, 365)
+        # Fecha aleatoria dentro del historial configurado
+        dias_atras = random.randint(0, dias_historial)
         fecha_incidente = hoy - timedelta(days=dias_atras)
         
         # Seleccionar cliente y vehículo aleatorio
@@ -355,79 +470,47 @@ def seed_db(db: Session) -> None:
             continue
         vehiculo = random.choice(vehiculos_cliente)
         
-        # Taller aleatorio
-        taller = random.choice(talleres)
+        clasificacion = random.choice(CLASIFICACIONES_INCIDENTES)
+        taller = elegir_taller_para_clasificacion(talleres, clasificacion)
         
-        # Distribución de estados: 20 en_camino, resto distribuidos
-        if incidentes_en_camino < num_en_camino:
-            estado = EstadoIncidente.EN_CAMINO
-            incidentes_en_camino += 1
-        else:
-            estado = random.choices(
-                estados_incidente,
-                weights=[12, 10, 8, 0, 12, 40, 18],
-            )[0]
+        estado = EstadoIncidente.FINALIZADO
         
         tecnico = None
-        if estado in [
-            EstadoIncidente.EN_CAMINO,
-            EstadoIncidente.EN_ATENCION,
-            EstadoIncidente.FINALIZADO,
-        ]:
-            tecnicos_taller = [t for t in tecnicos if t.taller_id == taller.id]
-            if tecnicos_taller:
-                tecnico = random.choice(tecnicos_taller)
+        tecnicos_taller = [t for t in tecnicos if t.taller_id == taller.id]
+        if tecnicos_taller:
+            tecnico = random.choice(tecnicos_taller)
         
         # Coordenadas en zona del taller o cercana
         zona = taller.zona if hasattr(taller, 'zona') else random.choice(ZONAS_SC)
         lat, lon = generar_coords_en_zona(zona)
         
-        # Monto aleatorio
-        monto = random.randint(150, 1500) if estado != EstadoIncidente.PENDIENTE else 0
-        tiene_taller = estado not in [
-            EstadoIncidente.PENDIENTE,
-            EstadoIncidente.BUSCANDO_TALLER,
-        ]
-
         incidente = Incidente(
             vehiculo_id=vehiculo.id,
             usuario_id=cliente.id,
-            taller_id=taller.id if tiene_taller else None,
+            taller_id=taller.id,
             tecnico_id=tecnico.id if tecnico else None,
+            descripcion=fake.sentence(nb_words=10),
+            ubicacion=zona["nombre"],
             latitud=lat,
             longitud=lon,
             prioridad=random.choice(prioridades),
             estado=estado,
-            pago_estado="pagado" if estado == EstadoIncidente.FINALIZADO else "pendiente",
-            cancelado_por=(
-                random.choice([CanceladoPor.CLIENTE, CanceladoPor.TALLER])
-                if estado == EstadoIncidente.CANCELADO
-                else None
-            ),
-            motivo_cancelacion=(
-                fake.sentence(nb_words=6)
-                if estado == EstadoIncidente.CANCELADO
-                else None
-            ),
-            tiempo_asignacion_segundos=(
-                random.randint(30, 600)
-                if estado in [
-                    EstadoIncidente.ASIGNADO_TALLER,
-                    EstadoIncidente.EN_CAMINO,
-                    EstadoIncidente.EN_ATENCION,
-                    EstadoIncidente.FINALIZADO,
-                ]
-                else None
-            ),
-            clasificacion_ia=random.choice(CLASIFICACIONES_INCIDENTES),
+            pago_estado="pagado",
+            cancelado_por=None,
+            motivo_cancelacion=None,
+            tiempo_asignacion_segundos=random.randint(30, 600),
+            clasificacion_ia=clasificacion,
             resumen_ia=fake.sentence(nb_words=8),
-            fecha_creacion=fecha_incidente
+            fecha_creacion=fecha_incidente,
+            fecha_llegada_tecnico=fecha_incidente + timedelta(
+                minutes=random.randint(20, 120)
+            ),
         )
         db.add(incidente)
         incidentes.append(incidente)
     
     db.commit()
-    logger.info(f"✅ Creados {len(incidentes)} incidentes (20 en_camino)")
+    logger.info(f"✅ Creados {len(incidentes)} incidentes finalizados")
     
     # ---------------------------------------------------------
     # 8. PAGOS (para incidentes finalizados)
@@ -447,7 +530,7 @@ def seed_db(db: Session) -> None:
                 monto=monto,
                 comision_plataforma=comision,
                 metodo_pago=random.choice(["qr", "efectivo", "tarjeta"]),
-                estado=random.choice(["completado", "pendiente"]),
+                estado="completado",
                 fecha=incidente.fecha_creacion + timedelta(days=random.randint(1, 5))
             )
             db.add(pago)
@@ -455,28 +538,103 @@ def seed_db(db: Session) -> None:
     
     db.commit()
     logger.info(f"✅ Creados {len(pagos)} pagos")
+
+    # ---------------------------------------------------------
+    # 8.5 CALIFICACIONES (para ~70% de incidentes finalizados)
+    # ---------------------------------------------------------
+    logger.info("⭐ Creando CALIFICACIONES...")
+    calificaciones = []
+    comentarios_positivos = [
+        "Excelente servicio, muy rápido.",
+        "El técnico fue muy amable y profesional.",
+        "Quedé muy satisfecho, lo recomiendo.",
+        "Buen trabajo, precio justo.",
+        "Atendieron rápido y resolvieron el problema.",
+    ]
+    comentarios_neutros = [
+        "Servicio correcto, sin quejas.",
+        "Cumplieron con lo acordado.",
+        "Normal, nada especial.",
+    ]
+    comentarios_negativos = [
+        "Tardaron más de lo esperado.",
+        "El precio me pareció alto.",
+        "Tuve que llamar varias veces para que atendieran.",
+    ]
+
+    for incidente in incidentes:
+        # Solo ~70% de los incidentes tienen calificación
+        if random.random() > 0.70:
+            continue
+        if not incidente.taller_id:
+            continue
+
+        puntuacion = random.choices(
+            [1, 2, 3, 4, 5],
+            weights=[5, 10, 15, 35, 35],
+        )[0]
+
+        if puntuacion >= 4:
+            comentario = random.choice(comentarios_positivos) if random.random() > 0.4 else None
+        elif puntuacion == 3:
+            comentario = random.choice(comentarios_neutros) if random.random() > 0.5 else None
+        else:
+            comentario = random.choice(comentarios_negativos) if random.random() > 0.3 else None
+
+        calificacion = Calificacion(
+            incidente_id=incidente.id,
+            taller_id=incidente.taller_id,
+            usuario_id=incidente.usuario_id,
+            puntuacion=puntuacion,
+            comentario=comentario,
+            fecha_creacion=incidente.fecha_creacion + timedelta(hours=random.randint(1, 48)),
+        )
+        db.add(calificacion)
+        calificaciones.append(calificacion)
+
+    db.commit()
+    logger.info(f"✅ Creadas {len(calificaciones)} calificaciones")
+
+    # Recalcular promedios de talleres
+    logger.info("📊 Actualizando promedios de calificación por taller...")
+    from sqlalchemy import func as sql_func
+    for taller in talleres:
+        promedio = (
+            db.query(sql_func.avg(Calificacion.puntuacion))
+            .filter(Calificacion.taller_id == taller.id)
+            .scalar()
+        )
+        if promedio is not None:
+            taller.calificacion_promedio = round(float(promedio), 2)
+        else:
+            # Garantizar que todos los talleres tengan una calificacion inicial atractiva
+            taller.calificacion_promedio = round(random.uniform(3.8, 5.0), 2)
+    db.commit()
+    logger.info("✅ Promedios actualizados")
     
     # ---------------------------------------------------------
     # 9. BITÁCORA (registros de actividades)
     # ---------------------------------------------------------
     logger.info("📝 Creando BITÁCORA...")
     bitacoras = []
-    acciones = ["crear", "editar", "atender", "cancelar", "aprobar", "rechazar"]
+    acciones = ["crear", "asignar_taller", "asignar_tecnico", "atender", "finalizar"]
     
-    for incidente in incidentes[:100]:  # 100 registros de bitácora (más incidentes = más bitácoras)
-        for _ in range(random.randint(1, 3)):
-            bitacora = Bitacora(
-                usuario_id=incidente.tecnico_id or incidente.usuario_id,
-                taller_id=incidente.taller_id,
-                tabla="incidente",
-                tabla_id=incidente.id,
-                accion=random.choice(acciones),
-                valor_anterior={"estado": "pendiente"},
-                valor_nuevo={"estado": incidente.estado},
-                fecha_hora=incidente.fecha_creacion + timedelta(hours=random.randint(1, 72))
-            )
-            db.add(bitacora)
-            bitacoras.append(bitacora)
+    for _ in range(bitacoras_count):
+        if not incidentes:
+            break
+        incidente = random.choice(incidentes)
+        bitacora = Bitacora(
+            usuario_id=incidente.tecnico_id or incidente.usuario_id,
+            taller_id=incidente.taller_id,
+            tabla="incidente",
+            tabla_id=incidente.id,
+            accion=random.choice(acciones),
+            valor_anterior={"estado": EstadoIncidente.EN_ATENCION},
+            valor_nuevo={"estado": incidente.estado},
+            fecha_hora=incidente.fecha_creacion + timedelta(hours=random.randint(1, 72))
+        )
+        db.add(bitacora)
+        bitacoras.append(bitacora)
     
     db.commit()
     logger.info(f"✅ Creados {len(bitacoras)} registros de bitácora")
@@ -487,18 +645,18 @@ def seed_db(db: Session) -> None:
     logger.info("📷 Creando EVIDENCIAS...")
     evidencias = []
     
-    for incidente in incidentes[:80]:  # 80 incidentes con evidencia (más con 1 año de datos)
-        if incidente.estado in [EstadoIncidente.EN_CAMINO, EstadoIncidente.FINALIZADO]:
-            num_fotos = random.randint(1, 3)
-            for foto_idx in range(num_fotos):
-                evidencia = Evidencia(
-                    incidente_id=incidente.id,
-                    tipo_archivo="imagen",
-                    url_archivo=f"https://placeholder.com/300?text=Evidencia+{foto_idx+1}",
-                    fecha_registro=incidente.fecha_creacion + timedelta(hours=random.randint(2, 48))
-                )
-                db.add(evidencia)
-                evidencias.append(evidencia)
+    for foto_idx in range(evidencias_count):
+        if not incidentes:
+            break
+        incidente = random.choice(incidentes)
+        evidencia = Evidencia(
+            incidente_id=incidente.id,
+            tipo_archivo="imagen",
+            url_archivo=f"https://placeholder.com/300?text=Evidencia+{foto_idx+1}",
+            fecha_registro=incidente.fecha_creacion + timedelta(hours=random.randint(2, 48))
+        )
+        db.add(evidencia)
+        evidencias.append(evidencia)
     
     db.commit()
     logger.info(f"✅ Creados {len(evidencias)} registros de evidencia")
@@ -509,19 +667,33 @@ def seed_db(db: Session) -> None:
     logger.info("🔔 Creando NOTIFICACIONES...")
     notificaciones = []
     
-    for incidente in incidentes[:60]:  # 60 notificaciones (más con 1 año)
-        if incidente.taller_id:
-            notificacion = Notificacion(
-                usuario_id=incidente.usuario_id,
-                incidente_id=incidente.id,
-                titulo="Incidente cercano reportado",
-                mensaje=f"Se reportó un {incidente.clasificacion_ia} cerca de tu ubicación",
-                tipo="incidente_cercano",
-                leido=random.choice([True, False]),
-                fecha_envio=incidente.fecha_creacion
-            )
-            db.add(notificacion)
-            notificaciones.append(notificacion)
+    for _ in range(notificaciones_count):
+        if not incidentes:
+            break
+        incidente = random.choice(incidentes)
+        notificacion = Notificacion(
+            usuario_id=incidente.usuario_id,
+            incidente_id=incidente.id,
+            titulo="Incidente finalizado",
+            mensaje=f"Tu incidente de {incidente.clasificacion_ia} fue finalizado.",
+            tipo="incidente_finalizado",
+            leido=random.choice([True, False]),
+            fecha_envio=incidente.fecha_creacion + timedelta(hours=random.randint(1, 96))
+        )
+        db.add(notificacion)
+        notificaciones.append(notificacion)
+    
+    db.commit()
+    logger.info(f"✅ Creados {len(notificaciones)} registros de notificación")
+    
+    # ---------------------------------------------------------
+    # RESUMEN FINAL
+    # ---------------------------------------------------------
+    logger.info("\n" + "="*70)
+    logger.info("✨ SEMBRADO COMPLETADO EXITOSAMENTE")
+    logger.info("="*70)
+    logger.info(f"📍 Roles: {db.query(Rol).count()}")
+    logger.info(f"🔧 Especialidades: {db.query(Especialidad).count()}")
     
     db.commit()
     logger.info(f"✅ Creados {len(notificaciones)} registros de notificación")
@@ -540,13 +712,13 @@ def seed_db(db: Session) -> None:
     logger.info(f"⏰ Horarios: {db.query(HorarioTaller).count()}")
     logger.info(f"🚨 Incidentes: {db.query(Incidente).count()}")
     logger.info(f"💰 Pagos: {db.query(Pago).count()}")
+    logger.info(f"⭐ Calificaciones: {db.query(Calificacion).count()}")
     logger.info(f"📝 Bitácora: {db.query(Bitacora).count()}")
     logger.info(f"📷 Evidencias: {db.query(Evidencia).count()}")
     logger.info(f"🔔 Notificaciones: {db.query(Notificacion).count()}")
     logger.info("="*70)
-    logger.info("📊 Datos de 1 AÑO COMPLETO de movimiento en Santa Cruz de la Sierra")
+    logger.info(f"📊 Datos variables de {dias_historial} días de movimiento en Santa Cruz")
     logger.info("="*70 + "\n")
-
 
 
 if __name__ == "__main__":

@@ -908,8 +908,126 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
         incidenteProvider.ultimoIncidenteReportado,
       );
       if (!context.mounted) return;
+      final incidenteId = incidenteProvider.ultimoIncidenteReportado?['id'];
+      if (incidenteId != null) {
+        await _mostrarSeleccionTaller(context, incidenteProvider, incidenteId);
+      }
+      if (!context.mounted) return;
       Navigator.of(context).pop();
     }
+  }
+
+  Future<void> _mostrarSeleccionTaller(
+    BuildContext context,
+    IncidenteProvider provider,
+    int incidenteId,
+  ) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final candidatos = await provider.obtenerCandidatos(incidenteId);
+
+    if (!context.mounted) return;
+    Navigator.of(context).pop(); // Cerrar loader
+
+    if (candidatos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se encontraron talleres candidatos.')),
+      );
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (ctx, scrollController) {
+            return Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'Selecciona un Taller',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: candidatos.length,
+                    itemBuilder: (ctx, i) {
+                      final c = candidatos[i];
+                      final distanceStr = c['distancia_km'] != null
+                          ? '${c['distancia_km']} km'
+                          : 'Distancia desconocida';
+                      final rating = c['calificacion_promedio'] ?? 0.0;
+
+                      return ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: Colors.blueAccent,
+                          child: Icon(Icons.build, color: Colors.white),
+                        ),
+                        title: Text(c['taller_nombre'] ?? 'Taller'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Distancia: $distanceStr'),
+                            Row(
+                              children: [
+                                const Icon(Icons.star, size: 16, color: Colors.amber),
+                                const SizedBox(width: 4),
+                                Text(rating.toStringAsFixed(1)),
+                              ],
+                            ),
+                          ],
+                        ),
+                        trailing: ElevatedButton(
+                          onPressed: () async {
+                            final success = await provider.seleccionarTaller(
+                              incidenteId: incidenteId,
+                              tallerId: c['taller_id'],
+                            );
+                            if (!ctx.mounted) return;
+                            Navigator.of(ctx).pop();
+                            if (success) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Taller seleccionado exitosamente.'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(provider.errorMessage ?? 'Error al seleccionar taller'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text('Elegir'),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _mostrarResultadoIA(

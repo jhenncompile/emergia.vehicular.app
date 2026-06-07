@@ -397,6 +397,11 @@ class NotificacionService:
             True si se envió correctamente (o al menos uno de los tokens)
         """
         try:
+            from app.core.firebase_config import firebase_disponible
+            if not firebase_disponible():
+                logger.info("ℹ️  FCM: Firebase no está disponible/inicializado, saltando envío")
+                return False
+
             from app.crud.crud_notificacion import token_crud
             
             # 1. Obtener todos los tokens FCM del usuario
