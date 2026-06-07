@@ -30,9 +30,9 @@ def actualizar_mi_perfil(
     *,
     db: Session = Depends(deps.get_db),
     user_in: UsuarioPerfilUpdate,
-    current_user = Depends(deps.get_current_cliente)
+    current_user = Depends(deps.get_current_active_user)
 ):
-    """Actualiza datos editables del perfil del cliente movil autenticado."""
+    """Actualiza datos editables del perfil del usuario autenticado."""
     update_data = user_in.dict(exclude_unset=True)
     if not update_data:
         return current_user
@@ -40,7 +40,7 @@ def actualizar_mi_perfil(
     return usuario_crud.update(
         db,
         db_obj=current_user,
-        obj_in=UsuarioUpdate(**update_data),
+        obj_in=update_data,
         usuario_id=current_user.id,
     )
 
