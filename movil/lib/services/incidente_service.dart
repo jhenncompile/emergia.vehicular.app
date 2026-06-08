@@ -251,10 +251,8 @@ class IncidenteService {
   }) async {
     try {
       final response = await apiService.patch(
-        '/api/v1/incidentes/$incidenteId/estado',
-        body: {
-          'estado': 'finalizado',
-        },
+        '/api/v1/incidentes/$incidenteId/finalizar',
+        body: {},
       );
 
       if (response is Map<String, dynamic>) {

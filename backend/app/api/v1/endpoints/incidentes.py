@@ -1780,7 +1780,57 @@ def marcar_llegada_tecnico(
 
     return jsonable_encoder(actualizado)
 
+@router.patch("/{id}/finalizar", response_model=IncidenteSchema)
+def finalizar_incidente(
+    *,
+    db: Session = Depends(deps.get_db),
+    id: int,
+    current_user = Depends(deps.get_current_active_user),
+):
+    """Finaliza el servicio. Lo llama el técnico o el administrador del taller."""
+    incidente_db = incidente_crud.get(db, id=id)
+    if not incidente_db:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado")
 
+    es_tecnico = current_user.rol_id == 3 and incidente_db.tecnico_id == current_user.id
+    es_admin_taller = (
+        current_user.taller_id
+        and incidente_db.taller_id == current_user.taller_id
+        and current_user.rol_id == 1
+    )
+    if not es_tecnico and not es_admin_taller:
+        raise HTTPException(status_code=403, detail="No puedes finalizar este incidente.")
+
+    if incidente_db.estado != EstadoIncidente.EN_ATENCION:
+        raise HTTPException(status_code=400, detail="Solo se puede finalizar un incidente que esté en_atencion.")
+
+    anterior = jsonable_encoder(incidente_db)
+    estado_anterior = incidente_db.estado
+    actualizado = incidente_crud.update(
+        db,
+        db_obj=incidente_db,
+        obj_in={"estado": EstadoIncidente.FINALIZADO},
+    )
+
+    bitacora_crud.registrar(
+        db,
+        usuario_id=current_user.id,
+        taller_id=current_user.taller_id or actualizado.taller_id,
+        tabla="incidente",
+        tabla_id=id,
+        accion="FINALIZAR_AUXILIO",
+        anterior=anterior,
+        nuevo=jsonable_encoder(actualizado),
+    )
+
+    NotificacionService.notificar_cambio_estado(
+        db=db,
+        incidente=actualizado,
+        estado_anterior=estado_anterior,
+        estado_nuevo=actualizado.estado,
+    )
+
+    return jsonable_encoder(actualizado)
 @router.patch("/{id}/rechazar", response_model=IncidenteSchema)
 def rechazar_pedido_auxilio(
     *,
@@ -2429,7 +2479,7 @@ def enviar_cotizacion_taller(
         candidato.estado = "cotizado"
         candidato.cotizacion_monto = cotizacion.monto
         candidato.cotizacion_tiempo = cotizacion.tiempo_estimado
-        candidato.fecha_respuesta = _ahora()
+        candidato.fecha_respuesta = datetime.now(timezone.utc)
         
     db.commit()
     

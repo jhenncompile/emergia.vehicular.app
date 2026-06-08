@@ -342,18 +342,20 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _mostrarDialogoFinalizar(context, tecnicoProvider),
-                        icon: const Icon(Icons.done_all),
-                        label: const Text('Finalizar'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade700,
-                          foregroundColor: Colors.white,
+                    if (incidente['estado'] == 'en_atencion') ...[
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _mostrarDialogoFinalizar(context, tecnicoProvider),
+                          icon: const Icon(Icons.done_all),
+                          label: const Text('Finalizar'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue.shade700,
+                            foregroundColor: Colors.white,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
+                      const SizedBox(width: 8),
+                    ],
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () => _mostrarDialogoCancelar(context, tecnicoProvider),
