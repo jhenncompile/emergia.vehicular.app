@@ -1,4 +1,8 @@
-<div class="login-container">
+<div class="login-card">
+  <a routerLink="/" class="back-link">
+    <i class="fa-solid fa-arrow-left"></i> Volver al Inicio
+  </a>
+  
   <h2>Ingreso al Sistema</h2>
   
   <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">

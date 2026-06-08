@@ -16,6 +16,27 @@
   width: 100%;
   max-width: 400px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-start;
+  margin-bottom: 20px;
+}
+
+.back-link:hover {
+  color: #3b82f6;
+  transform: translateX(-3px);
 }
 
 h2 {
