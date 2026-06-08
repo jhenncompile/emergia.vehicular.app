@@ -19,10 +19,15 @@
 
   <nav class="sidebar-nav">
     <div class="nav-group">
-      <p class="nav-label">OPERACIONES</p>
-      <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">
-        <span><i class="fa-solid fa-chart-simple"></i></span> Dashboard
+      <p class="nav-label">1. GESTIÓN DE USUARIOS</p>
+      <a routerLink="/perfil-taller" routerLinkActive="active" class="nav-link">
+        <span><i class="fa-solid fa-shop"></i></span> Mi Taller
       </a>
+      <a routerLink="/administradores" routerLinkActive="active" class="nav-link">
+        <span><i class="fa-solid fa-users-gear"></i></span> Gestión de Admins
+      </a>
+
+      <p class="nav-label">2. GESTIÓN DE ASISTENCIA</p>
       <a routerLink="/incidentes" routerLinkActive="active" class="nav-link">
         <span><i class="fa-solid fa-triangle-exclamation"></i></span> Auxilios y Emergencias
         <span *ngIf="incidentesPendientesCount > 0" class="red-dot"></span>
@@ -30,42 +35,31 @@
       <a routerLink="/finanzas" routerLinkActive="active" class="nav-link">
         <span><i class="fa-solid fa-wallet"></i></span> Finanzas y Cobros
       </a>
-      <a routerLink="/notificaciones" routerLinkActive="active" class="nav-link">
-        <span><i class="fa-solid fa-bell"></i></span> Notificaciones
-        <span *ngIf="notificacionesNoLeidas > 0" class="notification-badge">{{ notificacionesNoLeidas }}</span>
-      </a>
 
-      <p class="nav-label">CONTROL Y QA</p>
-      <a routerLink="/historial" routerLinkActive="active" class="nav-link">
-        <span><i class="fa-solid fa-clipboard-list"></i></span> Historial
-      </a>
-      <a routerLink="/analisis" routerLinkActive="active" class="nav-link">
-        <span><i class="fa-solid fa-map-location-dot"></i></span> Análisis Geográfico
-      </a>
+      <p class="nav-label">3. GESTIÓN TÉCNICO</p>
       <a routerLink="/ranking" routerLinkActive="active" class="nav-link">
         <span><i class="fa-solid fa-trophy"></i></span> Ranking de Talleres
       </a>
 
-      <p class="nav-label">CONFIGURACIÓN</p>
-      <a routerLink="/perfil-taller" routerLinkActive="active" class="nav-link">
-        <span><i class="fa-solid fa-shop"></i></span> Mi Taller
+      <p class="nav-label">4. REPORTES Y NOTIFICACIONES</p>
+      <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">
+        <span><i class="fa-solid fa-chart-simple"></i></span> Dashboard
       </a>
-      <a routerLink="/calificaciones" routerLinkActive="active" class="nav-link">
-        <span><i class="fa-solid fa-star"></i></span> Calificaciones
-      </a>
-      <a routerLink="/administradores" routerLinkActive="active" class="nav-link">
-        <span><i class="fa-solid fa-users-gear"></i></span> Gestión de Admins
-      </a>
-
-      <p class="nav-label">CONTROL Y QA</p>
-      <a routerLink="/bitacora" routerLinkActive="active" class="nav-link">
-        <span><i class="fa-solid fa-scroll"></i></span> Bitácora de Auditoría
+      <a routerLink="/notificaciones" routerLinkActive="active" class="nav-link">
+        <span><i class="fa-solid fa-bell"></i></span> Notificaciones
+        <span *ngIf="notificacionesNoLeidas > 0" class="notification-badge">{{ notificacionesNoLeidas }}</span>
       </a>
       <a routerLink="/historial" routerLinkActive="active" class="nav-link">
         <span><i class="fa-solid fa-chart-line"></i></span> Historial y Métricas
       </a>
+      <a routerLink="/bitacora" routerLinkActive="active" class="nav-link">
+        <span><i class="fa-solid fa-scroll"></i></span> Bitácora de Auditoría
+      </a>
       <a routerLink="/analisis" routerLinkActive="active" class="nav-link">
         <span><i class="fa-solid fa-map-location-dot"></i></span> Análisis Geográfico
+      </a>
+      <a routerLink="/calificaciones" routerLinkActive="active" class="nav-link">
+        <span><i class="fa-solid fa-star"></i></span> Calificaciones
       </a>
     </div>
   </nav>
