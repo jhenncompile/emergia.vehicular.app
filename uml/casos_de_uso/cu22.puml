@@ -1,9 +1,0 @@
-@startuml
-left to right direction
-actor "Taller" as T
-rectangle "Sistema" {
-
-usecase "CU-22: Visualizar historial de atenciones y métricas" as CU22
-}
-T --> CU22
-@enduml

@@ -34,3 +34,7 @@ Thumbs.db
 __pycache__/
 *.pyc
 .venv/
+
+# UML Diagrams and documentation
+uml/
+

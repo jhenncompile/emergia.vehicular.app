@@ -1,9 +1,0 @@
-@startuml
-left to right direction
-actor "Taller" as T
-rectangle "Sistema" {
-
-usecase "CU-17: Ver información estructurada del incidente (Resumen IA)" as CU17
-}
-T --> CU17
-@enduml
