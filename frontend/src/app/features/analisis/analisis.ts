@@ -92,7 +92,7 @@ export class Analisis implements OnInit, AfterViewInit {
     }
     
     // Transformar datos para leaflet.heat: [lat, lng, intensidad]
-    const heatData = data.map(p => [p.lat, p.lng, p.peso] as L.HeatLatLngTuple);
+    const heatData = data.map(p => [p.lat, p.lng, p.peso] as [number, number, number]);
     
     // Asegurar que L está global antes de cargar el plugin (necesario en prod)
     (window as any).L = L;
