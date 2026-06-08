@@ -9,8 +9,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/incidente_provider.dart';
 import '../../providers/tecnico_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/taller_service.dart';
 import '../../theme/colors.dart';
+// Para reutilizar logica o navegar, aunque es mejor importar el modal
+
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -21,8 +24,35 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixin {
   final MapController _mapController = MapController();
+  Timer? _quotesTimer;
   List<Map<String, dynamic>> _talleres = [];
-  bool _isLoadingTalleres = false;
+  List<Map<String, dynamic>> _cotizaciones = [];
+
+  void _startQuotesTimer(int incidenteId) {
+    if (_quotesTimer != null) return;
+    _fetchQuotes(incidenteId);
+    _quotesTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchQuotes(incidenteId));
+  }
+
+  void _stopQuotesTimer() {
+    _quotesTimer?.cancel();
+    _quotesTimer = null;
+  }
+
+  Future<void> _fetchQuotes(int incidenteId) async {
+    final provider = context.read<IncidenteProvider>();
+    try {
+      final quotes = await provider.obtenerCotizaciones(incidenteId);
+      if (mounted) {
+        setState(() {
+          _cotizaciones = quotes;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching quotes: $e");
+    }
+  }
+
   late AnimationController _radarController;
   List<LatLng> _routePoints = [];
   int? _etaMinutes;
@@ -44,19 +74,20 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   @override
   void dispose() {
+    _stopQuotesTimer();
     _radarController.dispose();
     super.dispose();
   }
 
   Future<void> _loadTalleres() async {
-    setState(() => _isLoadingTalleres = true);
+    
     try {
       final tallerService = context.read<TallerService>();
       _talleres = await tallerService.obtenerTalleresActivos();
     } catch (e) {
       debugPrint('Error loading talleres: $e');
     }
-    setState(() => _isLoadingTalleres = false);
+    
   }
 
   Future<void> _fetchRoute(LatLng start, LatLng end) async {
@@ -114,6 +145,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           );
         }
 
+        final esTecnico = context.watch<AuthProvider>().isTecnico;
+
         final estado = (activo['estado'] ?? '').toString().toLowerCase();
         final double lat = activo['latitud'] is double ? activo['latitud'] : double.tryParse(activo['latitud']?.toString() ?? '0') ?? 0.0;
         final double lng = activo['longitud'] is double ? activo['longitud'] : double.tryParse(activo['longitud']?.toString() ?? '0') ?? 0.0;
@@ -130,43 +163,48 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         String tallerNombre = 'Taller Asignado';
 
         if (isBuscando) {
-           final tallerOfrecido = activo['taller_ofrecido'];
-           if (tallerOfrecido != null) {
-              final tLat = tallerOfrecido['latitud'] is double ? tallerOfrecido['latitud'] : double.tryParse(tallerOfrecido['latitud']?.toString() ?? '0') ?? 0.0;
-              final tLng = tallerOfrecido['longitud'] is double ? tallerOfrecido['longitud'] : double.tryParse(tallerOfrecido['longitud']?.toString() ?? '0') ?? 0.0;
-              tallerLocation = LatLng(tLat, tLng);
-              tallerNombre = tallerOfrecido['nombre'] ?? 'Taller';
-              
-              tallerMarkers.add(Marker(
-                point: tallerLocation!,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    const Icon(Icons.build_circle, color: Colors.blue, size: 36),
-                    // Circular loading indicator over the marker
-                    SizedBox(
-                      width: 36,
-                      height: 36,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.0,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withOpacity(0.8)),
-                      ),
-                    ),
-                  ],
-                ),
-              ));
-           } else {
-             // Fallback if no taller_ofrecido yet
+             final incId = activo['id'] as int;
+             if (_quotesTimer == null) {
+                Future.microtask(() => _startQuotesTimer(incId));
+             }
+
              tallerMarkers = _talleres.map((t) {
+                final quoteIndex = _cotizaciones.indexWhere((c) => c['taller_id'] == t['id']);
+                final quote = quoteIndex >= 0 ? _cotizaciones[quoteIndex] : null;
+                
                 final tLat = t['latitud'] is double ? t['latitud'] : double.tryParse(t['latitud']?.toString() ?? '0') ?? 0.0;
                 final tLng = t['longitud'] is double ? t['longitud'] : double.tryParse(t['longitud']?.toString() ?? '0') ?? 0.0;
+                
                 return Marker(
                   point: LatLng(tLat, tLng),
-                  child: const Icon(Icons.build_circle, color: Colors.grey, size: 30),
+                  width: 100,
+                  height: 60,
+                  alignment: Alignment.topCenter,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (quote != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                          ),
+                          child: Text(
+                            "${quote['monto'] ?? quote['sugerencia_ia_monto'] ?? 0} Bs",
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      Icon(Icons.build_circle, color: quote != null ? Colors.blue : Colors.grey, size: 30),
+                    ],
+                  ),
                 );
              }).toList();
-           }
-        } else if (isAsignado || isEnCamino || isEnAtencion) {
+        } else {
+             _stopQuotesTimer();
+        }
+        if (isAsignado || isEnCamino || isEnAtencion) {
            final Map<String, dynamic> tallerData = (activo['taller'] as Map<String, dynamic>?) ??
     _talleres.firstWhere(
         (t) => t['id'] == activo['taller_id'],
@@ -187,7 +225,7 @@ if (tallerData.isNotEmpty) {
               tallerNombre = tallerData['nombre'] ?? 'Taller';
               
               tallerMarkers.add(Marker(
-                 point: tallerLocation!,
+                 point: tallerLocation,
                  child: Stack(
                    alignment: Alignment.center,
                    children: [
@@ -214,7 +252,7 @@ if (tallerData.isNotEmpty) {
               ));
 
               // Fetch route when we have a location and the incident is assigned or in motion
-              if ((isAsignado || isEnCamino || isEnAtencion) && _lastTallerLocation?.latitude != tallerLocation?.latitude) {
+              if ((isAsignado || isEnCamino || isEnAtencion) && _lastTallerLocation?.latitude != tallerLocation.latitude) {
                  _lastTallerLocation = tallerLocation;
                  Future.microtask(() => _fetchRoute(tallerLocation!, userLocation));
               }
@@ -258,7 +296,7 @@ if (tallerData.isNotEmpty) {
                       PolylineLayer(
                         polylines: [
                           Polyline(
-                            points: _routePoints.isNotEmpty ? _routePoints : [tallerLocation!, userLocation],
+                            points: _routePoints.isNotEmpty ? _routePoints : [tallerLocation, userLocation],
                             strokeWidth: 5.0,
                             color: Colors.blueAccent,
                           ),
@@ -279,7 +317,14 @@ if (tallerData.isNotEmpty) {
               // Bottom sheet and controls will be stacked on top
               Align(
                 alignment: Alignment.bottomCenter,
-                child: _buildBottomSheet(activo, tallerNombre, isBuscando, isAsignado, isEnCamino, isEnAtencion),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isBuscando && _cotizaciones.isNotEmpty)
+                      _buildCarousel(activo['id'] as int),
+                    _buildBottomSheet(activo, tallerNombre, isBuscando, isAsignado, isEnCamino, isEnAtencion, esTecnico),
+                  ],
+                ),
               ),
               if (isAsignado && tallerLocation != null)
                 Positioned(
@@ -298,7 +343,7 @@ if (tallerData.isNotEmpty) {
     );
   }
 
-  Widget _buildBottomSheet(Map<String, dynamic> activo, String tallerNombre, bool isBuscando, bool isAsignado, bool isEnCamino, bool isEnAtencion) {
+  Widget _buildBottomSheet(Map<String, dynamic> activo, String tallerNombre, bool isBuscando, bool isAsignado, bool isEnCamino, bool isEnAtencion, bool esTecnico) {
     if (isBuscando) {
       return Container(
         padding: const EdgeInsets.all(24),
@@ -324,6 +369,33 @@ if (tallerData.isNotEmpty) {
               "Contactando talleres cercanos...",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                if (!esTecnico)
+                  ElevatedButton.icon(
+                    onPressed: () => _mostrarSeleccionTallerMapa(context, activo['id'] as int),
+                    icon: const Icon(Icons.build_circle),
+                    label: const Text('Talleres'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                  ),
+                ElevatedButton.icon(
+                  onPressed: () => _mostrarDialogoCancelar(context, activo['id'] as int, esTecnico),
+                  icon: const Icon(Icons.cancel),
+                  label: const Text('Cancelar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       );
@@ -344,6 +416,17 @@ if (tallerData.isNotEmpty) {
               "$tallerNombre evaluando tu caso...",
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => _mostrarDialogoCancelar(context, activo['id'] as int, esTecnico),
+              icon: const Icon(Icons.cancel),
+              label: const Text('Cancelar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
           ],
         ),
       );
@@ -363,7 +446,7 @@ if (tallerData.isNotEmpty) {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: AppColors.primaryColor.withOpacity(0.1),
+                  backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
                   radius: 30,
                   child: const Icon(Icons.engineering, color: AppColors.primaryColor, size: 30),
                 ),
@@ -395,25 +478,54 @@ if (tallerData.isNotEmpty) {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                ElevatedButton.icon(
-                  onPressed: () => _mostrarDialogoFinalizar(context),
-                  icon: const Icon(Icons.done_all),
-                  label: const Text('Finalizar'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade700,
-                    foregroundColor: Colors.white,
+                if (esTecnico && !isAtencion && activo['estado'] == 'en_camino')
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      final provider = context.read<TecnicoProvider>();
+                      try {
+                        await provider.marcarLlegada();
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Llegada marcada exitosamente'), backgroundColor: Colors.green),
+                        );
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.check_circle),
+                    label: const Text('Marcar Llegada'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
                   ),
-                ),
+                if (esTecnico && isAtencion)
+                  ElevatedButton.icon(
+                    onPressed: () => _mostrarDialogoFinalizar(context),
+                    icon: const Icon(Icons.done_all),
+                    label: const Text('Finalizar'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                  ),
                 const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: () => _mostrarDialogoCancelar(context),
-                  icon: const Icon(Icons.cancel),
-                  label: const Text('Cancelar'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.shade600,
-                    foregroundColor: Colors.white,
+                if (esTecnico || (!esTecnico && !isEnAtencion))
+                  ElevatedButton.icon(
+                    onPressed: () => _mostrarDialogoCancelar(context, activo['id'] as int, esTecnico),
+                    icon: const Icon(Icons.cancel),
+                    label: const Text('Cancelar'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade600,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -452,6 +564,76 @@ if (tallerData.isNotEmpty) {
     return const SizedBox.shrink();
   }
 
+  Widget _buildCarousel(int incidenteId) {
+    return SizedBox(
+      height: 150,
+      child: PageView.builder(
+        controller: PageController(viewportFraction: 0.85),
+        itemCount: _cotizaciones.length,
+        itemBuilder: (ctx, i) {
+          final c = _cotizaciones[i];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 4,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.build_circle, color: AppColors.primaryColor),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          c['taller_nombre'] ?? 'Taller',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text('Cotización: ${c['monto'] ?? c['sugerencia_ia_monto']} Bs', style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                  Text('Tiempo estimado: ${c['tiempo_estimado'] ?? 'No especificado'}', style: const TextStyle(fontSize: 12)),
+                  const Spacer(),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 36,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                      onPressed: () => _aceptarCotizacion(c['taller_id'], incidenteId),
+                      child: const Text("Aceptar Cotización"),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _aceptarCotizacion(int tallerId, int incidenteId) async {
+    final provider = context.read<IncidenteProvider>();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+    final ok = await provider.seleccionarCotizacion(incidenteId: incidenteId, tallerId: tallerId);
+    if (!mounted) return;
+    Navigator.pop(context); // Cierra el loader
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cotización aceptada.'), backgroundColor: Colors.green));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(provider.errorMessage ?? 'Error al aceptar cotización.'), backgroundColor: Colors.red));
+    }
+  }
+
   Future<void> _mostrarDialogoFinalizar(BuildContext context) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -479,7 +661,7 @@ if (tallerData.isNotEmpty) {
     }
   }
 
-  Future<void> _mostrarDialogoCancelar(BuildContext context) async {
+  Future<void> _mostrarDialogoCancelar(BuildContext context, int incidenteId, bool esTecnico) async {
     final TextEditingController motivoCtrl = TextEditingController();
     final confirm = await showDialog<bool>(
       context: context,
@@ -514,17 +696,109 @@ if (tallerData.isNotEmpty) {
       );
       return;
     }
-    final provider = context.read<TecnicoProvider>();
-    try {
-      await provider.cancelarIncidente(motivo);
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
+    if (esTecnico) {
+      final provider = context.read<TecnicoProvider>();
+      try {
+        await provider.cancelarIncidente(motivo);
+        if (mounted) Navigator.pop(context);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } else {
+      final provider = context.read<IncidenteProvider>();
+      try {
+        final success = await provider.cancelarIncidente(incidenteId: incidenteId, motivo: motivo);
+        if (success && mounted) {
+           Navigator.pop(context);
+        } else if (!success && mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(provider.errorMessage ?? 'Error al cancelar'), backgroundColor: Colors.red),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
       }
     }
+  }
+
+  Future<void> _mostrarSeleccionTallerMapa(BuildContext context, int incidenteId) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (ctx, scrollController) {
+            return Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'Talleres en la zona',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: _talleres.length,
+                    itemBuilder: (ctx, i) {
+                      final t = _talleres[i];
+                      final quoteIndex = _cotizaciones.indexWhere((c) => c['taller_id'] == t['id']);
+                      final c = quoteIndex >= 0 ? _cotizaciones[quoteIndex] : null;
+
+                      return ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: AppColors.primaryColor,
+                          child: Icon(Icons.build, color: Colors.white),
+                        ),
+                        title: Text(t['nombre'] ?? 'Taller sin nombre'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (c != null) ...[
+                              Text(
+                                'Monto cotizado: ${c['monto'] ?? c['sugerencia_ia_monto'] ?? '0.00'} Bs',
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                              ),
+                              Text('Tiempo estimado: ${c['tiempo_estimado'] ?? 'No especificado'}'),
+                            ] else ...[
+                              const Text('Esperando cotización...', style: TextStyle(color: Colors.orange)),
+                            ]
+                          ],
+                        ),
+                        isThreeLine: true,
+                        trailing: ElevatedButton(
+                          onPressed: c != null ? () async {
+                            Navigator.pop(context); // Cierra el bottom sheet
+                            _aceptarCotizacion(t['id'], incidenteId);
+                          } : null,
+                          child: Text(c != null ? 'Elegir' : 'Esperando...'),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 }
 

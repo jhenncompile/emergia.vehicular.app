@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from typing import List, Optional
+from datetime import datetime
 from app.api import deps
 from app.crud.crud_calificacion import calificacion_crud
-from app.schemas.calificacion import CalificacionCreate, CalificacionOut, PromedioTallerOut
+from app.schemas.calificacion import CalificacionCreate, CalificacionOut, PromedioTallerOut, CalificacionDetalleOut
 from app.models.usuario import Usuario
 
 router = APIRouter()
@@ -35,16 +37,19 @@ def obtener_calificacion_incidente(
 @router.get("/taller/{taller_id}/promedio", response_model=PromedioTallerOut)
 def promedio_taller(
     taller_id: int,
+    fecha_inicio: Optional[datetime] = None,
+    fecha_fin: Optional[datetime] = None,
+    tecnico_id: Optional[int] = None,
     db: Session = Depends(deps.get_db),
 ):
     """Promedio de calificaciones de un taller (público)."""
-    return calificacion_crud.promedio_taller(db, taller_id=taller_id)
-
-from typing import List
-from app.schemas.calificacion import CalificacionDetalleOut
+    return calificacion_crud.promedio_taller(db, taller_id=taller_id, fecha_inicio=fecha_inicio, fecha_fin=fecha_fin, tecnico_id=tecnico_id)
 
 @router.get("/taller/mis-calificaciones", response_model=List[CalificacionDetalleOut])
 def mis_calificaciones_taller(
+    fecha_inicio: Optional[datetime] = None,
+    fecha_fin: Optional[datetime] = None,
+    tecnico_id: Optional[int] = None,
     db: Session = Depends(deps.get_db),
     current_user: Usuario = Depends(deps.get_current_admin_taller),
 ):
@@ -55,4 +60,4 @@ def mis_calificaciones_taller(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El usuario no pertenece a ningún taller.",
         )
-    return calificacion_crud.obtener_por_taller(db, taller_id=current_user.taller_id)
+    return calificacion_crud.obtener_por_taller(db, taller_id=current_user.taller_id, fecha_inicio=fecha_inicio, fecha_fin=fecha_fin, tecnico_id=tecnico_id)

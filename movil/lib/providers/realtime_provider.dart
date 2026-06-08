@@ -6,6 +6,7 @@ import '../services/local_notification_service.dart';
 import '../services/realtime_service.dart';
 import 'auth_provider.dart';
 import 'incidente_provider.dart';
+import '../screens/calificacion/calificacion_screen.dart';
 
 class RealtimeProvider extends ChangeNotifier {
   RealtimeProvider({required this.realtimeService});
@@ -75,6 +76,22 @@ class RealtimeProvider extends ChangeNotifier {
         id: incidentId,
         estado: newStatus,
       );
+      
+      // Auto-abrir pantalla de calificación si es cliente y el incidente finalizó
+      if (!esTecnico && (newStatus.toLowerCase() == 'finalizado' || newStatus.toLowerCase() == 'completado')) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          final context = navigatorKey.currentContext;
+          if (context != null) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => CalificacionScreen(
+                  incidenteId: incidentId,
+                ),
+              ),
+            );
+          }
+        });
+      }
     }
 
     // Mostrar notificacion push local

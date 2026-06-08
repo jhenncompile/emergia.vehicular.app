@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
@@ -35,11 +35,22 @@ export class CalificacionesService {
     return new HttpHeaders().set('Authorization', `Bearer ${token}`);
   }
 
-  getMisCalificaciones(): Observable<CalificacionDetalle[]> {
-    return this.http.get<CalificacionDetalle[]>(`${this.apiUrl}/taller/mis-calificaciones`, { headers: this.headers });
+  // ... (dentro de la clase)
+  getMisCalificaciones(fechaInicio?: string, fechaFin?: string, tecnicoId?: number | null): Observable<CalificacionDetalle[]> {
+    let params = new HttpParams();
+    if (fechaInicio) params = params.set('fecha_inicio', fechaInicio);
+    if (fechaFin) params = params.set('fecha_fin', fechaFin);
+    if (tecnicoId) params = params.set('tecnico_id', tecnicoId);
+
+    return this.http.get<CalificacionDetalle[]>(`${this.apiUrl}/taller/mis-calificaciones`, { headers: this.headers, params });
   }
 
-  getPromedioTaller(tallerId: number): Observable<PromedioTaller> {
-    return this.http.get<PromedioTaller>(`${this.apiUrl}/taller/${tallerId}/promedio`, { headers: this.headers });
+  getPromedioTaller(tallerId: number, fechaInicio?: string, fechaFin?: string, tecnicoId?: number | null): Observable<PromedioTaller> {
+    let params = new HttpParams();
+    if (fechaInicio) params = params.set('fecha_inicio', fechaInicio);
+    if (fechaFin) params = params.set('fecha_fin', fechaFin);
+    if (tecnicoId) params = params.set('tecnico_id', tecnicoId);
+
+    return this.http.get<PromedioTaller>(`${this.apiUrl}/taller/${tallerId}/promedio`, { headers: this.headers, params });
   }
 }

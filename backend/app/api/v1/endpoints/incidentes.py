@@ -16,6 +16,7 @@ from app.schemas.incidente import (
     IncidenteCancel,
     IncidenteCreate,
     IncidenteUpdate,
+    TiempoReparacionUpdate,
 )
 from app.models.incidente import Incidente  # 👈 Modelo ORM
 from app.models.asignacion_inteligente import IncidenteAsignacionCandidato
@@ -1035,6 +1036,30 @@ def _adjuntar_mensaje_oferta(
     return incidente
 
 
+def _clasificacion_visible_incidente(incidente: Incidente) -> str:
+    if incidente.clasificacion_ia:
+        return incidente.clasificacion_ia
+
+    texto_base = " ".join(
+        parte
+        for parte in [
+            incidente.descripcion,
+            incidente.transcripcion_audio,
+            incidente.resumen_ia,
+        ]
+        if parte
+    )
+    if texto_base:
+        return _clasificar_por_texto(texto_base)
+    return "Otro / No clasificado"
+
+
+def _adjuntar_clasificacion_visible(incidente: Incidente) -> Incidente:
+    if not incidente.clasificacion_ia:
+        incidente.clasificacion_ia = _clasificacion_visible_incidente(incidente)
+    return incidente
+
+
 def _adjuntar_mensaje_oferta_actual(db: Session, incidente: Incidente) -> Incidente:
     candidato = (
         db.query(IncidenteAsignacionCandidato)
@@ -1055,10 +1080,9 @@ def _generar_ranking_automatico(
 ) -> Incidente:
     incidente_id = incidente.id
     try:
-        candidatos = RankingTallerService(db).generar_candidatos_sin_ofrecer(incidente)
+        candidatos = RankingTallerService(db).generar_ofertas_multiples(incidente)
         db.refresh(incidente)
-        # Ya no ofrecemos el candidato automaticamente aca,
-        # esperamos que el cliente llame al endpoint seleccionar-taller.
+        # Notificamos a TODOS simultáneamente.
     except Exception as exc:
         db.rollback()
         logger.exception(
@@ -1291,15 +1315,35 @@ def listar_candidatos_incidente(
         raise HTTPException(status_code=404, detail="Incidente no encontrado")
         
     candidatos = RankingTallerService(db).obtener_candidatos(incidente_id)
+    clasificacion_ia = _clasificacion_visible_incidente(incidente)
     resultado = []
     for c in candidatos:
+        distancia_km = None
+        if (
+            c.taller
+            and c.taller.latitud is not None
+            and c.taller.longitud is not None
+            and incidente.latitud is not None
+            and incidente.longitud is not None
+        ):
+            distancia_metros = incidente_crud.calcular_distancia_haversine(
+                float(c.taller.latitud),
+                float(c.taller.longitud),
+                float(incidente.latitud),
+                float(incidente.longitud),
+            )
+            distancia_km = round(distancia_metros / 1000, 1)
+
         resultado.append({
+            "incidente_id": incidente.id,
+            "clasificacion_ia": clasificacion_ia,
+            "prioridad": incidente.prioridad,
             "taller_id": c.taller_id,
             "taller_nombre": c.taller.nombre if c.taller else "Desconocido",
             "score_total": c.score_total,
             "estado": c.estado,
             "explicacion": c.explicacion,
-            "distancia_km": round((c.score_distancia or 0) * 40, 1), # Estimado basado en radio_max_km=40
+            "distancia_km": distancia_km,
             "calificacion_promedio": c.taller.calificacion_promedio if c.taller else 0.0,
         })
     return resultado
@@ -1351,7 +1395,7 @@ def leer_incidentes_pendientes(
             IncidenteAsignacionCandidato.incidente_id
         ).filter(
             IncidenteAsignacionCandidato.taller_id == current_user.taller_id,
-            IncidenteAsignacionCandidato.estado == "ofrecido",
+            IncidenteAsignacionCandidato.estado.in_(["ofrecido", "sugerido", "cotizado"]),
         ).all()
         ofrecidos_ids = [item[0] for item in candidatos_ofrecidos]
         if ofrecidos_ids:
@@ -1386,20 +1430,50 @@ def leer_incidentes_pendientes(
     for incidente in incidentes:
         if incidente.id not in lista_negra:
             incidente.distancia_metros = None  # Default value
-            # 📏 Calcular distancia si taller actual existe
+            incidente.tiempo_llegada_estimado = None
+            
+            # Buscar el registro de candidato para este taller
+            candidato = db.query(IncidenteAsignacionCandidato).filter(
+                IncidenteAsignacionCandidato.incidente_id == incidente.id,
+                IncidenteAsignacionCandidato.taller_id == current_user.taller_id
+            ).first()
+            if candidato:
+                incidente.candidato_estado = candidato.estado
+                incidente.cotizacion_monto = candidato.cotizacion_monto
+                incidente.cotizacion_tiempo = candidato.cotizacion_tiempo
+                incidente.sugerencia_ia_monto = candidato.sugerencia_ia_monto
+
+            # 📏 Calcular distancia y ruta si taller actual existe
             if (taller_actual and 
                 taller_actual.latitud is not None and 
                 taller_actual.longitud is not None and 
                 incidente.latitud is not None and 
                 incidente.longitud is not None):
                 try:
-                    distancia = incidente_crud.calcular_distancia_haversine(
-                        float(taller_actual.latitud),
+                    from app.services.routing_service import RoutingService
+                    ruta = RoutingService.obtener_ruta_sync(
                         float(taller_actual.longitud),
-                        float(incidente.latitud),
-                        float(incidente.longitud)
+                        float(taller_actual.latitud),
+                        float(incidente.longitud),
+                        float(incidente.latitud)
                     )
-                    incidente.distancia_metros = distancia
+                    if ruta["error"] is None and ruta["duracion_minutos"] is not None:
+                        # Convertir a metros para mantener consistencia con el fallback
+                        incidente.distancia_metros = float(ruta["distancia_km"]) * 1000
+                        # Agregar 5 mins base de preparación del técnico al tiempo de manejo OSRM
+                        mins_totales = int(ruta["duracion_minutos"]) + 5
+                        incidente.tiempo_llegada_estimado = f"~{mins_totales} min"
+                    else:
+                        # Fallback a Haversine si falla OSRM
+                        distancia = incidente_crud.calcular_distancia_haversine(
+                            float(taller_actual.latitud),
+                            float(taller_actual.longitud),
+                            float(incidente.latitud),
+                            float(incidente.longitud)
+                        )
+                        incidente.distancia_metros = distancia
+                        mins = max(1, int((distancia / 1000.0) * 4) + 5)
+                        incidente.tiempo_llegada_estimado = f"~{mins} min"
                 except (ValueError, TypeError):
                     pass
             resultado.append(incidente)
@@ -1425,6 +1499,7 @@ def leer_mis_incidentes_cliente(
 
     for incidente in incidentes:
         _adjuntar_mensaje_oferta_actual(db, incidente)
+        _adjuntar_clasificacion_visible(incidente)
 
     return incidentes
 
@@ -1450,25 +1525,7 @@ def generar_ranking_incidente(
     return RankingTallerService(db).generar_y_ofrecer(incidente_db)
 
 
-@router.get(
-    "/{id}/candidatos",
-    response_model=List[IncidenteAsignacionCandidatoOut],
-)
-def listar_candidatos_incidente(
-    *,
-    db: Session = Depends(deps.get_db),
-    id: int,
-    current_user = Depends(deps.get_current_active_user),
-):
-    """Lista los talleres candidatos ordenados por relevancia."""
-    incidente_db = incidente_crud.get(db, id=id)
-    if not incidente_db:
-        raise HTTPException(status_code=404, detail="Incidente no encontrado")
 
-    if current_user.rol_id == 2 and incidente_db.usuario_id != current_user.id:
-        raise HTTPException(status_code=403, detail="No puedes ver este ranking.")
-
-    return RankingTallerService(db).obtener_candidatos(id)
 
 
 @router.post(
@@ -1634,10 +1691,10 @@ def asignar_tecnico_a_incidente(
     incidente_db = incidente_crud.get(db, id=id)
     if not incidente_db or incidente_db.taller_id != current_user.taller_id:
         raise HTTPException(status_code=403, detail="No puedes asignar técnicos a este incidente.")
-    if incidente_db.estado not in [EstadoIncidente.ASIGNADO_TALLER, EstadoIncidente.EN_CAMINO]:
+    if incidente_db.estado not in [EstadoIncidente.ASIGNADO_TALLER, EstadoIncidente.EN_CAMINO, EstadoIncidente.EN_ATENCION]:
         raise HTTPException(
             status_code=400,
-            detail="Solo puedes asignar tecnico cuando el incidente esta asignado al taller o en camino.",
+            detail="Solo puedes asignar tecnico cuando el incidente esta asignado, en camino o en atencion.",
         )
 
     # Opcional: Validar que el técnico pertenezca al mismo taller
@@ -1721,9 +1778,59 @@ def marcar_llegada_tecnico(
         estado_nuevo=actualizado.estado,
     )
 
-    return jsonable_encoder(actualizado)
+    return actualizado
 
+@router.patch("/{id}/finalizar", response_model=IncidenteSchema)
+def finalizar_incidente(
+    *,
+    db: Session = Depends(deps.get_db),
+    id: int,
+    current_user = Depends(deps.get_current_active_user),
+):
+    """Finaliza el servicio. Lo llama el técnico o el administrador del taller."""
+    incidente_db = incidente_crud.get(db, id=id)
+    if not incidente_db:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado")
 
+    es_tecnico = current_user.rol_id == 3 and incidente_db.tecnico_id == current_user.id
+    es_admin_taller = (
+        current_user.taller_id
+        and incidente_db.taller_id == current_user.taller_id
+        and current_user.rol_id == 1
+    )
+    if not es_tecnico and not es_admin_taller:
+        raise HTTPException(status_code=403, detail="No puedes finalizar este incidente.")
+
+    if incidente_db.estado != EstadoIncidente.EN_ATENCION:
+        raise HTTPException(status_code=400, detail="Solo se puede finalizar un incidente que esté en_atencion.")
+
+    anterior = jsonable_encoder(incidente_db)
+    estado_anterior = incidente_db.estado
+    actualizado = incidente_crud.update(
+        db,
+        db_obj=incidente_db,
+        obj_in={"estado": EstadoIncidente.FINALIZADO},
+    )
+
+    bitacora_crud.registrar(
+        db,
+        usuario_id=current_user.id,
+        taller_id=current_user.taller_id or actualizado.taller_id,
+        tabla="incidente",
+        tabla_id=id,
+        accion="FINALIZAR_AUXILIO",
+        anterior=anterior,
+        nuevo=jsonable_encoder(actualizado),
+    )
+
+    NotificacionService.notificar_cambio_estado(
+        db=db,
+        incidente=actualizado,
+        estado_anterior=estado_anterior,
+        estado_nuevo=actualizado.estado,
+    )
+
+    return actualizado
 @router.patch("/{id}/rechazar", response_model=IncidenteSchema)
 def rechazar_pedido_auxilio(
     *,
@@ -1825,7 +1932,7 @@ def cancelar_incidente(
         if incidente_db.estado not in ESTADOS_CANCELABLES_TALLER:
             raise HTTPException(
                 status_code=400,
-                detail="El taller solo puede cancelar antes de que inicie la atencion.",
+                detail="El taller no puede cancelar un incidente que ya fue finalizado o cancelado.",
             )
         cancelado_por = CanceladoPor.TALLER
     elif current_user.rol_id == 1 and obj_in.cancelado_por:
@@ -1871,6 +1978,52 @@ def cancelar_incidente(
 
 
 # 5. ACTUALIZAR: Cambiar el estado operativo del incidente
+@router.patch("/{id}/tiempo-reparacion", response_model=IncidenteSchema)
+def actualizar_tiempo_reparacion(
+    *,
+    db: Session = Depends(deps.get_db),
+    id: int,
+    tiempo_in: TiempoReparacionUpdate,
+    current_user = Depends(deps.get_current_active_user)
+):
+    """Actualiza el tiempo estimado de reparación cuando el técnico ya está en atención"""
+    incidente_db = incidente_crud.get(db, id=id)
+    if not incidente_db:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado")
+        
+    if incidente_db.estado != EstadoIncidente.EN_ATENCION:
+        raise HTTPException(
+            status_code=400, 
+            detail="Solo se puede estimar el tiempo de reparación cuando el incidente está en atención."
+        )
+        
+    # Verificar permisos (taller o técnico asignado)
+    if (current_user.taller_id and incidente_db.taller_id != current_user.taller_id) and \
+       (current_user.rol == "tecnico" and incidente_db.tecnico_id != current_user.id):
+        raise HTTPException(status_code=403, detail="No tienes permiso para modificar este incidente")
+
+    estado_anterior = jsonable_encoder(incidente_db)
+    
+    # Actualizar campo directamente
+    incidente_db.tiempo_reparacion_estimado = tiempo_in.tiempo_reparacion_estimado
+    db.add(incidente_db)
+    db.commit()
+    db.refresh(incidente_db)
+    
+    # Registrar en bitácora
+    bitacora_crud.registrar(
+        db,
+        usuario_id=current_user.id,
+        taller_id=current_user.taller_id,
+        tabla="incidente",
+        tabla_id=id,
+        accion="ACTUALIZAR_TIEMPO_REPARACION",
+        anterior=estado_anterior,
+        nuevo=jsonable_encoder(incidente_db)
+    )
+    
+    return _adjuntar_mensaje_oferta_actual(db, incidente_db)
+
 @router.put("/{id}", response_model=IncidenteSchema)
 def actualizar_estado_incidente(
     *,
@@ -2076,6 +2229,153 @@ def obtener_incidente_por_id(
     El técnico solo puede ver incidentes asignados a él.
     El admin puede ver cualquier incidente.
     """
+    
+    return actualizado
+
+# ==========================================
+# 📊 NUEVO: HISTORIAL Y MÉTRICAS
+# ==========================================
+@router.get("/historial/lista", response_model=List[IncidenteSchema])
+def obtener_historial(
+    fecha_inicio: Optional[datetime] = None,
+    fecha_fin: Optional[datetime] = None,
+    estados: Optional[List[str]] = Query(None),
+    tecnico_id: Optional[int] = None,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user)
+):
+    if not current_user.taller_id:
+        raise HTTPException(status_code=403, detail="El usuario no pertenece a un taller")
+        
+    return incidente_crud.obtener_historial_taller(
+        db=db, 
+        taller_id=current_user.taller_id,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        estados=estados,
+        tecnico_id=tecnico_id
+    )
+
+@router.get("/historial/metricas")
+def obtener_kpis(
+    fecha_inicio: Optional[datetime] = None,
+    fecha_fin: Optional[datetime] = None,
+    estados: Optional[List[str]] = Query(None),
+    tecnico_id: Optional[int] = None,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user)
+):
+    """Retorna las estadísticas del dashboard de historial, con filtros aplicados."""
+    if not current_user.taller_id:
+        raise HTTPException(status_code=403, detail="El usuario no pertenece a un taller")
+        
+    return incidente_crud.obtener_metricas_taller(
+        db=db, 
+        taller_id=current_user.taller_id,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        estados=estados,
+        tecnico_id=tecnico_id
+    )
+
+# ==========================================
+# 📄 NUEVO: GENERACIÓN DE PDF
+# ==========================================
+@router.get("/{id}/reporte-pdf")
+def descargar_reporte_tecnico(
+    id: int, 
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user)
+):
+    inc = incidente_crud.get(db, id=id)
+    if not inc or inc.taller_id != current_user.taller_id:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    pago = db.query(Pago).filter(Pago.incidente_id == id).first()
+    monto_pago = pago.monto if pago else "No registrado"
+    tecnico_nombre = inc.tecnico.nombre if inc.tecnico else "Sin asignar"
+
+    pdf = FPDF()
+    pdf.add_page()
+
+    # Cabecera
+    pdf.set_font("helvetica", style="B", size=16)
+    pdf.set_text_color(59, 130, 246)
+    pdf.cell(0, 10, "REPORTE TECNICO DE AUXILIO", new_x="LMARGIN", new_y="NEXT", align="C")
+
+    pdf.set_font("helvetica", size=11)
+    pdf.set_text_color(100, 116, 139)
+    pdf.cell(0, 8, f"Taller: {inc.taller.nombre}", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.cell(0, 8, f"ID Incidente: #{inc.id}  |  Fecha: {inc.fecha_creacion.strftime('%d/%m/%Y')}", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.ln(10)
+
+    # Cuerpo
+    pdf.set_font("helvetica", style="B", size=12)
+    pdf.set_text_color(15, 23, 42)
+    pdf.cell(0, 10, "Resumen del Servicio", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_font("helvetica", size=11)
+    pdf.cell(45, 8, "Estado:")
+    pdf.cell(0, 8, f"{inc.estado.upper()}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(45, 8, "Prioridad:")
+    pdf.cell(0, 8, f"{inc.prioridad.upper()}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(45, 8, "Tecnico:")
+    pdf.cell(0, 8, f"{tecnico_nombre}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(45, 8, "Monto Cobrado:")
+    pdf.cell(0, 8, f"Bs. {monto_pago}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(8)
+
+    pdf.set_font("helvetica", style="B", size=12)
+    pdf.cell(0, 10, "Diagnostico de IA", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("helvetica", size=11)
+    
+    # 👇 Corrección aplicada aquí con new_x y new_y
+    pdf.multi_cell(0, 8, f"Clasificacion: {inc.clasificacion_ia or 'Sin clasificar'}", new_x="LMARGIN", new_y="NEXT")
+    pdf.multi_cell(0, 8, f"Resumen IA: {inc.resumen_ia or 'No se genero resumen automatico.'}", new_x="LMARGIN", new_y="NEXT")
+    
+    pdf.ln(20)
+    pdf.set_font("helvetica", style="I", size=9)
+    pdf.set_text_color(148, 163, 184)
+    pdf.cell(0, 10, "Este documento es un reporte generado automaticamente por Taller Pro SaaS.", new_x="LMARGIN", new_y="NEXT", align="C")
+
+    return Response(
+        content=bytes(pdf.output()),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=reporte_tecnico_{id}.pdf"}
+    )
+# ==========================================
+# 🔧 NUEVOS: ENDPOINTS PARA TÉCNICO
+# ==========================================
+
+@router.get("/tecnico/mis-incidentes", response_model=List[IncidenteSchema])
+def obtener_incidentes_del_tecnico(
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user)
+):
+    """
+    Obtiene todos los incidentes asignados al técnico autenticado.
+    Solo rol_id = 3 (Técnico) puede acceder.
+    """
+    if current_user.rol_id != 3:
+        raise HTTPException(status_code=403, detail="Solo técnicos pueden acceder a esta sección.")
+    
+    incidentes = db.query(Incidente).filter(
+        Incidente.tecnico_id == current_user.id
+    ).order_by(Incidente.fecha_creacion.desc()).all()
+    
+    return incidentes
+
+@router.get("/{id}", response_model=IncidenteSchema)
+def obtener_incidente_por_id(
+    id: int,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user)
+):
+    """
+    Obtiene los detalles de un incidente específico con todas sus relaciones.
+    El técnico solo puede ver incidentes asignados a él.
+    El admin puede ver cualquier incidente.
+    """
     from sqlalchemy.orm import joinedload
     
     incidente = db.query(Incidente).filter(
@@ -2095,3 +2395,152 @@ def obtener_incidente_por_id(
         raise HTTPException(status_code=403, detail="No tienes permiso para ver este incidente")
     
     return incidente
+
+# --- NUEVOS ENDPOINTS PARA COTIZACIONES MULTIPLES ---
+
+from app.schemas.incidente import CotizacionTallerCreate, CotizacionInfo
+from app.services.cotizacion_service import CotizacionService
+
+@router.get("/{id}/cotizaciones", response_model=List[CotizacionInfo])
+def listar_cotizaciones_incidente(
+    id: int,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user)
+):
+    """Devuelve todas las cotizaciones recibidas para un incidente (Para Cliente)."""
+    incidente = incidente_crud.get(db, id=id)
+    if not incidente:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado")
+        
+    candidatos = db.query(IncidenteAsignacionCandidato).options(joinedload(IncidenteAsignacionCandidato.taller)).filter(
+        IncidenteAsignacionCandidato.incidente_id == id,
+        IncidenteAsignacionCandidato.estado.in_(["cotizado", "aceptado"])
+    ).all()
+    
+    resultados = []
+    for c in candidatos:
+        resultados.append(CotizacionInfo(
+            id=c.id,
+            taller_id=c.taller_id,
+            taller_nombre=c.taller.nombre if c.taller else "Taller Desconocido",
+            taller_latitud=float(c.taller.latitud) if c.taller and c.taller.latitud else None,
+            taller_longitud=float(c.taller.longitud) if c.taller and c.taller.longitud else None,
+            distancia_metros=c.score_distancia, # O calcular de nuevo
+            monto=c.cotizacion_monto or 0,
+            tiempo_estimado=c.cotizacion_tiempo or "No definido",
+            sugerencia_ia_monto=c.sugerencia_ia_monto,
+            estado=c.estado
+        ))
+    return resultados
+
+@router.post("/{id}/cotizar", response_model=dict)
+def enviar_cotizacion_taller(
+    id: int,
+    cotizacion: CotizacionTallerCreate,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user)
+):
+    """Taller envía su propuesta de precio y tiempo."""
+    incidente = incidente_crud.get(db, id=id)
+    if not incidente:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado")
+        
+    if incidente.estado not in [EstadoIncidente.PENDIENTE, EstadoIncidente.BUSCANDO_TALLER]:
+        raise HTTPException(status_code=400, detail="Este incidente ya no acepta cotizaciones.")
+        
+    taller_id = current_user.taller_id
+    if not taller_id:
+        raise HTTPException(status_code=403, detail="El usuario no tiene un taller asociado.")
+        
+    candidato = db.query(IncidenteAsignacionCandidato).filter(
+        IncidenteAsignacionCandidato.incidente_id == id,
+        IncidenteAsignacionCandidato.taller_id == taller_id
+    ).first()
+    
+    if not candidato:
+        # Si no era candidato (vino de la lista publica), lo creamos
+        sug_monto = CotizacionService.calcular_sugerencia_ia(db, taller_id, incidente.clasificacion_ia)
+        candidato = IncidenteAsignacionCandidato(
+            incidente_id=id,
+            taller_id=taller_id,
+            orden=99,
+            score_total=1.0,
+            score_distancia=1.0,
+            score_especialidad=1.0,
+            score_disponibilidad=1.0,
+            sugerencia_ia_monto=sug_monto,
+            estado="cotizado",
+            cotizacion_monto=cotizacion.monto,
+            cotizacion_tiempo=cotizacion.tiempo_estimado,
+            explicacion="Cotización enviada desde el tablero público."
+        )
+        db.add(candidato)
+    else:
+        candidato.estado = "cotizado"
+        candidato.cotizacion_monto = cotizacion.monto
+        candidato.cotizacion_tiempo = cotizacion.tiempo_estimado
+        candidato.fecha_respuesta = datetime.now(timezone.utc)
+        
+    db.commit()
+    
+    # Notificar al cliente que hay una nueva cotización
+    NotificacionService.crear_notificacion(
+        db=db,
+        usuario_id=incidente.usuario_id,
+        titulo="Nueva cotización recibida",
+        mensaje=f"Un taller ha enviado una cotización de {cotizacion.monto} Bs para tu incidente.",
+        tipo="nueva_cotizacion",
+        incidente_id=incidente.id,
+        extra_data={"evento": "nueva_cotizacion", "taller_id": taller_id}
+    )
+    
+    return {"message": "Cotización enviada exitosamente"}
+
+@router.post("/{id}/seleccionar-cotizacion/{taller_id}", response_model=dict)
+def seleccionar_cotizacion_cliente(
+    id: int,
+    taller_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_cliente)
+):
+    """Cliente acepta una de las cotizaciones."""
+    incidente = incidente_crud.get(db, id=id)
+    if not incidente:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado")
+        
+    if incidente.usuario_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No eres el propietario de este incidente.")
+        
+    candidato = db.query(IncidenteAsignacionCandidato).filter(
+        IncidenteAsignacionCandidato.incidente_id == id,
+        IncidenteAsignacionCandidato.taller_id == taller_id
+    ).first()
+    
+    if not candidato or candidato.estado != "cotizado":
+        raise HTTPException(status_code=400, detail="Cotización no válida o ya no está disponible.")
+        
+    # Asignar
+    incidente.taller_id = taller_id
+    incidente.estado = EstadoIncidente.ASIGNADO_TALLER
+    
+    # Marcar el candidato como aceptado y los demás rechazados
+    RankingTallerService(db).marcar_aceptado(id, taller_id)
+    
+    # Notificar al taller ganador
+    admins = db.query(Usuario).filter(
+        Usuario.taller_id == taller_id,
+        Usuario.rol_id == 1,
+        Usuario.esta_activo == True
+    ).all()
+    for admin in admins:
+        NotificacionService.crear_notificacion(
+            db=db,
+            usuario_id=admin.id,
+            titulo="Cotización Aceptada!",
+            mensaje=f"El cliente ha aceptado tu cotización para el incidente #{id}. Prepárate para enviar un técnico.",
+            tipo="cotizacion_aceptada",
+            incidente_id=incidente.id,
+            extra_data={"evento": "cotizacion_aceptada"}
+        )
+        
+    return {"message": "Cotización aceptada y taller asignado exitosamente"}

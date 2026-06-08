@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_stripe/flutter_stripe.dart' hide Card; // 🚩 Import Stripe
 
 import 'backend_config.dart';
 import 'providers/auth_provider.dart';
@@ -33,6 +34,8 @@ import 'services/usuario_service.dart';
 import 'services/vehiculo_service.dart';
 import 'theme/colors.dart';
 import 'services/local_notification_service.dart';
+import 'services/sync_service.dart';
+import 'providers/connectivity_provider.dart';
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
@@ -53,6 +56,11 @@ void main() async {
     debugPrint("Error inicializando Firebase: $e");
   }
   await LocalNotificationService().initialize();
+  
+  // 🚩 Setup Stripe
+  Stripe.publishableKey = 'pk_test_51TfaqoRFvDNKnuYCx0gIUcFPWSe3FsytLXYVjojUI6KkkK3q74lWSx2eTK4ygKiMKW5OHNqxmfvcrRPa9YdB3TDR00sUOo6yCP';
+  await Stripe.instance.applySettings();
+  
   runApp(const MyApp());
 }
 
@@ -132,10 +140,18 @@ class MyApp extends StatelessWidget {
               UsuarioProvider(usuarioService: context.read<UsuarioService>()),
         ),
         ChangeNotifierProvider(
+          create: (context) => ConnectivityProvider(),
+        ),
+        ChangeNotifierProvider(
           create: (context) => TecnicoProvider(
             incidenteService: context.read<IncidenteService>(),
             locationService: context.read<LocationTrackingService>(),
             trackingService: context.read<TrackingService>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => SyncService(
+            incidenteService: context.read<IncidenteService>(),
           ),
         ),
         ChangeNotifierProxyProvider2<
@@ -319,6 +335,8 @@ class _HomePageState extends State<HomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _registrarTokenDispositivo();
+      // Iniciar monitoreo de sincronización offline
+      context.read<SyncService>().iniciarMonitoreo();
     });
   }
 
@@ -411,6 +429,71 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(esTecnico ? 'Panel Tecnico' : 'Asistencia Vehicular'),
+        actions: [
+          // Indicador de sincronización offline
+          Consumer<SyncService>(
+            builder: (context, syncService, _) {
+              if (syncService.sincronizando) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Tooltip(
+                    message: 'Sincronizando datos...',
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                );
+              }
+              if (syncService.pendientesCount > 0) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Tooltip(
+                    message: '${syncService.pendientesCount} incidente(s) pendiente(s) de sincronizar',
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.wifi_off, color: Colors.orange),
+                          onPressed: () async {
+                            final result = await syncService.intentarSincronizar();
+                            if (!context.mounted) return;
+                            final msg = result.sincronizados > 0
+                                ? '✅ ${result.sincronizados} sincronizado(s)'
+                                : '❌ Sin conexión aún';
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(msg)),
+                            );
+                          },
+                        ),
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '${syncService.pendientesCount}',
+                              style: const TextStyle(fontSize: 9, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
       ),
       body: pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
@@ -728,28 +811,38 @@ class _HomeDashboardState extends State<HomeDashboard> {
                 ),
               )
             else
-              Container(
-                padding: const EdgeInsets.all(14),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.success,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.white),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Estado: Activo. Listo para reportar incidentes.',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+              Consumer<ConnectivityProvider>(
+                builder: (context, connectivity, _) {
+                  final isOnline = connectivity.isOnline;
+                  return Container(
+                    padding: const EdgeInsets.all(14),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: isOnline ? AppColors.success : Colors.red.shade700,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ],
-                ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isOnline ? Icons.check_circle : Icons.wifi_off,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isOnline
+                                ? 'Estado: Activo. Listo para reportar incidentes.'
+                                : 'Estado: Offline. Guardando localmente.',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
         _actionCard(
           context,

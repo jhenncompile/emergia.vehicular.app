@@ -13,6 +13,30 @@
     <p>{{ errorMessage }}</p>
   </div>
 
+  <!-- FILTROS BACKEND -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label class="filter-label">📅 Desde</label>
+      <input type="date" class="filter-input" [(ngModel)]="fechaInicio" />
+    </div>
+    <div class="filter-group">
+      <label class="filter-label">📅 Hasta</label>
+      <input type="date" class="filter-input" [(ngModel)]="fechaFin" />
+    </div>
+    <div class="filter-group">
+      <label class="filter-label">👨‍🔧 Técnico</label>
+      <select class="filter-input" [(ngModel)]="tecnicoSeleccionado">
+        <option [ngValue]="null">Todos los técnicos</option>
+        <option *ngFor="let tec of tecnicos" [ngValue]="tec.id">{{ tec.nombre }} {{ tec.apellido }}</option>
+      </select>
+    </div>
+    <button class="btn-apply" (click)="aplicarFiltrosBackend()" [disabled]="isLoading">
+      <span *ngIf="!isLoading">🔍 Aplicar Filtros</span>
+      <span *ngIf="isLoading">⏳ Cargando...</span>
+    </button>
+    <button class="btn-clear" (click)="limpiarFiltrosBackend()">↩ Limpiar</button>
+  </div>
+
   <ng-container *ngIf="!isLoading && !errorMessage">
     
     <!-- TARJETA RESUMEN -->

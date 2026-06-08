@@ -251,10 +251,8 @@ class IncidenteService {
   }) async {
     try {
       final response = await apiService.patch(
-        '/api/v1/incidentes/$incidenteId/estado',
-        body: {
-          'estado': 'finalizado',
-        },
+        '/api/v1/incidentes/$incidenteId/finalizar',
+        body: {},
       );
 
       if (response is Map<String, dynamic>) {
@@ -358,7 +356,7 @@ class IncidenteService {
   }) async {
     try {
       final response = await apiService.patch(
-        '/api/v1/incidentes/$incidenteId/marcar-llegada-tecnico',
+        '/api/v1/incidentes/$incidenteId/marcar-llegada',
         body: {},
       );
 
@@ -388,10 +386,10 @@ class IncidenteService {
       throw Exception('Error al obtener ruta: $e');
     }
   }
-  /// Obtiene los candidatos para un incidente
-  Future<List<Map<String, dynamic>>> obtenerCandidatos(int incidenteId) async {
+  /// Obtiene las cotizaciones para un incidente
+  Future<List<Map<String, dynamic>>> obtenerCotizaciones(int incidenteId) async {
     try {
-      final response = await apiService.get('/api/v1/incidentes/$incidenteId/candidatos');
+      final response = await apiService.get('/api/v1/incidentes/$incidenteId/cotizaciones');
       if (response is List) {
         return List<Map<String, dynamic>>.from(
           response.map((item) => item as Map<String, dynamic>),
@@ -399,18 +397,18 @@ class IncidenteService {
       }
       return [];
     } catch (e) {
-      throw Exception('Error al obtener candidatos: $e');
+      throw Exception('Error al obtener cotizaciones: $e');
     }
   }
 
-  /// Selecciona el taller para un incidente
-  Future<Map<String, dynamic>> seleccionarTaller({
+  /// Selecciona una cotización y por tanto un taller para un incidente
+  Future<Map<String, dynamic>> seleccionarCotizacion({
     required int incidenteId,
     required int tallerId,
   }) async {
     try {
       final response = await apiService.post(
-        '/api/v1/incidentes/$incidenteId/seleccionar-taller/$tallerId',
+        '/api/v1/incidentes/$incidenteId/seleccionar-cotizacion/$tallerId',
         body: {},
       );
 
@@ -419,7 +417,7 @@ class IncidenteService {
       }
       throw Exception('Respuesta inesperada del servidor');
     } catch (e) {
-      throw Exception('Error al seleccionar taller: $e');
+      throw Exception('Error al seleccionar cotización: $e');
     }
   }
 }

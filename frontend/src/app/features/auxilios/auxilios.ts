@@ -31,10 +31,15 @@ export class AuxiliosComponent implements OnInit {
   mostrarModalCobro: boolean = false;
   mostrarModalAsignar: boolean = false; 
   mostrarModalRechazo: boolean = false; 
+  mostrarModalCotizar: boolean = false;
+  mostrarModalReparacion: boolean = false;
 
   // Datos temporales para las acciones
   incidenteAccion: any = null; 
   montoCobro: number = 0;
+  cotizacionTiempo: string = '';
+  tiempoReparacionInput: string = '';
+  sugerenciaMonto: number = 0;
   idTecnicoSeleccionado: number = 0;
   motivoRechazo: string = '';
   accionMotivo: 'rechazar' | 'cancelar' = 'rechazar';
@@ -46,9 +51,19 @@ export class AuxiliosComponent implements OnInit {
 
   cargarDatos() {
     this.cargando = true;
-    this.incidentesService.getPendientes().subscribe(data => this.incidentesPendientes = data.sort((a, b) => b.id - a.id));
+    this.incidentesService.getPendientes().subscribe(data => {
+      this.incidentesPendientes = data.sort((a, b) => b.id - a.id);
+      if (this.incidenteSeleccionado && this.tabActiva === 'pendientes') {
+        const updated = this.incidentesPendientes.find(i => i.id === this.incidenteSeleccionado.id);
+        if (updated) this.incidenteSeleccionado = updated;
+      }
+    });
     this.incidentesService.getMisAtenciones().subscribe(data => {
       this.misAtenciones = data.sort((a, b) => b.id - a.id);
+      if (this.incidenteSeleccionado && this.tabActiva === 'mis-atenciones') {
+        const updated = this.misAtenciones.find(i => i.id === this.incidenteSeleccionado.id);
+        if (updated) this.incidenteSeleccionado = updated;
+      }
       this.cargando = false;
     });
   }
@@ -91,7 +106,7 @@ export class AuxiliosComponent implements OnInit {
 }
 
   puedeReasignarTecnico(inc: any): boolean {
-    return ['asignado_taller', 'en_camino'].includes(inc?.estado);
+    return ['asignado_taller', 'en_camino', 'en_atencion'].includes(inc?.estado);
   }
 
   puedeMarcarLlegada(inc: any): boolean {
@@ -103,12 +118,67 @@ export class AuxiliosComponent implements OnInit {
   }
 
   puedeCancelar(inc: any): boolean {
-    return ['asignado_taller', 'en_camino'].includes(inc?.estado);
+    return ['asignado_taller', 'en_camino', 'en_atencion'].includes(inc?.estado);
+  }
+
+  // --- HELPERS PARA CARDS ---
+  tieneFotos(inc: any): boolean {
+    if (!inc?.evidencias) return false;
+    return inc.evidencias.some((e: any) => e.tipo_archivo === 'imagen');
+  }
+
+  tieneAudio(inc: any): boolean {
+    if (!inc?.evidencias) return false;
+    return inc.evidencias.some((e: any) => e.tipo_archivo === 'audio');
+  }
+
+  calcularTiempo(fecha: string | undefined): string {
+    if (!fecha) return '';
+    const date = new Date(fecha);
+    const diffMs = new Date().getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 60) return `${diffMins} min ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs} hr ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    return `${diffDays} d ago`;
   }
 
   // --- LÓGICA DE ASIGNACIÓN Y REASIGNACIÓN ---
 
-  // Se usa cuando aceptas un incidente nuevo
+  // --- FLUJO DE COTIZACION (REEMPLAZA ACEPTAR DIRECTO) ---
+  
+  abrirModalCotizar(inc: any) {
+    this.incidenteAccion = inc;
+    // Buscar la sugerencia de IA en el arreglo de candidatos (si viene incluido en los datos)
+    // O si el backend lo devuelve, por ahora pondremos 0 y el backend generará si no existe
+    this.sugerenciaMonto = inc.sugerencia_ia_monto || 0; // Se asume que backend mandará esto
+    this.montoCobro = this.sugerenciaMonto > 0 ? this.sugerenciaMonto : 100;
+    this.cotizacionTiempo = '30 minutos';
+    this.mostrarModalCotizar = true;
+  }
+
+  confirmarCotizacion() {
+    if (this.montoCobro <= 0 || !this.cotizacionTiempo.trim()) {
+      return alert('Debe ingresar un monto válido y un tiempo estimado.');
+    }
+    
+    this.incidentesService.enviarCotizacion(this.incidenteAccion.id, this.montoCobro, this.cotizacionTiempo).subscribe({
+      next: (res) => {
+        alert('Cotización enviada exitosamente. El cliente será notificado.');
+        this.mostrarModalCotizar = false;
+        this.cargarDatos();
+      },
+      error: (e) => alert('Error al enviar cotización: ' + e.error?.detail)
+    });
+  }
+
+  cerrarModalCotizar() {
+    this.mostrarModalCotizar = false;
+    this.incidenteAccion = null;
+  }
+
+  // Se usa cuando aceptas un incidente nuevo (DEPRECADO POR COTIZAR)
   aceptarIncidente(id: number) {
     this.incidentesService.aceptarIncidente(id).subscribe({
       next: (res) => {
@@ -125,7 +195,7 @@ export class AuxiliosComponent implements OnInit {
   abrirReasignacion() {
     if (!this.incidenteSeleccionado) return;
     if (!this.puedeReasignarTecnico(this.incidenteSeleccionado)) {
-      return alert('Solo puedes asignar técnico cuando el incidente está asignado al taller o en camino.');
+      return alert('Solo puedes asignar técnico cuando el incidente está asignado, en camino o en atención.');
     }
     this.incidenteAccion = this.incidenteSeleccionado;
     // Pre-seleccionamos el ID actual si ya tiene uno
@@ -244,6 +314,30 @@ export class AuxiliosComponent implements OnInit {
         this.cargarDatos(); // 🔄 Recargamos para que el estado 'pago_estado' cambie en la tabla
       },
       error: (e) => alert('Error al generar cobro: ' + e.error?.detail)
+    });
+  }
+  abrirModalReparacion(incidente: any) {
+    this.incidenteAccion = incidente;
+    this.tiempoReparacionInput = incidente.tiempo_reparacion_estimado || '';
+    this.mostrarModalReparacion = true;
+  }
+
+  cerrarModalReparacion() {
+    this.mostrarModalReparacion = false;
+    this.incidenteAccion = null;
+    this.tiempoReparacionInput = '';
+  }
+
+  guardarTiempoReparacion() {
+    if (!this.incidenteAccion || !this.tiempoReparacionInput.trim()) return;
+
+    this.incidentesService.actualizarTiempoReparacion(this.incidenteAccion.id, this.tiempoReparacionInput).subscribe({
+      next: () => {
+        alert('Tiempo de reparación actualizado con éxito ⏱️');
+        this.cerrarModalReparacion();
+        this.cargarDatos(); 
+      },
+      error: (e: any) => alert('Error al actualizar tiempo: ' + e.error?.detail)
     });
   }
 }

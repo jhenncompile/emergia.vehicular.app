@@ -51,6 +51,8 @@ dependencies:
   url_launcher: ^6.3.2
   firebase_core: ^4.10.0
   firebase_messaging: ^16.3.0
+  flutter_stripe: ^13.0.0
+  connectivity_plus: ^7.1.1
 
 dev_dependencies:
   flutter_test:

@@ -1,0 +1,18 @@
+Traceback (most recent call last):
+  File "C:\Users\nextr\Documents\UAGRM\1er Semestre - 2026\SI2\2do Parcial\emergencia.vehicular\backend\venv\Lib\site-packages\stripe\_stripe_object.py", line 171, in __getattr__
+    return self[k]
+           ~~~~^^^
+  File "C:\Users\nextr\Documents\UAGRM\1er Semestre - 2026\SI2\2do Parcial\emergencia.vehicular\backend\venv\Lib\site-packages\stripe\_stripe_object.py", line 224, in __getitem__
+    raise err
+  File "C:\Users\nextr\Documents\UAGRM\1er Semestre - 2026\SI2\2do Parcial\emergencia.vehicular\backend\venv\Lib\site-packages\stripe\_stripe_object.py", line 203, in __getitem__
+    return self._data[k]
+           ~~~~~~~~~~^^^
+KeyError: 'get'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\nextr\Documents\UAGRM\1er Semestre - 2026\SI2\2do Parcial\emergencia.vehicular\backend\app\api\v1\endpoints\pagos.py", line 179, in stripe_webhook
+  File "C:\Users\nextr\Documents\UAGRM\1er Semestre - 2026\SI2\2do Parcial\emergencia.vehicular\backend\venv\Lib\site-packages\stripe\_stripe_object.py", line 173, in __getattr__
+    raise AttributeError(*err.args) from err
+AttributeError: get

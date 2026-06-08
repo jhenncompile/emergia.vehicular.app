@@ -6,8 +6,8 @@ import 'package:provider/provider.dart';
 import '../../providers/incidente_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/incidente_service.dart';
+import '../../services/sync_service.dart';
 import '../../theme/colors.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../calificacion/calificacion_screen.dart';
 
 class MisIncidentesScreen extends StatefulWidget {
@@ -123,8 +123,9 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    incidente['estado']?.toString().toUpperCase() ??
-                        'PENDIENTE',
+                    incidente['estado'] == 'pendiente_sync'
+                        ? 'SIN CONEXIÓN'
+                        : incidente['estado']?.toString().toUpperCase() ?? 'PENDIENTE',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -132,9 +133,20 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                     ),
                   ),
                 ),
+                if (incidente['es_local'] == true) ...[  
+                  const SizedBox(width: 6),
+                  const Tooltip(
+                    message: 'Guardado localmente, pendiente de envío al servidor',
+                    child: Icon(Icons.wifi_off, size: 16, color: Colors.orange),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 12),
+
+            // Indicador de estado de sincronización (solo para incidentes offline)
+            if (incidente['es_local'] == true)
+              _buildSyncStatusWidget(context, incidente),
 
             if (esTecnico) ...[
               Row(
@@ -225,15 +237,37 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: () => _verDetalles(context, incidente),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
                 child: Text(esTecnico ? 'Ver Datos' : 'Ver Detalles'),
               ),
             ),
+
+            if (!esTecnico && incidente['estado']?.toString().toLowerCase() == 'buscando_taller') ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _mostrarSeleccionTaller(context, incidente['id'] as int),
+                  icon: const Icon(Icons.handyman),
+                  label: const Text('Cambiar Taller / Escoger'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+
 
             // Botón calificar taller (solo cliente, solo finalizado)
             if (!esTecnico &&
                 (incidente['estado']?.toString().toLowerCase() == 'finalizado' ||
                     incidente['estado']?.toString().toLowerCase() == 'completado') &&
-                incidente['taller'] != null) ...
+                incidente['taller'] != null &&
+                incidente['calificado'] != true) ...
               [
                 const SizedBox(height: 8),
                 SizedBox(
@@ -250,6 +284,11 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                           ),
                         ),
                       );
+                      if (result == true) {
+                        setState(() {
+                          incidente['calificado'] = true;
+                        });
+                      }
                       // Si calificó, podemos refrescar si es necesario
                       if (result == true && mounted) {
                         _cargarDatos(context);
@@ -267,6 +306,7 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFC107),
                       foregroundColor: Colors.black87,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -285,6 +325,7 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.amber.shade700,
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     ),
                     onPressed: () => _mostrarSeleccionTaller(context, incidente['id'] as int),
                     icon: const Icon(Icons.build_circle),
@@ -307,7 +348,7 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
       builder: (ctx) => const Center(child: CircularProgressIndicator()),
     );
 
-    final candidatos = await provider.obtenerCandidatos(incidenteId);
+    final candidatos = await provider.obtenerCotizaciones(incidenteId);
 
     if (!context.mounted) return;
     Navigator.of(context).pop(); // Cerrar loader
@@ -346,22 +387,22 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                     controller: scrollController,
                     itemCount: candidatos.length,
                     itemBuilder: (ctx, i) {
-                      final c = candidatos[i];
-                      final distanceStr = c['distancia_km'] != null
-                          ? '${c['distancia_km']} km'
-                          : 'Distancia desconocida';
-                      final rating = c['calificacion_promedio'] ?? 0.0;
+                      final candidato = candidatos[i];
+                      final rating = candidato['calificacion_promedio'] ?? 0.0;
 
                       return ListTile(
                         leading: const CircleAvatar(
-                          backgroundColor: Colors.blueAccent,
-                          child: Icon(Icons.build, color: Colors.white),
+                          child: Icon(Icons.build),
                         ),
-                        title: Text(c['taller_nombre'] ?? 'Taller'),
+                        title: Text(candidato['taller_nombre'] ?? 'Taller sin nombre'),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Distancia: $distanceStr'),
+                            Text(
+                              'Monto cotizado: ${candidato['monto'] ?? candidato['sugerencia_ia_monto'] ?? '0.00'} Bs',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                            Text('Tiempo estimado: ${candidato['tiempo_estimado'] ?? 'No especificado'}'),
                             Row(
                               children: [
                                 const Icon(Icons.star, size: 16, color: Colors.amber),
@@ -371,14 +412,15 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                             ),
                           ],
                         ),
+                        isThreeLine: true,
                         trailing: ElevatedButton(
                           onPressed: () async {
-                            final success = await provider.seleccionarTaller(
+                            Navigator.pop(context); // Cierra el bottom sheet
+                            final success = await provider.seleccionarCotizacion(
                               incidenteId: incidenteId,
-                              tallerId: c['taller_id'],
+                              tallerId: candidato['taller_id'],
                             );
-                            if (!ctx.mounted) return;
-                            Navigator.of(ctx).pop();
+                            if (!context.mounted) return;
                             if (success) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -414,6 +456,8 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
     switch (estado?.toLowerCase()) {
       case 'pendiente':
         return Colors.orange;
+      case 'pendiente_sync':
+        return Colors.deepOrange;
       case 'buscando_taller':
         return Colors.amber.shade700;
       case 'asignado_taller':
@@ -494,6 +538,11 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                 _buildDetalleRow(
                   'Resumen IA',
                   _texto(incidente['resumen_ia'])!,
+                ),
+              if (_texto(incidente['tiempo_reparacion_estimado']) != null)
+                _buildDetalleRow(
+                  'Tiempo de Reparación',
+                  _texto(incidente['tiempo_reparacion_estimado'])!,
                 ),
               if (punto != null)
                 _buildDetalleMapa(punto)
@@ -804,6 +853,89 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
     if (text == null || text.isEmpty) return null;
     return text;
   }
+  /// Indicador visual del estado de sincronización para incidentes offline.
+  Widget _buildSyncStatusWidget(BuildContext context, Map<String, dynamic> incidente) {
+    final idLocal = incidente['id'] as int;
+
+    return FutureBuilder<EstadoSync>(
+      future: SyncService.obtenerEstado(idLocal),
+      builder: (context, snapshot) {
+        final estado = snapshot.data ?? EstadoSync.pendiente;
+
+        Widget icon;
+        String mensaje;
+        Color color;
+        Widget? botonReintento;
+
+        switch (estado) {
+          case EstadoSync.pendiente:
+            icon = const Icon(Icons.access_time, size: 14, color: Colors.orange);
+            mensaje = 'Pendiente de sincronización';
+            color = Colors.orange.shade50;
+            break;
+          case EstadoSync.sincronizando:
+            icon = const SizedBox(
+              width: 14, height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            );
+            mensaje = 'Sincronizando...';
+            color = Colors.blue.shade50;
+            break;
+          case EstadoSync.sincronizado:
+            icon = const Icon(Icons.check_circle, size: 14, color: Colors.green);
+            mensaje = 'Sincronizado correctamente';
+            color = Colors.green.shade50;
+            break;
+          case EstadoSync.error:
+            icon = const Icon(Icons.error_outline, size: 14, color: Colors.red);
+            mensaje = 'Error al sincronizar';
+            color = Colors.red.shade50;
+            botonReintento = TextButton.icon(
+              onPressed: () async {
+                final syncService = context.read<SyncService>();
+                final ok = await syncService.reintentar(idLocal);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok ? '✅ Sincronizado' : '❌ Sigue sin conexión'),
+                      backgroundColor: ok ? Colors.green : Colors.red,
+                    ),
+                  );
+                  setState(() {}); // Refrescar el FutureBuilder
+                }
+              },
+              icon: const Icon(Icons.refresh, size: 14),
+              label: const Text('Reintentar', style: TextStyle(fontSize: 12)),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              ),
+            );
+            break;
+        }
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color == Colors.orange.shade50 ? Colors.orange : Colors.transparent),
+          ),
+          child: Row(
+            children: [
+              icon,
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(mensaje, style: const TextStyle(fontSize: 12)),
+              ),
+              ?botonReintento,
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _EvidenciasIncidenteSection extends StatefulWidget {
@@ -1023,6 +1155,8 @@ class _EvidenciasIncidenteSectionState
       ),
     );
   }
+
+
 
   @override
   void dispose() {

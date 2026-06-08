@@ -158,14 +158,14 @@ class _CalificacionScreenState extends State<CalificacionScreen>
                   gradient: LinearGradient(
                     colors: [
                       AppColors.primaryColor,
-                      AppColors.primaryColor.withOpacity(0.6),
+                      AppColors.primaryColor.withValues(alpha: 0.6),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primaryColor.withOpacity(0.4),
+                      color: AppColors.primaryColor.withValues(alpha: 0.4),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -193,7 +193,7 @@ class _CalificacionScreenState extends State<CalificacionScreen>
                 Text(
                   widget.nombreTaller!,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.6),
+                    color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 14,
                   ),
                   textAlign: TextAlign.center,
@@ -221,10 +221,10 @@ class _CalificacionScreenState extends State<CalificacionScreen>
               // Campo comentario
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.12),
+                    color: Colors.white.withValues(alpha: 0.12),
                   ),
                 ),
                 child: TextField(
@@ -233,13 +233,15 @@ class _CalificacionScreenState extends State<CalificacionScreen>
                   maxLength: 300,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.transparent,
                     hintText: 'Escribe un comentario (opcional)...',
                     hintStyle:
-                        TextStyle(color: Colors.white.withOpacity(0.4)),
+                        TextStyle(color: Colors.white.withValues(alpha: 0.4)),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.all(16),
                     counterStyle:
-                        TextStyle(color: Colors.white.withOpacity(0.4)),
+                        TextStyle(color: Colors.white.withValues(alpha: 0.4)),
                   ),
                 ),
               ),
@@ -282,7 +284,7 @@ class _CalificacionScreenState extends State<CalificacionScreen>
                     : () => Navigator.of(context).pop(false),
                 child: Text(
                   'Omitir por ahora',
-                  style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                 ),
               ),
             ],

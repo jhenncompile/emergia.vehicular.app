@@ -97,6 +97,20 @@ def crear_tecnico(
     if usuario_crud.get_by_email(db, email=user_in.correo):
         raise HTTPException(status_code=400, detail="El correo ya existe.")
     
+    from app.models.taller import Taller
+    taller = db.query(Taller).filter(Taller.id == current_user.taller_id).first()
+    
+    if taller and taller.plan_suscripcion == 'gratuito':
+        num_tecnicos = db.query(UsuarioModel).filter(
+            UsuarioModel.taller_id == current_user.taller_id,
+            UsuarioModel.rol_id == 3
+        ).count()
+        if num_tecnicos >= 3:
+            raise HTTPException(
+                status_code=402, 
+                detail="Límite del plan gratuito alcanzado. Mejora a Premium para agregar más técnicos."
+            )
+
     # 1. Extraer IDs de especialidades y preparar datos de usuario
     esp_ids = user_in.especialidades_ids
     user_data = user_in.dict(exclude={"especialidades_ids"})

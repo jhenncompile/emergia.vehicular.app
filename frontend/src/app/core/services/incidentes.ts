@@ -31,6 +31,14 @@ export class IncidentesService {
     return this.http.patch(`${this.apiUrl}/${id}/aceptar`, {}, { headers: this.getHeaders() });
   }
 
+  // NUEVO: Enviar cotizacion multiple
+  enviarCotizacion(id: number, monto: number, tiempo_estimado: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/${id}/cotizar`, {
+      monto: monto,
+      tiempo_estimado: tiempo_estimado
+    }, { headers: this.getHeaders() });
+  }
+
   // 🚀 NUEVO: Asignar un técnico específico
   asignarTecnico(incidenteId: number, tecnicoId: number): Observable<any> {
     const params = new HttpParams().set('tecnico_id', tecnicoId.toString());
@@ -109,5 +117,11 @@ export class IncidentesService {
       responseType: 'blob'
     });
   }
-  
+
+  actualizarTiempoReparacion(id: number, tiempo: string): Observable<any> {
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${localStorage.getItem('token')}`);
+    return this.http.patch(`${environment.apiUrl}/incidentes/${id}/tiempo-reparacion`, {
+      tiempo_reparacion_estimado: tiempo
+    }, { headers });
+  }
 }

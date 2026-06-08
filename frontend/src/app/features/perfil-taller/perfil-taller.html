@@ -4,6 +4,35 @@
     <p>Actualiza la información básica y ubicación de tu taller.</p>
   </div>
 
+  <!-- BANNERS DE SUSCRIPCIÓN -->
+  <div class="subscription-banner premium" *ngIf="taller.plan_suscripcion === 'premium'">
+    <div class="banner-content">
+      <div class="banner-icon">⭐</div>
+      <div class="banner-text">
+        <h3>Plan Premium Activo</h3>
+        <p>Disfrutas de técnicos e incidentes ilimitados. ¡Gracias por confiar en VialIA!</p>
+      </div>
+    </div>
+    <div class="banner-actions">
+      <button type="button" class="btn-cancelar-sub" (click)="cancelarSuscripcion()" [disabled]="cargando">Cancelar Suscripción</button>
+    </div>
+  </div>
+
+  <div class="subscription-banner free" *ngIf="taller.plan_suscripcion !== 'premium'">
+    <div class="banner-content">
+      <div class="banner-icon">⚡</div>
+      <div class="banner-text">
+        <h3>Plan Gratuito</h3>
+        <p>Límite: 3 técnicos y 5 incidentes diarios. Mejora tu plan para crecer sin límites.</p>
+      </div>
+    </div>
+    <div class="banner-actions">
+      <button type="button" class="btn-premium" (click)="suscribirPremium()" [disabled]="cargando">
+        {{ cargando ? 'Cargando...' : '🚀 Mejorar a Premium ($49.99/mes)' }}
+      </button>
+    </div>
+  </div>
+
   <div class="perfil-grid">
     <div class="form-section">
       <form (ngSubmit)="guardar()" #f="ngForm">

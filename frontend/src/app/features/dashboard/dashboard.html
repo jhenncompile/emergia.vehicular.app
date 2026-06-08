@@ -1,39 +1,190 @@
-<div style="padding: 20px;">
-  <div style="display: flex; align-items: center; justify-content: space-between;">
-     <h2>🛠️ Panel de Control - {{ tallerNombre }}</h2>
-     <span style="background: #e3f2fd; padding: 5px 15px; border-radius: 20px; color: #1976d2;">
-       Bienvenido, {{ usuarioNombre }}
-     </span>
+<div class="dashboard-wrapper">
+
+  <!-- ═══════════════════════ HEADER ═══════════════════════ -->
+  <div class="dash-header">
+    <div class="dash-header-left">
+      <div class="dash-title-row">
+        <span class="dash-icon">🛠️</span>
+        <div>
+          <h1 class="dash-title">{{ tallerNombre }}</h1>
+          <p class="dash-subtitle">Panel de Control · Dashboard</p>
+        </div>
+      </div>
+    </div>
+    <div class="dash-welcome-chip">
+      <span class="chip-dot"></span>
+      Bienvenido, {{ usuarioNombre }}
+    </div>
   </div>
-  
-  <hr>
-  
-  <div *ngIf="!estadisticasFinanzas.cargando" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
-    
-    <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <div style="font-size: 0.9em; color: #666; margin-bottom: 10px;">💰 Total Recaudado (Bruto)</div>
-      <div style="font-size: 2em; font-weight: bold; color: #1976d2;">{{ estadisticasFinanzas.totalBruto | number:'1.2-2' }} Bs.</div>
-      <div style="font-size: 0.85em; color: #999; margin-top: 8px;">De {{ estadisticasFinanzas.cantidadPagos }} pagos completados</div>
+
+  <!-- ═══════════════════════ FILTROS ═══════════════════════ -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label class="filter-label">📅 Desde</label>
+      <input type="date" class="filter-input" [(ngModel)]="fechaInicio" />
     </div>
-    
-    <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <div style="font-size: 0.9em; color: #666; margin-bottom: 10px;">🔴 Comisión Plataforma (10%)</div>
-      <div style="font-size: 2em; font-weight: bold; color: #ff6b6b;">-{{ estadisticasFinanzas.totalComision | number:'1.2-2' }} Bs.</div>
-      <div style="font-size: 0.85em; color: #999; margin-top: 8px;">Deducción automática</div>
+    <div class="filter-group">
+      <label class="filter-label">📅 Hasta</label>
+      <input type="date" class="filter-input" [(ngModel)]="fechaFin" />
     </div>
-    
-    <div style="background: #fff; border: 2px solid #51cf66; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(81,207,102,0.2);">
-      <div style="font-size: 0.9em; color: #51cf66; margin-bottom: 10px; font-weight: 600;">✅ Monto Neto (Para Ti)</div>
-      <div style="font-size: 2.2em; font-weight: 700; color: #51cf66;">{{ estadisticasFinanzas.totalNeto | number:'1.2-2' }} Bs.</div>
-      <div style="font-size: 0.85em; color: #51cf66; margin-top: 8px;">Cantidad disponible</div>
+    <button class="btn-apply" (click)="aplicarFiltros()" [disabled]="cargandoMetricas">
+      <span *ngIf="!cargandoMetricas">🔍 Aplicar Filtros</span>
+      <span *ngIf="cargandoMetricas">⏳ Cargando...</span>
+    </button>
+    <button class="btn-clear" (click)="limpiarFiltros()">↩ Este mes</button>
+    <button class="btn-export" (click)="exportarPDF()" [disabled]="cargandoMetricas || exportandoPDF">
+      <span *ngIf="!exportandoPDF">📄 Exportar a PDF</span>
+      <span *ngIf="exportandoPDF">⏳ Generando...</span>
+    </button>
+  </div>
+
+  <div *ngIf="cargandoMetricas" class="loading-banner">
+    <div class="spinner"></div> Calculando KPIs del período seleccionado...
+  </div>
+
+  <!-- ═══════════════════════ KPI CARDS ═══════════════════════ -->
+  <div class="kpi-grid" *ngIf="!cargandoMetricas">
+
+    <div class="kpi-card kpi-blue">
+      <div class="kpi-icon">📋</div>
+      <div class="kpi-value">{{ kpis.totalIncidentes }}</div>
+      <div class="kpi-label">Total Incidentes</div>
+      <div class="kpi-sub">en el período</div>
+    </div>
+
+    <div class="kpi-card kpi-green">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-value">{{ kpis.incidentesFinalizados }}</div>
+      <div class="kpi-label">Finalizados</div>
+      <div class="kpi-sub">atenciones completadas</div>
+    </div>
+
+    <div class="kpi-card kpi-red">
+      <div class="kpi-icon">❌</div>
+      <div class="kpi-value">{{ kpis.incidentesCancelados }}</div>
+      <div class="kpi-label">Incidentes Cancelados</div>
+      <div class="kpi-sub">
+        {{ kpis.porcentajeCancelados }}% del total
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-green">
+      <div class="kpi-icon">🎯</div>
+      <div class="kpi-value">{{ kpis.tasaExito }}%</div>
+      <div class="kpi-label">Tasa de Éxito</div>
+      <div class="kpi-sub">completados s/ totales</div>
+    </div>
+
+    <div class="kpi-card kpi-orange">
+      <div class="kpi-icon">⏱️</div>
+      <div class="kpi-value">{{ kpis.tiempoPromedioMin }} min</div>
+      <div class="kpi-label">T. Prom. Asignación</div>
+      <div class="kpi-sub">tiempo de respuesta inicial</div>
+    </div>
+
+    <div class="kpi-card" style="border-top-color: #e67e22; background-color: rgba(230, 126, 34, 0.05);">
+      <div class="kpi-icon" style="color: #e67e22;">🚚</div>
+      <div class="kpi-value">{{ kpis.tiempoPromedioLlegadaMin }} min</div>
+      <div class="kpi-label">T. Prom. Llegada</div>
+      <div class="kpi-sub">desde la asignación</div>
+    </div>
+
+    <div class="kpi-card" style="border-top-color: #27ae60; background-color: rgba(39, 174, 96, 0.05);">
+      <div class="kpi-icon" style="color: #27ae60;">✅</div>
+      <div class="kpi-value">{{ kpis.cumplimientoSLA }}%</div>
+      <div class="kpi-label">Cumplimiento SLA</div>
+      <div class="kpi-sub">llegada &lt; 60 min</div>
+    </div>
+
+    <div class="kpi-card kpi-gold" style="border-top-color: #ffd43b;">
+      <div class="kpi-icon">⭐</div>
+      <div class="kpi-value">{{ kpis.promedioCalificacion | number:'1.1-1' }} / 5</div>
+      <div class="kpi-label">Promedio Calificación</div>
+      <div class="kpi-sub">satisfacción del cliente</div>
     </div>
 
   </div>
 
-  <div *ngIf="estadisticasFinanzas.cargando" style="margin-top: 20px; color: #666;">
-    Cargando estadísticas financieras...
+  <!-- ═══════════════════════ FINANZAS + TÉCNICOS ═══════════════════════ -->
+  <div class="charts-row" *ngIf="!cargandoMetricas">
+
+    <!-- Resumen Financiero -->
+    <div class="chart-card">
+      <div class="chart-title">💰 Resumen Financiero</div>
+
+      <div class="finance-row finance-bruto">
+        <div class="finance-label">Total Bruto</div>
+        <div class="finance-value">{{ formatMoney(kpis.recaudadoBruto) }} Bs.</div>
+      </div>
+      <div class="finance-bar-wrapper">
+        <div class="finance-bar" style="width: 100%; background: #339af0;"></div>
+      </div>
+
+      <div class="finance-row finance-comision">
+        <div class="finance-label">Comisión Plataforma (10%)</div>
+        <div class="finance-value finance-neg">-{{ formatMoney(kpis.comisionPlataforma) }} Bs.</div>
+      </div>
+      <div class="finance-bar-wrapper">
+        <div class="finance-bar"
+          [style.width.%]="kpis.recaudadoBruto > 0 ? (kpis.comisionPlataforma / kpis.recaudadoBruto * 100) : 0"
+          style="background: #ff6b6b;"></div>
+      </div>
+
+      <div class="finance-divider"></div>
+
+      <div class="finance-neto-card">
+        <div class="finance-neto-label">✅ Monto Neto (Para el Taller)</div>
+        <div class="finance-neto-value">{{ formatMoney(kpis.recaudadoNeto) }} Bs.</div>
+      </div>
+    </div>
+
+    <!-- Atenciones por Técnico -->
+    <div class="chart-card">
+      <div class="chart-title">👷 Atenciones por Técnico</div>
+
+      <div *ngIf="atencionPorTecnico.length === 0" class="no-data">
+        Sin datos para el período seleccionado
+      </div>
+
+      <div *ngFor="let t of atencionPorTecnico" class="tecnico-row">
+        <div class="tecnico-name">{{ t.tecnico }}</div>
+        <div class="tecnico-bar-wrapper">
+          <div class="tecnico-bar" [style.width.%]="barWidth(t.cantidad)"
+            [style.background]="'#339af0'"></div>
+        </div>
+        <div class="tecnico-count">{{ t.cantidad }} <span class="tecnico-pct">({{ t.porcentaje }}%)</span></div>
+      </div>
+    </div>
+
   </div>
-  
-  <hr style="margin-top: 30px; margin-bottom: 20px;">
-  
+
+  <!-- ═══════════════════════ DISTRIBUCIÓN DE ESTADOS ═══════════════════════ -->
+  <div class="chart-card estados-card" *ngIf="!cargando && distribucionEstados.length > 0">
+    <div class="chart-title">📊 Distribución por Estado</div>
+    <div class="estados-grid">
+      <div *ngFor="let e of distribucionEstados" class="estado-chip"
+        [style.borderColor]="e.color">
+        <div class="estado-dot" [style.background]="e.color"></div>
+        <div class="estado-info">
+          <div class="estado-nombre">{{ e.estado }}</div>
+          <div class="estado-cantidad" [style.color]="e.color">{{ e.cantidad }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mini gráfico de barras horizontales -->
+    <div class="estado-bars">
+      <div *ngFor="let e of distribucionEstados" class="estado-bar-row">
+        <div class="estado-bar-label">{{ e.estado }}</div>
+        <div class="estado-bar-track">
+          <div class="estado-bar-fill"
+            [style.width.%]="kpis.totalIncidentes > 0 ? (e.cantidad / kpis.totalIncidentes * 100) : 0"
+            [style.background]="e.color">
+          </div>
+        </div>
+        <div class="estado-bar-pct">{{ kpis.totalIncidentes > 0 ? (e.cantidad / kpis.totalIncidentes * 100 | number:'1.0-0') : 0 }}%</div>
+      </div>
+    </div>
+  </div>
+
 </div>

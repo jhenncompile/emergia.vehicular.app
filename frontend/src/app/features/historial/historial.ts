@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpHeaders } from '@angular/common/http'; // 👈 Importamos esto
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { IncidentesService } from '../../core/services/incidentes';
 import { Incidente } from '../../interface/incidente.interface';
 import { environment } from '../../../environments/environment';
@@ -15,14 +15,13 @@ import { environment } from '../../../environments/environment';
 })
 export class HistorialComponent implements OnInit {
   private incidentesService = inject(IncidentesService);
-  private http = inject(HttpClient); // 👈 Inyectamos HttpClient
+  private http = inject(HttpClient);
 
   historial: Incidente[] = [];
   metricas: any = null;
   cargando = false;
-  tecnicos: any[] = []; // 👈 Lista de técnicos
+  tecnicos: any[] = [];
 
-  // 🚩 Diccionario para el estado de carga del PDF (Soluciona el error TS2339)
   descargas: { [id: number]: boolean } = {};
 
   // Filtros
@@ -52,7 +51,7 @@ export class HistorialComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.cargarTecnicos(); // 👈 Cargamos los técnicos reales
+    this.cargarTecnicos();
     this.cargarDatos();
   }
 
@@ -61,7 +60,6 @@ export class HistorialComponent implements OnInit {
     if (!token) return;
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
     
-    // 🚩 Usamos tu ruta real del backend: /usuarios/mis-tecnicos
     this.http.get<any[]>(`${environment.apiUrl}/usuarios/mis-tecnicos`, { headers }).subscribe({
       next: (data) => this.tecnicos = data,
       error: (err) => console.error('Error cargando técnicos:', err)
@@ -80,9 +78,12 @@ export class HistorialComponent implements OnInit {
   cargarDatos() {
     this.cargando = true;
     
+    const fi = this.fechaInicio ? `${this.fechaInicio}T00:00:00Z` : undefined;
+    const ff = this.fechaFin ? `${this.fechaFin}T23:59:59Z` : undefined;
+
     this.incidentesService.obtenerMetricas(
-      this.fechaInicio,
-      this.fechaFin,
+      fi,
+      ff,
       this.estadosSeleccionados,
       this.tecnicoSeleccionado || undefined
     ).subscribe({
@@ -90,10 +91,9 @@ export class HistorialComponent implements OnInit {
       error: (err: any) => console.error('Error cargando métricas:', err)
     });
 
-    // 🚩 Enviamos todos los filtros al servicio
     this.incidentesService.obtenerHistorial(
-      this.fechaInicio, 
-      this.fechaFin,
+      fi, 
+      ff,
       this.estadosSeleccionados,
       this.tecnicoSeleccionado || undefined
     ).subscribe({
@@ -113,7 +113,7 @@ export class HistorialComponent implements OnInit {
   }
   
   descargarPDF(id: number) {
-    this.descargas[id] = true; // 🚩 Marcamos carga en el diccionario
+    this.descargas[id] = true;
 
     this.incidentesService.descargarReporte(id).subscribe({
       next: (blob) => {

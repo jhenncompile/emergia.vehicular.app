@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from decimal import Decimal
-from datetime import time
+from datetime import time, datetime
 
 # Importar schema de horarios para reutilización
 class HorarioTallerInfo(BaseModel):
@@ -22,6 +22,10 @@ class TallerBase(BaseModel):
     estado: bool = True
     telefono: Optional[str] = None 
     comision_porcentaje: Optional[float] = None
+    stripe_account_id: Optional[str] = None
+    plan_suscripcion: Optional[str] = "gratuito"
+    suscripcion_expira: Optional[datetime] = None
+    stripe_subscription_id: Optional[str] = None
 
 class TallerCreate(TallerBase):
     pass
@@ -31,9 +35,13 @@ class TallerUpdate(BaseModel):
     direccion: Optional[str] = None
     latitud: Optional[Decimal] = None
     longitud: Optional[Decimal] = None
-    estado: Optional[bool] = None
-    comision_porcentaje: Optional[float] = None
     telefono: Optional[str] = None
+    estado: Optional[bool] = True
+    comision_porcentaje: Optional[float] = 10.0
+    stripe_account_id: Optional[str] = None
+    plan_suscripcion: Optional[str] = "gratuito"
+    suscripcion_expira: Optional[datetime] = None
+    stripe_subscription_id: Optional[str] = None
 
 class Taller(TallerBase):
     id: int

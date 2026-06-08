@@ -73,7 +73,22 @@ final ThemeData appTheme = ThemeData(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+    ),
+  ),
+
+  outlinedButtonTheme: OutlinedButtonThemeData(
+    style: OutlinedButton.styleFrom(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+    ),
+  ),
+
+  textButtonTheme: TextButtonThemeData(
+    style: TextButton.styleFrom(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
     ),
   ),
 

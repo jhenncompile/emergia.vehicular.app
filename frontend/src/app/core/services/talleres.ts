@@ -36,4 +36,12 @@ export class TalleresService {
   eliminarHorario(horarioId: number): Observable<any> {
     return this.http.delete(`${this.apiUrl.replace('/talleres', '')}/taller-config/horarios/${horarioId}`, { headers: this.getHeaders() });
   }
+
+  suscribirPremium(): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/suscripciones/checkout-premium`, {}, { headers: this.getHeaders() });
+  }
+
+  cancelarSuscripcion(): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/suscripciones/cancelar`, {}, { headers: this.getHeaders() });
+  }
 }

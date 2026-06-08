@@ -280,8 +280,7 @@ class TecnicoProvider extends ChangeNotifier {
 
   /// Obtiene el botón de acción que debe mostrar (llegada manual si aplica)
   bool puedeMarcarLlegada() {
-    return _isTracking && 
-           _incidenteActivo != null && 
+    return _incidenteActivo != null && 
            _incidenteActivo!['estado'] == 'en_camino' &&
            !_llego;
   }

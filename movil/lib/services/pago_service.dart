@@ -43,4 +43,13 @@ class PagoService {
       'Comprobante no disponible para rol movil en backend actual.',
     );
   }
+
+  Future<Map<String, dynamic>> crearPaymentIntent(int pagoId) async {
+    final response = await apiService.post('/pagos/intent/$pagoId', body: {});
+    if (response['paymentIntent'] != null) {
+      return response;
+    } else {
+      throw Exception('No se pudo obtener el intent de pago');
+    }
+  }
 }

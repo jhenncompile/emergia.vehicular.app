@@ -1,0 +1,195 @@
+.ranking-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+  color: #1e293b;
+}
+
+/* Header */
+.ranking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.header-titles h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.5rem 0;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.controls .periodo-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.periodo-selector label {
+  font-size: 0.875rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.periodo-selector select {
+  padding: 0.6rem 1.2rem;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+/* Cards */
+.card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fafafa;
+}
+
+.card-header h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #334155;
+  margin: 0;
+}
+
+.badge {
+  background-color: #fef3c7;
+  color: #d97706;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+/* Table */
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard-table th {
+  text-align: left;
+  padding: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.leaderboard-table td {
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.leaderboard-table tr:last-child td {
+  border-bottom: none;
+}
+
+.leaderboard-table tr:hover {
+  background-color: #f8fafc;
+}
+
+/* Medals and Highlights */
+.top-three {
+  background-color: #fffbeb;
+}
+
+.top-three:hover {
+  background-color: #fef3c7 !important;
+}
+
+.position-cell {
+  width: 80px;
+  text-align: center;
+}
+
+.medal-icon {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.medal-icon.gold { color: #fbbf24; font-size: 1.75rem; }
+.medal-icon.silver { color: #94a3b8; font-size: 1.5rem; }
+.medal-icon.bronze { color: #b45309; font-size: 1.25rem; }
+
+.name-cell strong {
+  font-size: 1.1rem;
+  color: #0f172a;
+}
+
+.metric-cell {
+  color: #475569;
+  font-weight: 500;
+}
+
+.success-rate.high {
+  color: #059669;
+  font-weight: 600;
+}
+
+.success-rate.low {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.score-cell {
+  text-align: right;
+}
+
+.score-badge {
+  display: inline-block;
+  background-color: #f1f5f9;
+  color: #334155;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.score-badge.gold-score {
+  background-color: #f59e0b;
+  color: #ffffff;
+  box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.4);
+}
+
+.loading-state, .empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #64748b;
+  font-size: 1.1rem;
+}

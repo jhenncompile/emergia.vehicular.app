@@ -377,3 +377,83 @@ input:checked + .slider:before { transform: translateX(26px); }
 .btn-cancel:hover {
   background: #dc2626;
 }
+
+/* --- SUBSCRIPTION BANNER --- */
+.subscription-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.subscription-banner.premium {
+  background: linear-gradient(135deg, #1e1b4b, #4c1d95);
+  color: white;
+  border: 1px solid #6d28d9;
+}
+
+.subscription-banner.free {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.banner-icon {
+  font-size: 3rem;
+}
+
+.banner-text h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.4rem;
+}
+
+.banner-text p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 0.95rem;
+}
+
+.banner-actions button {
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-premium {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #78350f;
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
+}
+
+.btn-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(245, 158, 11, 0.4);
+}
+
+.btn-premium:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-cancelar-sub {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.btn-cancelar-sub:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

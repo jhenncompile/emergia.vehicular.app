@@ -41,6 +41,8 @@ export const routes: Routes = [
       { path: 'incidentes', component: AuxiliosComponent },
       { path: 'perfil-taller', component: PerfilTallerComponent }, // 👈 Revisa que el nombre sea IDÉNTICO al routerLink
       { path: 'calificaciones', loadComponent: () => import('./features/calificaciones/calificaciones').then(m => m.CalificacionesComponent) },
+      { path: 'analisis', loadComponent: () => import('./features/analisis/analisis').then(m => m.Analisis) },
+      { path: 'ranking', loadComponent: () => import('./features/ranking-talleres/ranking-talleres').then(m => m.RankingTalleres) },
       { path: 'administradores', component: GestionAdminsComponent },
       { path: 'notificaciones', component: NotificacionesComponent },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },

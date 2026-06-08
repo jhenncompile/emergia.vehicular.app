@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FirebaseService } from '../../core/services/firebase.service';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { NotificacionContadorService } from '../../core/services/notificacion-contador.service';
 
 interface Notificacion {
   id: number;
@@ -191,7 +192,7 @@ export class NotificacionesComponent implements OnInit, OnDestroy {
     }, 10000);
   }
 
-  private contadorNotificaciones = inject(import('../../core/services/notificacion-contador.service').NotificacionContadorService);
+  private contadorNotificaciones = inject(NotificacionContadorService);
   
   cerrarNotificacion() {
     if (this.notificacionActiva) {

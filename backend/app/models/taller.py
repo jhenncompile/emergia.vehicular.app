@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, Numeric
+from sqlalchemy import Column, Integer, String, Float, Boolean, Numeric, DateTime
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 from app.models.usuario import Especialidad
@@ -14,6 +14,12 @@ class Taller(Base):
     estado = Column(Boolean, default=True) # Activo o Inactivo
     comision_porcentaje = Column(Float, default=10.0) # Tu ganancia [Audio]
     calificacion_promedio = Column(Float, nullable=True, default=None)  # Promedio de calificaciones
+    stripe_account_id = Column(String(255), nullable=True) # ID de la cuenta conectada en Stripe
+    
+    # Suscripción
+    plan_suscripcion = Column(String(50), default='gratuito') # 'gratuito' o 'premium'
+    suscripcion_expira = Column(DateTime, nullable=True)
+    stripe_subscription_id = Column(String(255), nullable=True)
 
     # Relaciones
     usuarios = relationship("Usuario", back_populates="taller")

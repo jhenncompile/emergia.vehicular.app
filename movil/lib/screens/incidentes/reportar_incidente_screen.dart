@@ -15,6 +15,7 @@ import '../../providers/incidente_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/vehiculo_provider.dart';
 import '../../theme/colors.dart';
+import 'map_screen.dart';
 
 class ReportarIncidenteScreen extends StatefulWidget {
   const ReportarIncidenteScreen({super.key});
@@ -897,138 +898,97 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
 
     if (!context.mounted) return;
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('¡Incidente reportado exitosamente!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      await _mostrarResultadoIA(
-        context,
-        incidenteProvider.ultimoIncidenteReportado,
-      );
-      if (!context.mounted) return;
-      final incidenteId = incidenteProvider.ultimoIncidenteReportado?['id'];
-      if (incidenteId != null) {
-        await _mostrarSeleccionTaller(context, incidenteProvider, incidenteId);
-      }
-      if (!context.mounted) return;
-      Navigator.of(context).pop();
-    }
-  }
+      final guardadoOffline = incidenteProvider.guardadoOffline;
 
-  Future<void> _mostrarSeleccionTaller(
-    BuildContext context,
-    IncidenteProvider provider,
-    int incidenteId,
-  ) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const Center(child: CircularProgressIndicator()),
-    );
-
-    final candidatos = await provider.obtenerCandidatos(incidenteId);
-
-    if (!context.mounted) return;
-    Navigator.of(context).pop(); // Cerrar loader
-
-    if (candidatos.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se encontraron talleres candidatos.')),
-      );
-      return;
-    }
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (ctx, scrollController) {
-            return Column(
+      if (guardadoOffline) {
+        // CU-N03: Sin internet, guardado localmente
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
               children: [
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
-                    'Selecciona un Taller',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Icon(Icons.wifi_off, color: Colors.orange),
+                SizedBox(width: 8),
+                Text('Sin conexión', style: TextStyle(color: Colors.white)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.hourglass_top, color: Colors.orange, size: 20),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Tu emergencia está EN COLA',
+                          style: TextStyle(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Expanded(
-                  child: ListView.builder(
-                    controller: scrollController,
-                    itemCount: candidatos.length,
-                    itemBuilder: (ctx, i) {
-                      final c = candidatos[i];
-                      final distanceStr = c['distancia_km'] != null
-                          ? '${c['distancia_km']} km'
-                          : 'Distancia desconocida';
-                      final rating = c['calificacion_promedio'] ?? 0.0;
-
-                      return ListTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: Colors.blueAccent,
-                          child: Icon(Icons.build, color: Colors.white),
-                        ),
-                        title: Text(c['taller_nombre'] ?? 'Taller'),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Distancia: $distanceStr'),
-                            Row(
-                              children: [
-                                const Icon(Icons.star, size: 16, color: Colors.amber),
-                                const SizedBox(width: 4),
-                                Text(rating.toStringAsFixed(1)),
-                              ],
-                            ),
-                          ],
-                        ),
-                        trailing: ElevatedButton(
-                          onPressed: () async {
-                            final success = await provider.seleccionarTaller(
-                              incidenteId: incidenteId,
-                              tallerId: c['taller_id'],
-                            );
-                            if (!ctx.mounted) return;
-                            Navigator.of(ctx).pop();
-                            if (success) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Taller seleccionado exitosamente.'),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(provider.errorMessage ?? 'Error al seleccionar taller'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                          child: const Text('Elegir'),
-                        ),
-                      );
-                    },
-                  ),
+                const SizedBox(height: 12),
+                const Text(
+                  'No se detectó conexión a internet, pero tu emergencia fue guardada en el dispositivo.',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '✅ Se enviará automáticamente al servidor en cuanto se restablezca la conexión.',
+                  style: TextStyle(color: Colors.white60, fontSize: 13),
                 ),
               ],
-            );
-          },
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Entendido'),
+              ),
+            ],
+          ),
         );
-      },
-    );
+        if (!context.mounted) return;
+        Navigator.of(context).pop();
+      } else {
+        // Online: mostrar resultado IA y navegar al mapa
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('¡Incidente reportado! Buscando taller...'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await _mostrarResultadoIA(
+          context,
+          incidenteProvider.ultimoIncidenteReportado,
+        );
+        if (!context.mounted) return;
+        // Navegar al mapa de seguimiento
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MapScreen()),
+        );
+      }
+    }
   }
+
 
   Future<void> _mostrarResultadoIA(
     BuildContext context,
