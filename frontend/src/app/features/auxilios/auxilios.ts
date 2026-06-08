@@ -140,6 +140,18 @@ export class AuxiliosComponent implements OnInit {
     return inc.evidencias.some((e: any) => e.tipo_archivo === 'audio');
   }
 
+  evidenciaUrl(urlArchivo: string | null | undefined): string {
+    if (!urlArchivo) return '';
+    if (/^https?:\/\//i.test(urlArchivo)) return urlArchivo;
+
+    const backendOrigin = environment.apiUrl.replace(/\/api\/v1\/?$/, '');
+    const normalizedPath = urlArchivo.startsWith('/')
+      ? urlArchivo
+      : `/${urlArchivo}`;
+
+    return `${backendOrigin}${normalizedPath}`;
+  }
+
   calcularTiempo(fecha: string | undefined): string {
     if (!fecha) return '';
     const date = new Date(fecha);
