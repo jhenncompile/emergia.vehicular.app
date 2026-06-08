@@ -20,6 +20,9 @@
   <nav class="sidebar-nav">
     <div class="nav-group">
       <p class="nav-label">1. GESTIÓN DE USUARIOS</p>
+      <a routerLink="/mi-perfil" routerLinkActive="active" class="nav-link">
+        <span><i class="fa-solid fa-user"></i></span> Mi Perfil
+      </a>
       <a routerLink="/perfil-taller" routerLinkActive="active" class="nav-link">
         <span><i class="fa-solid fa-shop"></i></span> Mi Taller
       </a>
@@ -27,23 +30,26 @@
         <span><i class="fa-solid fa-users-gear"></i></span> Gestión de Admins
       </a>
 
-      <p class="nav-label">2. GESTIÓN DE ASISTENCIA</p>
+      <p class="nav-label">2. GESTIÓN DE ASISTENCIA Y TRACKING</p>
       <a routerLink="/incidentes" routerLinkActive="active" class="nav-link">
         <span><i class="fa-solid fa-triangle-exclamation"></i></span> Auxilios y Emergencias
         <span *ngIf="incidentesPendientesCount > 0" class="red-dot"></span>
       </a>
+      <a routerLink="/analisis" routerLinkActive="active" class="nav-link">
+        <span><i class="fa-solid fa-map-location-dot"></i></span> Análisis Geográfico
+      </a>
+
+      <p class="nav-label">3. GESTIÓN DE OFFLINE Y PAGOS</p>
       <a routerLink="/finanzas" routerLinkActive="active" class="nav-link">
         <span><i class="fa-solid fa-wallet"></i></span> Finanzas y Cobros
       </a>
 
-      <p class="nav-label">3. GESTIÓN TÉCNICO</p>
-      <a routerLink="/ranking" routerLinkActive="active" class="nav-link">
-        <span><i class="fa-solid fa-trophy"></i></span> Ranking de Talleres
-      </a>
-
-      <p class="nav-label">4. REPORTES Y NOTIFICACIONES</p>
+      <p class="nav-label">4. GESTIÓN DE REPORTES Y CALIFICACIONES</p>
       <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">
         <span><i class="fa-solid fa-chart-simple"></i></span> Dashboard
+      </a>
+      <a routerLink="/ranking" routerLinkActive="active" class="nav-link">
+        <span><i class="fa-solid fa-trophy"></i></span> Ranking de Talleres
       </a>
       <a routerLink="/notificaciones" routerLinkActive="active" class="nav-link">
         <span><i class="fa-solid fa-bell"></i></span> Notificaciones
@@ -52,14 +58,11 @@
       <a routerLink="/historial" routerLinkActive="active" class="nav-link">
         <span><i class="fa-solid fa-chart-line"></i></span> Historial y Métricas
       </a>
-      <a routerLink="/bitacora" routerLinkActive="active" class="nav-link">
-        <span><i class="fa-solid fa-scroll"></i></span> Bitácora de Auditoría
-      </a>
-      <a routerLink="/analisis" routerLinkActive="active" class="nav-link">
-        <span><i class="fa-solid fa-map-location-dot"></i></span> Análisis Geográfico
-      </a>
       <a routerLink="/calificaciones" routerLinkActive="active" class="nav-link">
         <span><i class="fa-solid fa-star"></i></span> Calificaciones
+      </a>
+      <a routerLink="/bitacora" routerLinkActive="active" class="nav-link">
+        <span><i class="fa-solid fa-scroll"></i></span> Bitácora de Auditoría
       </a>
     </div>
   </nav>
