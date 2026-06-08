@@ -29,20 +29,20 @@
       <div class="card-body">
         
         <!-- PLAN DE SUSCRIPCION BANNER -->
-        <div class="plan-banner" [ngClass]="taller.plan_suscripcion">
+        <div class="plan-banner" [ngClass]="taller.plan_suscripcion === 'gratuito' ? 'gratis' : taller.plan_suscripcion">
           <div class="plan-info">
             <span class="plan-badge">
               <i class="fa-solid" [ngClass]="taller.plan_suscripcion === 'premium' ? 'fa-crown text-warning' : 'fa-seedling text-muted'"></i>
-              Plan {{ taller.plan_suscripcion | uppercase }}
+              Plan {{ (taller.plan_suscripcion === 'gratuito' ? 'gratis' : taller.plan_suscripcion) | uppercase }}
             </span>
-            <p *ngIf="taller.plan_suscripcion === 'gratis'" class="plan-desc">
+            <p *ngIf="taller.plan_suscripcion === 'gratuito' || taller.plan_suscripcion === 'gratis'" class="plan-desc">
               <i class="fa-solid fa-circle-exclamation text-warning me-1"></i> Límite de 3 técnicos y 5 auxilios diarios.
             </p>
             <p *ngIf="taller.plan_suscripcion === 'premium'" class="plan-desc">
               <i class="fa-solid fa-circle-check text-success me-1"></i> Mecánicos, IA y estadísticas ilimitadas.
             </p>
           </div>
-          <button *ngIf="taller.plan_suscripcion === 'gratis'" (click)="suscribirPremium()" class="btn-upgrade">
+          <button *ngIf="taller.plan_suscripcion === 'gratuito' || taller.plan_suscripcion === 'gratis'" (click)="suscribirPremium()" class="btn-upgrade">
             <i class="fa-solid fa-rocket me-1"></i> Subir a Premium
           </button>
           <button *ngIf="taller.plan_suscripcion === 'premium'" (click)="cancelarSuscripcion()" class="btn-upgrade cancel">
