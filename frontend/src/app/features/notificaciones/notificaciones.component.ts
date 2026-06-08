@@ -29,7 +29,7 @@ interface Notificacion {
     <div class="notificaciones-container">
       <div *ngIf="notificacionActiva" class="notificacion-toast" [ngClass]="notificacionActiva.tipo">
         <div class="notificacion-header">
-          <span class="icono">🚨</span>
+          <span class="icono"><i class="fa-solid fa-triangle-exclamation text-danger"></i></span>
           <span class="titulo">Incidente Cercano</span>
           <button class="btn-cerrar" (click)="cerrarNotificacion()">✕</button>
         </div>
@@ -40,8 +40,8 @@ interface Notificacion {
           <p><strong>Ubicación:</strong> ({{ notificacionActiva.incidente.latitud | number:'1.4-4' }}, {{ notificacionActiva.incidente.longitud | number:'1.4-4' }})</p>
         </div>
         <div class="notificacion-acciones">
-          <button class="btn-ver" (click)="verEnMapa()">Ver en Mapa 🗺️</button>
-          <button class="btn-aceptar" (click)="aceptarIncidente()">Aceptar 📍</button>
+          <button class="btn-ver" (click)="verEnMapa()">Ver en Mapa <i class="fa-solid fa-map-location-dot ms-1"></i></button>
+          <button class="btn-aceptar" (click)="aceptarIncidente()">Aceptar <i class="fa-solid fa-check ms-1"></i></button>
         </div>
       </div>
     </div>

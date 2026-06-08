@@ -1,22 +1,243 @@
-<div class="landing-wrapper">
-  <div class="hero-section">
-    <h1>🚀 Bienvenido a <span class="brand">Taller Pro</span></h1>
-    <p>La plataforma líder para la gestión de talleres y auxilios mecánicos.</p>
-  </div>
-
-  <div class="options-container">
-    <div class="option-card" (click)="irALogin()">
-      <div class="icon">🔑</div>
-      <h3>Ya soy parte</h3>
-      <p>Entra a tu panel de control para gestionar tu taller.</p>
-      <button class="btn-secondary">Iniciar Sesión</button>
+<div class="landing-page-container">
+  <!-- ═══════════════════════ NAVIGATION BAR ═══════════════════════ -->
+  <nav class="landing-navbar">
+    <div class="nav-brand">
+      <i class="fa-solid fa-screwdriver-wrench brand-icon"></i>
+      <span>Taller<span class="highlight">cito</span></span>
     </div>
-
-    <div class="option-card featured" (click)="irARegistro()">
-      <div class="icon">🛠️</div>
-      <h3>Quiero registrar mi Taller</h3>
-      <p>Únete a nuestra red y empieza a recibir solicitudes de auxilio hoy mismo.</p>
-      <button class="btn-primary">Empezar Onboarding 🚀</button>
+    <div class="nav-links">
+      <a href="#inicio">Inicio</a>
+      <a href="#caracteristicas">Características</a>
+      <a href="#planes">Planes</a>
+      <a href="#descargar">Descargar App</a>
     </div>
-  </div>
+    <div class="nav-actions">
+      <button class="btn-nav-login" (click)="irALogin()">
+        <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
+      </button>
+      <button class="btn-nav-register" (click)="irARegistro()">
+        <i class="fa-solid fa-plus"></i> Registrar Taller
+      </button>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════ HERO SECTION ═══════════════════════ -->
+  <header id="inicio" class="hero-section">
+    <div class="hero-content">
+      <div class="badge-new">
+        <span class="badge-dot"></span> Nueva Versión 2.0 con IA
+      </div>
+      <h1>Gestión de Auxilios Viales y Talleres al Siguiente Nivel</h1>
+      <p class="hero-subtitle">
+        Optimiza tus mecánicos, controla tus cobros y atiende emergencias viales geolocalizadas en tiempo real con Inteligencia Artificial.
+      </p>
+      <div class="hero-ctas">
+        <button class="cta-primary" (click)="irARegistro()">
+          <i class="fa-solid fa-rocket"></i> Empezar Ahora Gratis
+        </button>
+        <button class="cta-secondary" (click)="irALogin()">
+          <i class="fa-solid fa-chart-line"></i> Ir al Panel
+        </button>
+      </div>
+      <div class="hero-stats">
+        <div class="stat-item">
+          <strong>+1,200</strong>
+          <span>Servicios Atendidos</span>
+        </div>
+        <div class="stat-item">
+          <strong>99.8%</strong>
+          <span>Disponibilidad</span>
+        </div>
+        <div class="stat-item">
+          <strong><i class="fa-solid fa-star text-warning"></i> 4.9</strong>
+          <span>Calificación Promedio</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-illustration">
+      <div class="mockup-frame">
+        <div class="mockup-header">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+          <div class="mockup-url">tallercito.vialia.com/dashboard</div>
+        </div>
+        <div class="mockup-body">
+          <div class="mock-sidebar">
+            <div class="mock-sidebar-brand"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+            <div class="mock-sidebar-item active"></div>
+            <div class="mock-sidebar-item"></div>
+            <div class="mock-sidebar-item"></div>
+          </div>
+          <div class="mock-content">
+            <div class="mock-title">Panel de Control</div>
+            <div class="mock-grid">
+              <div class="mock-card card-blue"></div>
+              <div class="mock-card card-green"></div>
+              <div class="mock-card card-orange"></div>
+            </div>
+            <div class="mock-table">
+              <div class="mock-table-row header"></div>
+              <div class="mock-table-row"></div>
+              <div class="mock-table-row"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════ FEATURES SECTION ═══════════════════════ -->
+  <section id="caracteristicas" class="features-section">
+    <div class="section-header">
+      <h2>Todo lo que tu Taller necesita</h2>
+      <p>Características de nivel empresarial diseñadas para optimizar la eficiencia y aumentar los ingresos.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+        <h3>Auxilios Georeferenciados</h3>
+        <p>Recibe notificaciones en tiempo real cuando un conductor sufra un percance cerca de tu taller.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fa-solid fa-brain"></i></div>
+        <h3>Inteligencia Artificial</h3>
+        <p>Sugerencias automáticas de precios basadas en históricos y categorización automática del problema.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fa-solid fa-wallet"></i></div>
+        <h3>Finanzas y Facturación</h3>
+        <p>Desglose claro de montos brutos, comisiones de la plataforma y cobro neto directo para el taller.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fa-solid fa-users-gear"></i></div>
+        <h3>Control de Personal</h3>
+        <p>Asigna mecánicos a incidentes según su especialidad técnica y monitorea su productividad.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fa-solid fa-scroll"></i></div>
+        <h3>Bitácora de Auditoría</h3>
+        <p>Registro inmutable e histórico de todas las operaciones realizadas para un control absoluto.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fa-solid fa-chart-pie"></i></div>
+        <h3>Métricas Avanzadas</h3>
+        <p>Reportes en PDF y dashboards interactivos para entender el rendimiento mensual de tu negocio.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ PLANES DE SUSCRIPCIÓN ═══════════════════════ -->
+  <section id="planes" class="pricing-section">
+    <div class="section-header">
+      <h2>Planes de Suscripción Sencillos</h2>
+      <p>Elige el plan que mejor se adapte al tamaño de tu negocio.</p>
+    </div>
+    <div class="pricing-grid">
+      <!-- Plan Gratuito -->
+      <div class="price-card">
+        <div class="price-header">
+          <h3>Plan Gratuito</h3>
+          <p class="plan-desc">Perfecto para talleres individuales que están comenzando.</p>
+          <div class="price-amount">
+            <span class="currency">Bs.</span>
+            <span class="value">0</span>
+            <span class="duration">/ gratis</span>
+          </div>
+        </div>
+        <ul class="price-features">
+          <li><i class="fa-solid fa-check text-success"></i> 1 Taller registrado</li>
+          <li><i class="fa-solid fa-check text-success"></i> Máximo 3 técnicos activos</li>
+          <li><i class="fa-solid fa-check text-success"></i> Hasta 5 auxilios diarios</li>
+          <li><i class="fa-solid fa-check text-success"></i> Mapa de geolocalización básica</li>
+          <li class="disabled"><i class="fa-solid fa-xmark text-danger"></i> Asistente de IA avanzado</li>
+          <li class="disabled"><i class="fa-solid fa-xmark text-danger"></i> Exportación de reportes PDF</li>
+        </ul>
+        <button class="btn-price-action" (click)="irARegistro()">
+          Empezar Gratis
+        </button>
+      </div>
+
+      <!-- Plan Premium -->
+      <div class="price-card premium">
+        <div class="premium-badge"><i class="fa-solid fa-crown"></i> EL MÁS POPULAR</div>
+        <div class="price-header">
+          <h3>Plan Premium</h3>
+          <p class="plan-desc">Para talleres en crecimiento que quieren multiplicar sus ganancias.</p>
+          <div class="price-amount">
+            <span class="currency">Bs.</span>
+            <span class="value">350</span>
+            <span class="duration">/ al mes</span>
+          </div>
+        </div>
+        <ul class="price-features">
+          <li><i class="fa-solid fa-check text-success"></i> Talleres ilimitados</li>
+          <li><i class="fa-solid fa-check text-success"></i> Técnicos ilimitados</li>
+          <li><i class="fa-solid fa-check text-success"></i> Auxilios recibidos ilimitados</li>
+          <li><i class="fa-solid fa-check text-success"></i> Integración completa de IA</li>
+          <li><i class="fa-solid fa-check text-success"></i> Exportación de reportes PDF</li>
+          <li><i class="fa-solid fa-check text-success"></i> Soporte prioritario 24/7</li>
+        </ul>
+        <button class="btn-price-action premium-btn" (click)="irARegistro()">
+          Mejorar a Premium
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ DOWNLOAD SECTION ═══════════════════════ -->
+  <section id="descargar" class="download-section">
+    <div class="download-container">
+      <div class="download-content">
+        <h2>Lleva Tallercito Contigo</h2>
+        <p>
+          Atiende servicios directamente desde el lugar del incidente. Nuestra aplicación móvil oficial para técnicos y conductores te permite actualizar estados, enviar fotos de evidencia y rastrear coordenadas en tiempo real.
+        </p>
+        <div class="download-actions">
+          <!-- El enlace de descarga apunta a un anchor para futura vinculación automática del APK -->
+          <a href="#" class="btn-download-apk" onclick="return false;">
+            <i class="fa-brands fa-android"></i>
+            <div>
+              <span>Descargar ahora</span>
+              <strong>Tallercito.apk (Android)</strong>
+            </div>
+          </a>
+        </div>
+        <span class="download-note">* Próximamente disponible en Google Play Store.</span>
+      </div>
+      <div class="download-visual">
+        <div class="phone-mockup">
+          <div class="phone-speaker"></div>
+          <div class="phone-screen">
+            <div class="phone-header">
+              <i class="fa-solid fa-signal"></i>
+              <span>12:00 PM</span>
+              <i class="fa-solid fa-battery-full"></i>
+            </div>
+            <div class="phone-app">
+              <div class="phone-app-logo"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+              <div class="phone-app-title">Tallercito Móvil</div>
+              <div class="phone-app-status"><i class="fa-solid fa-circle-check text-success"></i> Conectado al GPS</div>
+              <div class="phone-app-btn">Iniciar Servicio</div>
+            </div>
+          </div>
+          <div class="phone-home"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ FOOTER ═══════════════════════ -->
+  <footer class="landing-footer">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <i class="fa-solid fa-screwdriver-wrench footer-brand-icon"></i>
+        <span>Taller<span class="highlight">cito</span></span>
+      </div>
+      <p>Simplificando la gestión de talleres y auxilio vial con innovación y tecnología.</p>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Tallercito. Todos los derechos reservados.</p>
+    </div>
+  </footer>
 </div>

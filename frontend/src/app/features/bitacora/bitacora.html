@@ -1,12 +1,12 @@
 <div class="bitacora-page">
   <div class="header">
-    <h1>📜 Auditoría del Sistema</h1>
+    <h1><i class="fa-solid fa-scroll text-secondary me-2"></i> Auditoría del Sistema</h1>
     <p class="subtitle">Rastreo inmutable de operaciones, accesos y cambios de estado en tu taller.</p>
   </div>
 
   <div class="content-wrapper">
     <div *ngIf="logs.length === 0" class="empty-state">
-      📭 La bitácora está vacía. Aún no hay eventos registrados.
+      <i class="fa-regular fa-folder-open me-2"></i> La bitácora está vacía. Aún no hay eventos registrados.
     </div>
 
     <table *ngIf="logs.length > 0" class="modern-table fade-in">
@@ -23,17 +23,18 @@
         <tr *ngFor="let log of logs" class="hover-row">
           
           <td class="date-cell">
-            <span class="icon">🕒</span> {{ log.fecha_hora | date:'dd/MM/yyyy, HH:mm' }}
+            <span class="icon"><i class="fa-regular fa-clock me-1"></i></span> {{ log.fecha_hora | date:'dd/MM/yyyy, HH:mm' }}
           </td>
           
           <td>
-  <span class="user-badge" [ngClass]="{'sistema-badge': log.usuario_nombre === 'Sistema'}">
-    {{ log.usuario_nombre === 'Sistema' ? '⚙️' : '👤' }} {{ log.usuario_nombre }}
-  </span>
-</td>
+            <span class="user-badge" [ngClass]="{'sistema-badge': log.usuario_nombre === 'Sistema'}">
+              <i class="fa-solid" [ngClass]="log.usuario_nombre === 'Sistema' ? 'fa-gears' : 'fa-user'"></i>
+              {{ log.usuario_nombre }}
+            </span>
+          </td>
           
           <td class="table-name">
-            🗂️ {{ log.tabla | uppercase }} <span *ngIf="log.tabla_id">#{{ log.tabla_id }}</span>
+            <i class="fa-solid fa-table-list me-1"></i> {{ log.tabla | uppercase }} <span *ngIf="log.tabla_id">#{{ log.tabla_id }}</span>
           </td>
           
           <td>
@@ -46,12 +47,12 @@
             <div class="json-container" *ngIf="log.valor_anterior || log.valor_nuevo">
               
               <div class="json-block old-val" *ngIf="log.valor_anterior">
-                <div class="json-label">➖ Valor Anterior</div>
+                <div class="json-label"><i class="fa-solid fa-minus me-1"></i> Valor Anterior</div>
                 <pre>{{ log.valor_anterior | json }}</pre>
               </div>
 
               <div class="json-block new-val" *ngIf="log.valor_nuevo">
-                <div class="json-label">➕ Valor Nuevo</div>
+                <div class="json-label"><i class="fa-solid fa-plus me-1"></i> Valor Nuevo</div>
                 <pre>{{ log.valor_nuevo | json }}</pre>
               </div>
 

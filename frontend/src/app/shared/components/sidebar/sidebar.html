@@ -1,6 +1,8 @@
 <aside class="sidebar">
   <div class="sidebar-header">
-    <h3 class="brand">🛠️ Taller Pro</h3>
+    <h3 class="brand">
+      <span><i class="fa-solid fa-screwdriver-wrench me-2"></i></span>Tallercito
+    </h3>
   </div>
 
   <div class="user-profile">
@@ -10,7 +12,7 @@
       <span class="user-role">Admin de Taller</span>
       <span class="connection-status" [class.connected]="wsService.conectado">
         <span class="status-dot"></span>
-        {{ wsService.conectado ? 'WebSocket conectado' : 'WebSocket desconectado' }}
+        {{ wsService.conectado ? 'Conectado' : 'Desconectado' }}
       </span>
     </div>
   </div>
@@ -19,58 +21,58 @@
     <div class="nav-group">
       <p class="nav-label">OPERACIONES</p>
       <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">
-        <span>📊</span> Dashboard
+        <span><i class="fa-solid fa-chart-simple"></i></span> Dashboard
       </a>
       <a routerLink="/incidentes" routerLinkActive="active" class="nav-link">
-        <span>🚨</span> Auxilios y Emergencias
+        <span><i class="fa-solid fa-triangle-exclamation"></i></span> Auxilios y Emergencias
         <span *ngIf="incidentesPendientesCount > 0" class="red-dot"></span>
       </a>
       <a routerLink="/finanzas" routerLinkActive="active" class="nav-link">
-        <span>💰</span> Finanzas y Cobros
+        <span><i class="fa-solid fa-wallet"></i></span> Finanzas y Cobros
       </a>
       <a routerLink="/notificaciones" routerLinkActive="active" class="nav-link">
-        <span>🔔</span> Notificaciones
+        <span><i class="fa-solid fa-bell"></i></span> Notificaciones
         <span *ngIf="notificacionesNoLeidas > 0" class="notification-badge">{{ notificacionesNoLeidas }}</span>
       </a>
 
       <p class="nav-label">CONTROL Y QA</p>
       <a routerLink="/historial" routerLinkActive="active" class="nav-link">
-        <span>📋</span> Historial
+        <span><i class="fa-solid fa-clipboard-list"></i></span> Historial
       </a>
       <a routerLink="/analisis" routerLinkActive="active" class="nav-link">
-        <span>🗺️</span> Análisis Geográfico
+        <span><i class="fa-solid fa-map-location-dot"></i></span> Análisis Geográfico
       </a>
       <a routerLink="/ranking" routerLinkActive="active" class="nav-link">
-        <span>🏆</span> Ranking de Talleres
+        <span><i class="fa-solid fa-trophy"></i></span> Ranking de Talleres
       </a>
 
       <p class="nav-label">CONFIGURACIÓN</p>
       <a routerLink="/perfil-taller" routerLinkActive="active" class="nav-link">
-        <span>🏢</span> Mi Taller
+        <span><i class="fa-solid fa-shop"></i></span> Mi Taller
       </a>
       <a routerLink="/calificaciones" routerLinkActive="active" class="nav-link">
-        <span>⭐</span> Calificaciones
+        <span><i class="fa-solid fa-star"></i></span> Calificaciones
       </a>
       <a routerLink="/administradores" routerLinkActive="active" class="nav-link">
-        <span>👥</span> Gestión de Admins
+        <span><i class="fa-solid fa-users-gear"></i></span> Gestión de Admins
       </a>
 
       <p class="nav-label">CONTROL Y QA</p>
       <a routerLink="/bitacora" routerLinkActive="active" class="nav-link">
-        <span>📜</span> Bitácora de Auditoría
+        <span><i class="fa-solid fa-scroll"></i></span> Bitácora de Auditoría
       </a>
       <a routerLink="/historial" routerLinkActive="active" class="nav-link">
-        <span>📈</span> Historial y Métricas
+        <span><i class="fa-solid fa-chart-line"></i></span> Historial y Métricas
       </a>
       <a routerLink="/analisis" routerLinkActive="active" class="nav-link">
-        <span>🗺️</span> Análisis Geográfico
+        <span><i class="fa-solid fa-map-location-dot"></i></span> Análisis Geográfico
       </a>
     </div>
   </nav>
 
   <div class="sidebar-footer">
     <button (click)="onLogout()" class="logout-btn">
-      <span>🚪</span> Cerrar Sesión
+      <span><i class="fa-solid fa-right-from-bracket"></i></span> Cerrar Sesión
     </button>
   </div>
 </aside>

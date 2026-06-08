@@ -1,12 +1,14 @@
 <div class="finanzas-page" [class.panel-open]="pagoSeleccionado">
   <div class="header">
-    <h1>💰 Finanzas y Cobros</h1>
+    <h1><i class="fa-solid fa-wallet text-success me-2"></i> Finanzas y Cobros</h1>
     <p class="subtitle">Gestiona los ingresos, audita el historial y corrige detalles de facturación.</p>
   </div>
 
   <div class="content-wrapper">
     <div *ngIf="cargando" class="empty-state">Cargando historial financiero...</div>
-    <div *ngIf="!cargando && pagosHistorial.length === 0" class="empty-state">📭 Aún no tienes registros financieros.</div>
+    <div *ngIf="!cargando && pagosHistorial.length === 0" class="empty-state">
+      <i class="fa-regular fa-folder-open me-2"></i> Aún no tienes registros financieros.
+    </div>
 
     <table *ngIf="!cargando && pagosHistorial.length > 0" class="modern-table">
       <thead>
@@ -37,9 +39,13 @@
             }">{{ pago.estado | uppercase }}</span>
           </td>
           <td class="action-cell">
-            <button *ngIf="pago.estado === 'pendiente'" class="btn-success" (click)="confirmarPago(pago.id); $event.stopPropagation()">✅ Confirmar</button>
-            <button *ngIf="pago.estado === 'completado'" class="btn-outline-danger" (click)="cancelarPago(pago.id); $event.stopPropagation()">❌ Anular</button>
-            <span *ngIf="pago.estado === 'cancelado'" class="text-muted"> Anulado ✖️</span>
+            <button *ngIf="pago.estado === 'pendiente'" class="btn-success" (click)="confirmarPago(pago.id); $event.stopPropagation()">
+              <i class="fa-solid fa-check me-1"></i> Confirmar
+            </button>
+            <button *ngIf="pago.estado === 'completado'" class="btn-outline-danger" (click)="cancelarPago(pago.id); $event.stopPropagation()">
+              <i class="fa-solid fa-xmark me-1"></i> Anular
+            </button>
+            <span *ngIf="pago.estado === 'cancelado'" class="text-muted"> Anulado <i class="fa-solid fa-ban ms-1"></i></span>
           </td>
         </tr>
       </tbody>
@@ -60,7 +66,9 @@
       </div>
 
       <div class="edit-form" *ngIf="pagoSeleccionado.estado === 'pendiente'">
-        <div class="alert-info">✏️ Este cobro está pendiente. Puedes editar el monto o el método antes de procesarlo.</div>
+        <div class="alert-info">
+          <i class="fa-solid fa-pencil text-warning me-1"></i> Este cobro está pendiente. Puedes editar el monto o el método antes de procesarlo.
+        </div>
         
         <label>Monto Total (Bs.):</label>
         <input type="number" class="modern-input" [(ngModel)]="pagoEditado.monto">
@@ -124,7 +132,7 @@
         </div>
 
         <div class="info-box" style="background: #e3f2fd; border-left: 4px solid #1976d2; padding: 12px; border-radius: 4px; margin-top: 15px; font-size: 0.9em; color: #1565c0;">
-          💡 La comisión del 10% se cobra por los servicios de gestión, auditoría y mantenimiento de la plataforma.
+          <i class="fa-regular fa-lightbulb me-1"></i> La comisión del 10% se cobra por los servicios de gestión, auditoría y mantenimiento de la plataforma.
         </div>
 
       </div>
@@ -132,15 +140,15 @@
       <div class="panel-footer">
         
         <button *ngIf="pagoSeleccionado.estado === 'pendiente'" class="btn-primary full-width" (click)="guardarCambios()">
-          💾 Guardar Cambios
+          <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Cambios
         </button>
 
         <button *ngIf="pagoSeleccionado.estado === 'completado'" class="btn-outline-danger full-width" style="border-width: 2px;" (click)="cancelarPago(pagoSeleccionado.id)">
-          ❌ Anular y Revertir Cobro
+          <i class="fa-solid fa-xmark me-1"></i> Anular y Revertir Cobro
         </button>
 
         <div *ngIf="pagoSeleccionado.estado === 'cancelado'" class="alert-danger">
-          🚫 Este cobro fue anulado permanentemente y ya no es válido en el sistema.
+          <i class="fa-solid fa-ban me-1 text-danger"></i> Este cobro fue anulado permanentemente y ya no es válido en el sistema.
         </div>
 
       </div>

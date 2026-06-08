@@ -1,25 +1,28 @@
 <div class="admin-container">
   <div class="header-section">
-    <h2>👥 Gestión de Equipo y Catálogo</h2>
+    <h2><i class="fa-solid fa-users me-2"></i> Gestión de Equipo y Catálogo</h2>
     <p class="subtitle">Administra los accesos de tu equipo y el catálogo global de especialidades.</p>
   </div>
 
   <div class="tabs">
     <button [class.active]="vistaActual === 'admins'" (click)="cambiarVista('admins')">
-      🛡️ Administradores
+      <i class="fa-solid fa-shield-halved me-1"></i> Administradores
     </button>
     <button [class.active]="vistaActual === 'tecnicos'" (click)="cambiarVista('tecnicos')">
-      🔧 Técnicos
+      <i class="fa-solid fa-user-gear me-1"></i> Técnicos
     </button>
     <button [class.active]="vistaActual === 'especialidades'" (click)="cambiarVista('especialidades')">
-      📚 Catálogo
+      <i class="fa-solid fa-book-open me-1"></i> Catálogo
     </button>
   </div>
 
   <ng-container *ngIf="vistaActual !== 'especialidades'">
     <div class="form-card">
       <div class="card-header">
-        <h4>{{ editandoId ? '✏️ Editando ' : '➕ Agregar Nuevo ' }} {{ vistaActual === 'admins' ? 'Administrador' : 'Técnico' }}</h4>
+        <h4>
+          <i class="fa-solid" [ngClass]="editandoId ? 'fa-pencil text-warning' : 'fa-plus text-primary'"></i>
+          {{ editandoId ? ' Editando ' : ' Agregar Nuevo ' }} {{ vistaActual === 'admins' ? 'Administrador' : 'Técnico' }}
+        </h4>
       </div>
       
       <div class="form-grid">
@@ -119,10 +122,11 @@
               </div>
             </td>
             <td>
-              <span *ngIf="vistaActual === 'admins'" class="status-badge">Activo</span>
+              <span *ngIf="vistaActual === 'admins'" class="status-badge"><i class="fa-solid fa-circle-check text-success me-1"></i> Activo</span>
               <div *ngIf="vistaActual === 'tecnicos'" class="tech-details">
                 <span class="status-badge" [class.inactive]="!user.esta_activo">
-                  {{ user.esta_activo ? '🟢 Activo' : '🔴 Inactivo' }}
+                  <i class="fa-solid" [ngClass]="user.esta_activo ? 'fa-circle-check text-success' : 'fa-circle-xmark text-danger'"></i>
+                  {{ user.esta_activo ? ' Activo' : ' Inactivo' }}
                 </span>
                 <div class="chip-container">
                   <span class="chip" *ngFor="let esp of user.especialidades">{{ esp.nombre }}</span>
@@ -130,8 +134,8 @@
               </div>
             </td>
             <td class="actions-cell">
-              <button (click)="prepararEdicion(user)" class="action-btn edit">✏️</button>
-              <button (click)="borrar(user.id)" class="action-btn delete">🗑️</button>
+              <button (click)="prepararEdicion(user)" class="action-btn edit" title="Editar"><i class="fa-solid fa-pencil"></i></button>
+              <button (click)="borrar(user.id)" class="action-btn delete" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
             </td>
           </tr>
         </tbody>
@@ -142,7 +146,7 @@
   <div *ngIf="vistaActual === 'especialidades'" class="catalog-view">
     <div class="form-card">
       <div class="card-header">
-        <h4>➕ Nueva Especialidad al Catálogo</h4>
+        <h4><i class="fa-solid fa-plus me-1 text-primary"></i> Nueva Especialidad al Catálogo</h4>
       </div>
       <div class="form-grid">
         <div class="input-group">
@@ -173,7 +177,7 @@
             <td><strong>{{ esp.nombre }}</strong></td>
             <td>{{ esp.descripcion || 'Sin descripción' }}</td>
             <td class="actions-cell">
-              <button (click)="borrarEspecialidad(esp.id)" class="action-btn delete">🗑️</button>
+              <button (click)="borrarEspecialidad(esp.id)" class="action-btn delete" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
             </td>
           </tr>
         </tbody>

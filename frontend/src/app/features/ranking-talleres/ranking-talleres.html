@@ -1,7 +1,7 @@
 <div class="ranking-container">
   <header class="ranking-header">
     <div class="header-titles">
-      <h1>🏆 Ranking de Eficiencia</h1>
+      <h1><i class="fa-solid fa-trophy text-warning me-2"></i> Ranking de Eficiencia</h1>
       <p class="subtitle">Evaluación de talleres en la red de asistencia</p>
     </div>
     
@@ -48,7 +48,8 @@
             <tr *ngFor="let taller of ranking; let i = index" [class.top-three]="i < 3">
               <td class="position-cell">
                 <span class="medal-icon" [class.gold]="i===0" [class.silver]="i===1" [class.bronze]="i===2">
-                  {{ getMedal(i) }}
+                  <i *ngIf="i < 3" class="fa-solid fa-medal"></i>
+                  <span *ngIf="i >= 3">{{ i + 1 }}º</span>
                 </span>
               </td>
               <td class="name-cell">

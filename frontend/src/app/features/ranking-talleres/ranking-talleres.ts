@@ -37,11 +37,4 @@ export class RankingTalleres implements OnInit {
   onPeriodoChange() {
     this.cargarRanking();
   }
-
-  getMedal(index: number): string {
-    if (index === 0) return '🥇';
-    if (index === 1) return '🥈';
-    if (index === 2) return '🥉';
-    return `${index + 1}º`;
-  }
 }

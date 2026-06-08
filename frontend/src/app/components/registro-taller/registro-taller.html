@@ -1,25 +1,162 @@
-<div style="max-width: 500px; margin: 50px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px;">
-  <h2 style="text-align: center;">Registrar Mi Taller</h2>
-  
-  <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
-    
-    <div style="margin-bottom: 20px; padding: 10px; background: #f9f9f9;">
-      <h4 style="margin-top: 0;">Datos del Administrador</h4>
-      <input type="text" formControlName="nombre" placeholder="Tu Nombre" style="width: 100%; margin-bottom: 10px;">
-      <input type="email" formControlName="correo" placeholder="Tu Correo" style="width: 100%; margin-bottom: 10px;">
-      <input type="password" formControlName="password" placeholder="Contraseña" style="width: 100%;">
+<div class="register-wrapper">
+  <!-- Decorative Background Blobs -->
+  <div class="decor-blob blob-1"></div>
+  <div class="decor-blob blob-2"></div>
+
+  <div class="register-card">
+    <!-- Navigation Back Link -->
+    <a routerLink="/" class="back-btn">
+      <i class="fa-solid fa-arrow-left"></i> Volver a la Landing
+    </a>
+
+    <!-- Header -->
+    <div class="card-header">
+      <div class="brand-title">
+        <i class="fa-solid fa-truck-medical brand-icon"></i>
+        <span>TALLERCITO</span>
+      </div>
+      <h1 class="card-title">Registra tu Taller</h1>
+      <p class="card-subtitle">Únete a nuestra red nacional de auxilio mecánico y aumenta tus clientes.</p>
     </div>
 
-    <div formGroupName="taller" style="margin-bottom: 20px; padding: 10px; border: 1px dashed #aaa;">
-      <h4 style="margin-top: 0;">Datos del Taller</h4>
-      <input type="text" formControlName="nombre" placeholder="Nombre del Taller" style="width: 100%; margin-bottom: 10px;">
-      <input type="text" formControlName="direccion" placeholder="Dirección del Taller" style="width: 100%;">
-      <p style="font-size: 10px; color: gray;">Ubicación: Santa Cruz (Predeterminada)</p>
-    </div>
+    <!-- Form -->
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" autocomplete="off">
+      
+      <!-- Seccion 1: Administrador -->
+      <div class="form-section">
+        <h3 class="section-title">
+          <i class="fa-solid fa-user-gear"></i> Datos del Administrador
+        </h3>
+        
+        <!-- Nombre -->
+        <div class="form-group">
+          <label class="input-label" for="nombre">Nombre Completo</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-user input-icon-left"></i>
+            <input 
+              type="text" 
+              id="nombre" 
+              formControlName="nombre" 
+              class="form-input" 
+              [class.invalid-touched]="registerForm.get('nombre')?.invalid && registerForm.get('nombre')?.touched"
+              placeholder="Ej. Juan Pérez"
+            >
+          </div>
+          <div *ngIf="registerForm.get('nombre')?.invalid && registerForm.get('nombre')?.touched" class="validation-error">
+            <i class="fa-solid fa-circle-exclamation"></i> El nombre es obligatorio.
+          </div>
+        </div>
 
-    <button type="submit" [disabled]="registerForm.invalid" 
-            style="width: 100%; padding: 10px; background-color: #28a745; color: white; border: none; cursor: pointer;">
-      Registrar y Entrar 🚀
-    </button>
-  </form>
+        <!-- Correo -->
+        <div class="form-group">
+          <label class="input-label" for="correo">Correo Electrónico</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-envelope input-icon-left"></i>
+            <input 
+              type="email" 
+              id="correo" 
+              formControlName="correo" 
+              class="form-input" 
+              [class.invalid-touched]="registerForm.get('correo')?.invalid && registerForm.get('correo')?.touched"
+              placeholder="correo@ejemplo.com"
+            >
+          </div>
+          <div *ngIf="registerForm.get('correo')?.invalid && registerForm.get('correo')?.touched" class="validation-error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span *ngIf="registerForm.get('correo')?.errors?.['required']">El correo es obligatorio.</span>
+            <span *ngIf="registerForm.get('correo')?.errors?.['email']">Ingrese un formato de correo válido.</span>
+          </div>
+        </div>
+
+        <!-- Contraseña -->
+        <div class="form-group">
+          <label class="input-label" for="password">Contraseña de Acceso</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-lock input-icon-left"></i>
+            <input 
+              [type]="hidePassword ? 'password' : 'text'" 
+              id="password" 
+              formControlName="password" 
+              class="form-input" 
+              [class.invalid-touched]="registerForm.get('password')?.invalid && registerForm.get('password')?.touched"
+              placeholder="Mínimo 6 caracteres"
+            >
+            <button type="button" class="btn-toggle-pass" (click)="togglePasswordVisibility()" aria-label="Mostrar contraseña">
+              <i class="fa-solid" [ngClass]="hidePassword ? 'fa-eye' : 'fa-eye-slash'"></i>
+            </button>
+          </div>
+          <div *ngIf="registerForm.get('password')?.invalid && registerForm.get('password')?.touched" class="validation-error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span *ngIf="registerForm.get('password')?.errors?.['required']">La contraseña es obligatoria.</span>
+            <span *ngIf="registerForm.get('password')?.errors?.['minlength']">Debe contener al menos 6 caracteres.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seccion 2: Taller -->
+      <div class="form-section" formGroupName="taller">
+        <h3 class="section-title">
+          <i class="fa-solid fa-wrench"></i> Datos del Taller
+        </h3>
+
+        <!-- Nombre Taller -->
+        <div class="form-group">
+          <label class="input-label" for="taller-nombre">Nombre Comercial</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-shop input-icon-left"></i>
+            <input 
+              type="text" 
+              id="taller-nombre" 
+              formControlName="nombre" 
+              class="form-input" 
+              [class.invalid-touched]="registerForm.get('taller.nombre')?.invalid && registerForm.get('taller.nombre')?.touched"
+              placeholder="Ej. Taller Mecánico Express"
+            >
+          </div>
+          <div *ngIf="registerForm.get('taller.nombre')?.invalid && registerForm.get('taller.nombre')?.touched" class="validation-error">
+            <i class="fa-solid fa-circle-exclamation"></i> El nombre del taller es obligatorio.
+          </div>
+        </div>
+
+        <!-- Dirección -->
+        <div class="form-group">
+          <label class="input-label" for="taller-direccion">Dirección Física</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-location-dot input-icon-left"></i>
+            <input 
+              type="text" 
+              id="taller-direccion" 
+              formControlName="direccion" 
+              class="form-input" 
+              [class.invalid-touched]="registerForm.get('taller.direccion')?.invalid && registerForm.get('taller.direccion')?.touched"
+              placeholder="Ej. Av. Banzer y 4to Anillo"
+            >
+          </div>
+          <div *ngIf="registerForm.get('taller.direccion')?.invalid && registerForm.get('taller.direccion')?.touched" class="validation-error">
+            <i class="fa-solid fa-circle-exclamation"></i> La dirección del taller es obligatoria.
+          </div>
+        </div>
+
+        <!-- Coordenadas Info Alert -->
+        <div class="info-box">
+          <i class="fa-solid fa-earth-americas"></i>
+          <div>
+            <strong>Ubicación automática:</strong> Santa Cruz de la Sierra (Lat: -17.78, Lon: -63.18). Podrás actualizar las coordenadas exactas en el mapa de tu perfil.
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit Button -->
+      <button type="submit" class="submit-btn" [disabled]="registerForm.invalid">
+        <i class="fa-solid fa-user-plus"></i> Registrar y Entrar al Sistema
+      </button>
+
+      <!-- Redirect to Login -->
+      <p class="redirect-text">
+        ¿Ya tienes un taller registrado? 
+        <a routerLink="/login" class="redirect-link">Inicia sesión aquí</a>
+      </p>
+
+    </form>
+  </div>
 </div>

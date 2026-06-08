@@ -1,200 +1,212 @@
 <div class="perfil-container">
-  <div class="header">
-    <h2>🏢 Gestión de Perfil del Taller</h2>
-    <p>Actualiza la información básica y ubicación de tu taller.</p>
+  <div class="header-section">
+    <h2><i class="fa-solid fa-shop text-primary me-2"></i> Gestión de Perfil</h2>
+    <p class="subtitle">Administra los datos generales de tu taller, mapa y horarios de atención.</p>
   </div>
 
-  <!-- BANNERS DE SUSCRIPCIÓN -->
-  <div class="subscription-banner premium" *ngIf="taller.plan_suscripcion === 'premium'">
-    <div class="banner-content">
-      <div class="banner-icon">⭐</div>
-      <div class="banner-text">
-        <h3>Plan Premium Activo</h3>
-        <p>Disfrutas de técnicos e incidentes ilimitados. ¡Gracias por confiar en VialIA!</p>
-      </div>
-    </div>
-    <div class="banner-actions">
-      <button type="button" class="btn-cancelar-sub" (click)="cancelarSuscripcion()" [disabled]="cargando">Cancelar Suscripción</button>
-    </div>
-  </div>
-
-  <div class="subscription-banner free" *ngIf="taller.plan_suscripcion !== 'premium'">
-    <div class="banner-content">
-      <div class="banner-icon">⚡</div>
-      <div class="banner-text">
-        <h3>Plan Gratuito</h3>
-        <p>Límite: 3 técnicos y 5 incidentes diarios. Mejora tu plan para crecer sin límites.</p>
-      </div>
-    </div>
-    <div class="banner-actions">
-      <button type="button" class="btn-premium" (click)="suscribirPremium()" [disabled]="cargando">
-        {{ cargando ? 'Cargando...' : '🚀 Mejorar a Premium ($49.99/mes)' }}
-      </button>
-    </div>
+  <div *ngIf="mensaje" class="alert alert-info" style="margin-bottom: 20px; padding: 10px; border-radius: 6px; font-weight: 500;">
+    {{ mensaje }}
   </div>
 
   <div class="perfil-grid">
-    <div class="form-section">
-      <form (ngSubmit)="guardar()" #f="ngForm">
+    <!-- INFO GENERAL -->
+    <div class="card info-card">
+      <div class="card-header">
+        <h4>Información del Taller</h4>
+        <span class="rating-badge" *ngIf="taller.calificacion_promedio">
+          <i class="fa-solid fa-star text-warning me-1"></i> {{ taller.calificacion_promedio | number:'1.1-1' }}
+        </span>
+      </div>
+      <div class="card-body">
+        
+        <!-- PLAN DE SUSCRIPCION BANNER -->
+        <div class="plan-banner" [ngClass]="taller.plan_suscripcion">
+          <div class="plan-info">
+            <span class="plan-badge">
+              <i class="fa-solid" [ngClass]="taller.plan_suscripcion === 'premium' ? 'fa-crown text-warning' : 'fa-seedling text-muted'"></i>
+              Plan {{ taller.plan_suscripcion | uppercase }}
+            </span>
+            <p *ngIf="taller.plan_suscripcion === 'gratis'" class="plan-desc">
+              <i class="fa-solid fa-circle-exclamation text-warning me-1"></i> Límite de 3 técnicos y 5 auxilios diarios.
+            </p>
+            <p *ngIf="taller.plan_suscripcion === 'premium'" class="plan-desc">
+              <i class="fa-solid fa-circle-check text-success me-1"></i> Acceso ilimitado a mecánicos, IA y estadísticas.
+            </p>
+          </div>
+          <button *ngIf="taller.plan_suscripcion === 'gratis'" (click)="suscribirPremium()" class="btn-upgrade">
+            <i class="fa-solid fa-rocket me-1"></i> Subir a Premium
+          </button>
+          <button *ngIf="taller.plan_suscripcion === 'premium'" (click)="cancelarSuscripcion()" class="btn-upgrade cancel" style="background-color: #ef4444;">
+            <i class="fa-solid fa-xmark me-1"></i> Cancelar Premium
+          </button>
+        </div>
+
         <div class="form-group">
           <label>Nombre del Taller</label>
-          <input type="text" [(ngModel)]="taller.nombre" name="nombre" required>
+          <input type="text" [(ngModel)]="taller.nombre" class="form-input">
         </div>
-
         <div class="form-group">
           <label>Dirección</label>
-          <input type="text" [(ngModel)]="taller.direccion" name="direccion" required>
+          <input type="text" [(ngModel)]="taller.direccion" class="form-input">
+        </div>
+        <div class="form-group">
+          <label>Teléfono de Atención</label>
+          <input type="text" [(ngModel)]="taller.telefono" class="form-input">
         </div>
 
-        <div class="form-group">
-            <label>Teléfono de contacto</label>
-            <input type="text" [(ngModel)]="taller.telefono" name="telefono">
-        </div>
-
-        <div class="form-group">
-          <label>Servicios Ofrecidos (Automático)</label>
-          <p class="info-text">Estas especialidades se activan según tus técnicos activos:</p>
-          <div class="chip-container" *ngIf="taller.especialidades_activas?.length > 0; else noEsp">
-            <span class="chip-info" *ngFor="let esp of taller.especialidades_activas">
-              {{ esp }}
+        <div class="status-toggle">
+          <label>Disponibilidad para Auxilio Vial</label>
+          <div class="toggle-control">
+            <label class="switch">
+              <input type="checkbox" [(ngModel)]="taller.esta_activo">
+              <span class="slider round"></span>
+            </label>
+            <span class="status-text" [class.active]="taller.esta_activo">
+              {{ taller.esta_activo ? 'Recibiendo auxilios' : 'Desconectado / No disponible' }}
             </span>
           </div>
-          <ng-template #noEsp>
-            <p class="empty-msg">⚠️ No hay especialidades activas. Registra técnicos con especialidades en "Gestión de Admins".</p>
-          </ng-template>
         </div>
-
-        <!-- 🕐 HORARIOS DEL TALLER -->
-        <div class="horarios-section">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <label style="margin: 0;">📅 Horarios de Atención:</label>
-            <button *ngIf="!editandoHorarios" 
-                    type="button" 
-                    class="btn-editar"
-                    (click)="iniciarEdicionHorarios()">
-              {{ taller.horarios.length === 0 ? '➕ Agregar Horarios' : '➕ Agregar Día' }}
-            </button>
-          </div>
-
-          <div class="horarios-indicator" [ngClass]="taller.esta_abierto_ahora ? 'abierto' : 'cerrado'">
-            <span class="badge-status">
-              {{ taller.esta_abierto_ahora ? '🟢 ABIERTO AHORA' : '🔴 CERRADO' }}
-            </span>
-          </div>
-
-          <!-- MODO VISUALIZACIÓN -->
-          <div *ngIf="!editandoHorarios">
-            <div *ngIf="taller.horarios && taller.horarios.length > 0; else noHorarios" class="horarios-tabla">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Día</th>
-                    <th>Apertura</th>
-                    <th>Cierre</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let h of taller.horarios">
-                    <td *ngIf="!horarioEnEdicion || horarioEnEdicion.id !== h.id">
-                      <strong>{{ h.dia | titlecase }}</strong>
-                    </td>
-                    <td *ngIf="!horarioEnEdicion || horarioEnEdicion.id !== h.id">
-                      {{ formatTime(h.hora_apertura) }}
-                    </td>
-                    <td *ngIf="!horarioEnEdicion || horarioEnEdicion.id !== h.id">
-                      {{ formatTime(h.hora_cierre) }}
-                    </td>
-                    <td *ngIf="!horarioEnEdicion || horarioEnEdicion.id !== h.id" style="text-align: center;">
-                      <button type="button" class="btn-mini" (click)="editarHorario(h)">✏️</button>
-                      <button type="button" class="btn-mini btn-eliminar" (click)="eliminarHorario(h.id)">🗑️</button>
-                    </td>
-
-                    <!-- MODO EDICIÓN INDIVIDUAL -->
-                    <ng-container *ngIf="horarioEnEdicion && horarioEnEdicion.id === h.id">
-                      <td>
-                        <strong>{{ horarioEnEdicion.dia | titlecase }}</strong>
-                      </td>
-                      <td>
-                        <input type="time" [(ngModel)]="horarioEnEdicion.hora_apertura" [ngModelOptions]="{standalone: true}" style="width: 100%;">
-                      </td>
-                      <td>
-                        <input type="time" [(ngModel)]="horarioEnEdicion.hora_cierre" [ngModelOptions]="{standalone: true}" style="width: 100%;">
-                      </td>
-                      <td style="text-align: center;">
-                        <button type="button" class="btn-mini btn-success" (click)="guardarEdicionHorario()">💾</button>
-                        <button type="button" class="btn-mini btn-cancel" (click)="cancelarEdicion()">❌</button>
-                      </td>
-                    </ng-container>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <ng-template #noHorarios>
-              <p class="empty-msg">⚠️ No hay horarios definidos. Haz clic en "Agregar Horarios".</p>
-            </ng-template>
-          </div>
-
-          <!-- MODO AGREGAR -->
-          <div *ngIf="editandoHorarios" class="formulario-horarios">
-            <h4>Agregar Nuevos Horarios</h4>
-            
-            <div *ngFor="let h of horariosAnadidos; let i = index; trackBy: trackByIndex" class="horario-input-group">
-              <select [(ngModel)]="horariosAnadidos[i].dia" name="dia_{{i}}" [ngModelOptions]="{standalone: true}" (change)="onDiaChange()" style="color: #333;">
-                <option value="" style="color: #999;">-- Selecciona día --</option>
-                <option *ngFor="let dia of getDiasDisponibles(i)" [value]="dia" style="color: #333;">{{ dia | titlecase }}</option>
-              </select>
-              <input type="time" [(ngModel)]="horariosAnadidos[i].hora_apertura" name="apertura_{{i}}" [ngModelOptions]="{standalone: true}" placeholder="Apertura">
-              <input type="time" [(ngModel)]="horariosAnadidos[i].hora_cierre" name="cierre_{{i}}" [ngModelOptions]="{standalone: true}" placeholder="Cierre">
-              <button type="button" class="btn-mini btn-eliminar" (click)="eliminarDiaTemp(i)">🗑️</button>
-            </div>
-
-            <button type="button" class="btn-agregar" (click)="agregarHorarioTemp()" 
-                    [disabled]="horariosAnadidos.length >= diasSemana.length">
-              ➕ Agregar Otro Día
-            </button>
-
-            <div class="botones-accion" style="margin-top: 1rem;">
-              <button type="button" class="btn-success" (click)="guardarHorarios()" [disabled]="cargando">
-                {{ cargando ? 'Guardando...' : '💾 Guardar Horarios' }}
-              </button>
-              <button type="button" class="btn-cancel" (click)="cancelarEdicion()">
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="coords">
-          <div class="form-group">
-            <label>Latitud</label>
-            <input type="number" [value]="taller.latitud | number:'1.6-6'" readonly>
-          </div>
-          <div class="form-group">
-            <label>Longitud</label>
-            <input type="number" [value]="taller.longitud | number:'1.6-6'" readonly>
-          </div>
-        </div>
-
-        <div class="status-box">
-          <label class="switch">
-            <input type="checkbox" [(ngModel)]="taller.estado" name="estado">
-            <span class="slider round"></span>
-          </label>
-          <span>{{ taller.estado ? 'Disponible para Emergencias' : 'Fuera de Línea' }}</span>
-        </div>
-
-        <button type="submit" [disabled]="cargando" class="btn-save">
-          {{ cargando ? 'Guardando...' : '💾 Guardar Cambios' }}
-        </button>
-
-        <div *ngIf="mensaje" class="alert-success">{{ mensaje }}</div>
-      </form>
+      </div>
     </div>
 
-    <div class="map-section">
-      <label>Ubicación en el Mapa:</label>
-      <div id="map"></div>
+    <!-- GEOLOCALIZACION -->
+    <div class="card map-card">
+      <div class="card-header">
+        <h4>Ubicación Geográfica</h4>
+      </div>
+      <div class="card-body">
+        <div class="alert-info" style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 10px; border-radius: 6px; margin-bottom: 12px; font-size: 0.85em; color: #1e3a8a;">
+          <i class="fa-solid fa-circle-info me-1"></i> Haz clic en el mapa o arrastra el marcador para actualizar las coordenadas.
+        </div>
+        <div id="map" style="height: 250px; border-radius: 8px; border: 1px solid #cbd5e1;"></div>
+        <div class="coords-row" style="margin-top: 10px; display: flex; gap: 15px; font-size: 0.85rem; color: #64748b;">
+          <span>Lat: {{ taller.latitud | number:'1.6-6' }}</span>
+          <span>Lng: {{ taller.longitud | number:'1.6-6' }}</span>
+        </div>
+      </div>
     </div>
+  </div>
+
+  <!-- HORARIOS DE ATENCION -->
+  <div class="card horarios-card" style="margin-top: 30px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <h3><i class="fa-solid fa-calendar-days text-primary me-2"></i> Horarios de Atención</h3>
+      <button (click)="iniciarEdicionHorarios()" class="btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" *ngIf="!editandoHorarios">
+        <i class="fa-solid fa-plus me-1"></i> Modificar Horarios
+      </button>
+    </div>
+    <div class="card-body">
+      
+      <!-- Indicador Abierto/Cerrado basado en horario actual -->
+      <div class="status-indicador" style="margin-bottom: 20px; font-weight: bold;">
+        Estado Actual: 
+        <span *ngIf="taller.esta_abierto_ahora" style="color: #22c55e; background: #dcfce7; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; border: 1px solid #bbf7d0;">
+          <i class="fa-solid fa-circle text-success me-1"></i> ABIERTO AHORA
+        </span>
+        <span *ngIf="!taller.esta_abierto_ahora" style="color: #ef4444; background: #fee2e2; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; border: 1px solid #fca5a5;">
+          <i class="fa-solid fa-circle text-danger me-1"></i> CERRADO
+        </span>
+      </div>
+
+      <!-- Tabla de horarios actuales -->
+      <div class="table-responsive" style="margin-bottom: 20px;">
+        <table class="modern-table" style="font-size: 0.9rem;">
+          <thead>
+            <tr>
+              <th>Día</th>
+              <th>Horario de Atención</th>
+              <th class="text-center" *ngIf="!editandoHorarios">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let h of taller.horarios">
+              <td><strong>{{ h.dia | uppercase }}</strong></td>
+              <td>{{ formatTime(h.hora_apertura) }} - {{ formatTime(h.hora_cierre) }}</td>
+              <td class="actions-cell" *ngIf="!editandoHorarios">
+                <button (click)="editarHorario(h)" class="action-btn edit" style="padding: 4px 8px; font-size: 0.8rem;" title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                <button (click)="eliminarHorario(h.id)" class="action-btn delete" style="padding: 4px 8px; font-size: 0.8rem;" title="Borrar"><i class="fa-solid fa-trash"></i></button>
+              </td>
+            </tr>
+            <tr *ngIf="!taller.horarios || taller.horarios.length === 0">
+              <td [attr.colspan]="editandoHorarios ? 2 : 3" class="text-center text-muted">Aún no has registrado horarios para tu taller.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Edición rápida de una fila individual de horario -->
+      <div class="form-horario-box" *ngIf="horarioEnEdicion" style="background: #fef3c7; padding: 20px; border-radius: 8px; border: 1px solid #fcd34d; margin-bottom: 20px;">
+        <h4 style="margin-top: 0; margin-bottom: 15px;"><i class="fa-solid fa-pencil me-1"></i> Editar Horario para {{ horarioEnEdicion.dia | uppercase }}</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; align-items: flex-end;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label>Apertura</label>
+            <input type="time" [(ngModel)]="horarioEnEdicion.hora_apertura" class="form-input">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label>Cierre</label>
+            <input type="time" [(ngModel)]="horarioEnEdicion.hora_cierre" class="form-input">
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button (click)="guardarEdicionHorario()" class="btn-primary" style="padding: 10px; font-size: 0.9rem;">
+              <i class="fa-solid fa-floppy-disk me-1"></i> Guardar
+            </button>
+            <button (click)="cancelarEdicion()" class="btn-outline" style="padding: 10px; font-size: 0.9rem; border-color: #cbd5e1; color: #64748b;">
+              <i class="fa-solid fa-xmark me-1"></i> Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Formulario multi-registro para agregar nuevos horarios -->
+      <div class="form-horario-box" *ngIf="editandoHorarios" style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h4 style="margin: 0;"><i class="fa-solid fa-plus me-1"></i> Registrar Nuevos Horarios</h4>
+          <button (click)="agregarHorarioTemp()" class="btn-outline" style="padding: 4px 8px; font-size: 0.8rem;">
+            <i class="fa-solid fa-plus me-1"></i> Añadir fila
+          </button>
+        </div>
+
+        <div *ngFor="let temp of horariosAnadidos; let i = index; trackBy: trackByIndex" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) 45px; gap: 10px; align-items: flex-end; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #e2e8f0;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label>Día</label>
+            <select [(ngModel)]="temp.dia" (change)="onDiaChange()" class="form-input">
+              <option value="">-- Selecciona --</option>
+              <option *ngFor="let dia of getDiasDisponibles(i)" [value]="dia">{{ dia | uppercase }}</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label>Apertura</label>
+            <input type="time" [(ngModel)]="temp.hora_apertura" class="form-input">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label>Cierre</label>
+            <input type="time" [(ngModel)]="temp.hora_cierre" class="form-input">
+          </div>
+          <button (click)="eliminarDiaTemp(i)" class="action-btn delete" style="height: 38px; width: 38px; display: flex; align-items: center; justify-content: center; margin-bottom: 0;" title="Quitar fila">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+          <button (click)="guardarHorarios()" class="btn-primary" style="font-size: 0.9rem;" [disabled]="horariosAnadidos.length === 0">
+            <i class="fa-solid fa-floppy-disk me-1"></i> Registrar Horarios
+          </button>
+          <button (click)="cancelarEdicion()" class="btn-outline" style="font-size: 0.9rem;">
+            <i class="fa-solid fa-xmark me-1"></i> Cancelar
+          </button>
+        </div>
+      </div>
+
+      <div class="alert-info" style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 6px; color: #b45309; font-size: 0.85em; margin-bottom: 20px;">
+        <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> Si no defines horarios para un día específico, el sistema asumirá que el taller estará <strong>CERRADO</strong> durante esa jornada.
+      </div>
+    </div>
+  </div>
+
+  <!-- ACCIONES PRINCIPALES -->
+  <div class="actions-section" style="margin-top: 30px; display: flex; justify-content: flex-end; gap: 15px;">
+    <button (click)="guardar()" class="btn-save" [disabled]="cargando">
+      <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Cambios del Perfil
+    </button>
   </div>
 </div>

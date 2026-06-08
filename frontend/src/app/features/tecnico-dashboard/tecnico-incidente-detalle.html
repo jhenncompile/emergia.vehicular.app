@@ -6,7 +6,8 @@
       <p>Técnico: <strong>{{ nombre }}</strong></p>
       <p class="connection-status" [class.connected]="wsService.conectado">
         <span class="status-dot"></span>
-        {{ wsService.conectado ? '🔌 Conectado (WebSocket)' : '❌ Desconectado' }}
+        <i class="fa-solid" [ngClass]="wsService.conectado ? 'fa-plug text-success' : 'fa-circle-xmark text-danger'"></i>
+        {{ wsService.conectado ? ' Conectado (WebSocket)' : ' Desconectado' }}
       </p>
     </div>
     <div class="header-actions">
@@ -39,7 +40,7 @@
       </div>
       <div class="badges">
         <span [ngClass]="getPrioridadClass(incidente.prioridad)" class="badge">
-          🔴 {{ incidente.prioridad | uppercase }}
+          <i class="fa-solid fa-circle-exclamation me-1"></i> {{ incidente.prioridad | uppercase }}
         </span>
         <span [ngClass]="getEstadoClass(incidente.estado)" class="badge">
           {{ incidente.estado | uppercase }}
@@ -49,7 +50,7 @@
 
     <div class="incidente-details">
       <div class="detail-section">
-        <h4>📋 Información General</h4>
+        <h4><i class="fa-solid fa-circle-info me-2 text-primary"></i> Información General</h4>
         <div class="detail-grid">
           <div class="detail-item">
             <label>Vehículo:</label>
@@ -79,7 +80,7 @@
       </div>
 
       <div class="detail-section">
-        <h4>🔧 Detalles del Incidente</h4>
+        <h4><i class="fa-solid fa-screwdriver-wrench me-2 text-primary"></i> Detalles del Incidente</h4>
         <div class="detail-grid">
           <div class="detail-item">
             <label>Tipo de Problema:</label>
@@ -105,7 +106,7 @@
       </div>
 
       <div class="detail-section">
-        <h4>💰 Información de Pago</h4>
+        <h4><i class="fa-solid fa-wallet me-2 text-primary"></i> Información de Pago</h4>
         <div class="detail-grid">
           <div class="detail-item">
             <label>Costo Estimado:</label>
@@ -123,7 +124,7 @@
       </div>
 
       <div class="detail-section" *ngIf="incidente.taller?.latitud && incidente.taller?.longitud">
-        <h4>📍 Ubicación en Mapa</h4>
+        <h4><i class="fa-solid fa-map-location-dot me-2 text-primary"></i> Ubicación en Mapa</h4>
         <div class="mapa-container">
           <div id="mapa"></div>
         </div>
@@ -135,7 +136,7 @@
 
     <!-- Botones de Acción -->
     <div class="acciones">
-      <button class="btn-volver" (click)="volver()">← Volver al Dashboard</button>
+      <button class="btn-volver" (click)="volver()"><i class="fa-solid fa-arrow-left me-1"></i> Volver al Dashboard</button>
     </div>
   </div>
 </div>

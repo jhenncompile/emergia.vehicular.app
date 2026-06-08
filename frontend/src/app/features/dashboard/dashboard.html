@@ -4,7 +4,7 @@
   <div class="dash-header">
     <div class="dash-header-left">
       <div class="dash-title-row">
-        <span class="dash-icon">🛠️</span>
+        <span class="dash-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span>
         <div>
           <h1 class="dash-title">{{ tallerNombre }}</h1>
           <p class="dash-subtitle">Panel de Control · Dashboard</p>
@@ -20,21 +20,21 @@
   <!-- ═══════════════════════ FILTROS ═══════════════════════ -->
   <div class="filter-bar">
     <div class="filter-group">
-      <label class="filter-label">📅 Desde</label>
+      <label class="filter-label"><i class="fa-regular fa-calendar me-1"></i> Desde</label>
       <input type="date" class="filter-input" [(ngModel)]="fechaInicio" />
     </div>
     <div class="filter-group">
-      <label class="filter-label">📅 Hasta</label>
+      <label class="filter-label"><i class="fa-regular fa-calendar me-1"></i> Hasta</label>
       <input type="date" class="filter-input" [(ngModel)]="fechaFin" />
     </div>
     <button class="btn-apply" (click)="aplicarFiltros()" [disabled]="cargandoMetricas">
-      <span *ngIf="!cargandoMetricas">🔍 Aplicar Filtros</span>
-      <span *ngIf="cargandoMetricas">⏳ Cargando...</span>
+      <span *ngIf="!cargandoMetricas"><i class="fa-solid fa-magnifying-glass me-1"></i> Aplicar Filtros</span>
+      <span *ngIf="cargandoMetricas"><i class="fa-solid fa-circle-notch fa-spin me-1"></i> Cargando...</span>
     </button>
     <button class="btn-clear" (click)="limpiarFiltros()">↩ Este mes</button>
     <button class="btn-export" (click)="exportarPDF()" [disabled]="cargandoMetricas || exportandoPDF">
-      <span *ngIf="!exportandoPDF">📄 Exportar a PDF</span>
-      <span *ngIf="exportandoPDF">⏳ Generando...</span>
+      <span *ngIf="!exportandoPDF"><i class="fa-solid fa-file-pdf me-1"></i> Exportar a PDF</span>
+      <span *ngIf="exportandoPDF"><i class="fa-solid fa-circle-notch fa-spin me-1"></i> Generando...</span>
     </button>
   </div>
 
@@ -46,21 +46,21 @@
   <div class="kpi-grid" *ngIf="!cargandoMetricas">
 
     <div class="kpi-card kpi-blue">
-      <div class="kpi-icon">📋</div>
+      <div class="kpi-icon"><i class="fa-solid fa-clipboard-list"></i></div>
       <div class="kpi-value">{{ kpis.totalIncidentes }}</div>
       <div class="kpi-label">Total Incidentes</div>
       <div class="kpi-sub">en el período</div>
     </div>
 
     <div class="kpi-card kpi-green">
-      <div class="kpi-icon">✅</div>
+      <div class="kpi-icon"><i class="fa-solid fa-circle-check"></i></div>
       <div class="kpi-value">{{ kpis.incidentesFinalizados }}</div>
       <div class="kpi-label">Finalizados</div>
       <div class="kpi-sub">atenciones completadas</div>
     </div>
 
     <div class="kpi-card kpi-red">
-      <div class="kpi-icon">❌</div>
+      <div class="kpi-icon"><i class="fa-solid fa-circle-xmark"></i></div>
       <div class="kpi-value">{{ kpis.incidentesCancelados }}</div>
       <div class="kpi-label">Incidentes Cancelados</div>
       <div class="kpi-sub">
@@ -69,35 +69,35 @@
     </div>
 
     <div class="kpi-card kpi-green">
-      <div class="kpi-icon">🎯</div>
+      <div class="kpi-icon"><i class="fa-solid fa-bullseye"></i></div>
       <div class="kpi-value">{{ kpis.tasaExito }}%</div>
       <div class="kpi-label">Tasa de Éxito</div>
       <div class="kpi-sub">completados s/ totales</div>
     </div>
 
     <div class="kpi-card kpi-orange">
-      <div class="kpi-icon">⏱️</div>
+      <div class="kpi-icon"><i class="fa-solid fa-stopwatch"></i></div>
       <div class="kpi-value">{{ kpis.tiempoPromedioMin }} min</div>
       <div class="kpi-label">T. Prom. Asignación</div>
       <div class="kpi-sub">tiempo de respuesta inicial</div>
     </div>
 
     <div class="kpi-card" style="border-top-color: #e67e22; background-color: rgba(230, 126, 34, 0.05);">
-      <div class="kpi-icon" style="color: #e67e22;">🚚</div>
+      <div class="kpi-icon" style="color: #e67e22;"><i class="fa-solid fa-truck-pickup"></i></div>
       <div class="kpi-value">{{ kpis.tiempoPromedioLlegadaMin }} min</div>
       <div class="kpi-label">T. Prom. Llegada</div>
       <div class="kpi-sub">desde la asignación</div>
     </div>
 
     <div class="kpi-card" style="border-top-color: #27ae60; background-color: rgba(39, 174, 96, 0.05);">
-      <div class="kpi-icon" style="color: #27ae60;">✅</div>
+      <div class="kpi-icon" style="color: #27ae60;"><i class="fa-solid fa-clipboard-check"></i></div>
       <div class="kpi-value">{{ kpis.cumplimientoSLA }}%</div>
       <div class="kpi-label">Cumplimiento SLA</div>
       <div class="kpi-sub">llegada &lt; 60 min</div>
     </div>
 
     <div class="kpi-card kpi-gold" style="border-top-color: #ffd43b;">
-      <div class="kpi-icon">⭐</div>
+      <div class="kpi-icon"><i class="fa-solid fa-star"></i></div>
       <div class="kpi-value">{{ kpis.promedioCalificacion | number:'1.1-1' }} / 5</div>
       <div class="kpi-label">Promedio Calificación</div>
       <div class="kpi-sub">satisfacción del cliente</div>
@@ -110,7 +110,7 @@
 
     <!-- Resumen Financiero -->
     <div class="chart-card">
-      <div class="chart-title">💰 Resumen Financiero</div>
+      <div class="chart-title"><i class="fa-solid fa-wallet me-2"></i> Resumen Financiero</div>
 
       <div class="finance-row finance-bruto">
         <div class="finance-label">Total Bruto</div>
@@ -133,14 +133,14 @@
       <div class="finance-divider"></div>
 
       <div class="finance-neto-card">
-        <div class="finance-neto-label">✅ Monto Neto (Para el Taller)</div>
+        <div class="finance-neto-label"><i class="fa-solid fa-circle-check text-success me-1"></i> Monto Neto (Para el Taller)</div>
         <div class="finance-neto-value">{{ formatMoney(kpis.recaudadoNeto) }} Bs.</div>
       </div>
     </div>
 
     <!-- Atenciones por Técnico -->
     <div class="chart-card">
-      <div class="chart-title">👷 Atenciones por Técnico</div>
+      <div class="chart-title"><i class="fa-solid fa-users me-2"></i> Atenciones por Técnico</div>
 
       <div *ngIf="atencionPorTecnico.length === 0" class="no-data">
         Sin datos para el período seleccionado
@@ -160,7 +160,7 @@
 
   <!-- ═══════════════════════ DISTRIBUCIÓN DE ESTADOS ═══════════════════════ -->
   <div class="chart-card estados-card" *ngIf="!cargando && distribucionEstados.length > 0">
-    <div class="chart-title">📊 Distribución por Estado</div>
+    <div class="chart-title"><i class="fa-solid fa-chart-pie me-2"></i> Distribución por Estado</div>
     <div class="estados-grid">
       <div *ngFor="let e of distribucionEstados" class="estado-chip"
         [style.borderColor]="e.color">
@@ -175,7 +175,6 @@
     <!-- Mini gráfico de barras horizontales -->
     <div class="estado-bars">
       <div *ngFor="let e of distribucionEstados" class="estado-bar-row">
-        <div class="estado-bar-label">{{ e.estado }}</div>
         <div class="estado-bar-track">
           <div class="estado-bar-fill"
             [style.width.%]="kpis.totalIncidentes > 0 ? (e.cantidad / kpis.totalIncidentes * 100) : 0"

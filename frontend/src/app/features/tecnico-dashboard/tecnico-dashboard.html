@@ -6,7 +6,8 @@
       <p>Técnico: <strong>{{ nombre }}</strong></p>
       <p class="connection-status" [class.connected]="wsService.conectado">
         <span class="status-dot"></span>
-        {{ wsService.conectado ? '🔌 Conectado (WebSocket)' : '❌ Desconectado' }}
+        <i class="fa-solid" [ngClass]="wsService.conectado ? 'fa-plug text-success' : 'fa-circle-xmark text-danger'"></i>
+        {{ wsService.conectado ? ' Conectado (WebSocket)' : ' Desconectado' }}
       </p>
     </div>
     <div class="header-actions">
@@ -25,9 +26,9 @@
     <div class="toast-content">
       <strong>{{ toastNotificacion.titulo }}</strong>
       <p>{{ toastNotificacion.mensaje }}</p>
-      <button type="button" class="toast-action" (click)="abrirNotificaciones()">Ver m\u00e1s</button>
+      <button type="button" class="toast-action" (click)="abrirNotificaciones()">Ver más</button>
     </div>
-    <button type="button" class="toast-close" (click)="cerrarToastNotificacion()">\u00d7</button>
+    <button type="button" class="toast-close" (click)="cerrarToastNotificacion()">×</button>
   </div>
 
   <!-- Mensaje de error -->
@@ -37,7 +38,7 @@
 
   <!-- Filtros -->
   <div class="filtros-section">
-    <h3>🔍 Filtros</h3>
+    <h3><i class="fa-solid fa-magnifying-glass me-2"></i> Filtros</h3>
     <div class="filtros-grid">
       <div class="filter-group">
         <label for="filtroEstado">Estado:</label>
@@ -74,9 +75,9 @@
           (change)="onFiltroChange()"
           class="filter-select">
           <option value="">Todas</option>
-          <option value="cerca">Cerca (< 5 km)</option>
+          <option value="cerca">Cerca (&lt; 5 km)</option>
           <option value="medio">Medio (5 - 15 km)</option>
-          <option value="lejos">Lejos (> 15 km)</option>
+          <option value="lejos">Lejos (&gt; 15 km)</option>
         </select>
       </div>
     </div>
@@ -89,12 +90,12 @@
 
   <!-- Sin incidentes -->
   <div *ngIf="!cargando && incidentesFiltrados.length === 0" class="empty-state">
-    <p>📭 No hay incidentes con estos filtros</p>
+    <p><i class="fa-regular fa-folder-open me-2"></i> No hay incidentes con estos filtros</p>
   </div>
 
   <!-- Tabla de Incidentes -->
   <div *ngIf="!cargando && incidentesFiltrados.length > 0" class="table-section">
-    <h3>📋 Incidentes Asignados ({{ incidentesFiltrados.length }})</h3>
+    <h3><i class="fa-solid fa-clipboard-list me-2"></i> Incidentes Asignados ({{ incidentesFiltrados.length }})</h3>
     <div class="table-responsive">
       <table class="incidents-table">
         <thead>

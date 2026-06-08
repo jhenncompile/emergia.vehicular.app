@@ -1,6 +1,6 @@
 <div class="auxilios-page" [class.panel-open]="incidenteSeleccionado">
   <div class="header">
-    <h1>🚨 Gestión de Auxilios</h1>
+    <h1><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i> Gestión de Auxilios</h1>
     <p class="subtitle">Atiende las solicitudes de asistencia vehicular en tiempo real.</p>
   </div>
 
@@ -15,7 +15,7 @@
 
   <div class="content-wrapper">
     <ng-container *ngIf="tabActiva === 'pendientes'">
-      <div *ngIf="incidentesPendientes.length === 0" class="empty-state">📭 No hay ofertas disponibles.</div>
+      <div *ngIf="incidentesPendientes.length === 0" class="empty-state"><i class="fa-regular fa-folder-open me-2"></i> No hay ofertas disponibles.</div>
       <div class="card-grid" *ngIf="incidentesPendientes.length > 0">
         <div *ngFor="let inc of incidentesPendientes" 
              class="incidente-card" 
@@ -23,7 +23,7 @@
           
           <div class="card-header">
             <h3>{{ inc.usuario?.nombre || 'Usuario' }}</h3>
-            <span class="badge" [ngClass]="'badge-' + inc.prioridad">⚠️ {{ inc.prioridad | uppercase }}</span>
+            <span class="badge" [ngClass]="'badge-' + inc.prioridad"><i class="fa-solid fa-circle-exclamation me-1"></i> {{ inc.prioridad | uppercase }}</span>
           </div>
           
           <div class="card-vehicle" *ngIf="inc.vehiculo">
@@ -32,7 +32,7 @@
           <div class="card-vehicle" *ngIf="!inc.vehiculo">Vehículo no especificado</div>
           
           <div class="card-ai" *ngIf="inc.resumen_ia || inc.descripcion">
-            <span class="ai-icon">📊</span>
+            <span class="ai-icon"><i class="fa-solid fa-brain"></i></span>
             <div>
               <span class="ai-label">Resumen:</span>
               <p>{{ inc.resumen_ia || inc.descripcion }}</p>
@@ -40,23 +40,23 @@
           </div>
           
           <div class="card-location">
-            <span>📍 {{ inc.ubicacion || 'Ubicación no especificada' }}</span>
+            <span><i class="fa-solid fa-location-dot me-1"></i> {{ inc.ubicacion || 'Ubicación no especificada' }}</span>
             <span class="distance" *ngIf="inc.distancia_metros">({{ (inc.distancia_metros / 1000) | number:'1.1-1' }} km) - {{ inc.tiempo_llegada_estimado || '?' }}</span>
           </div>
-
+ 
           <div class="card-cotizacion" *ngIf="inc.candidato_estado === 'sugerido' && inc.sugerencia_ia_monto != null" style="margin-top: 10px; padding: 10px; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 6px;">
-            <p style="margin: 0; font-size: 0.9rem; color: #0369a1;"><strong>🤖 Sugerencia IA:</strong> ~{{ inc.sugerencia_ia_monto | number:'1.2-2' }} Bs</p>
+            <p style="margin: 0; font-size: 0.9rem; color: #0369a1;"><strong><i class="fa-solid fa-robot me-1"></i> Sugerencia IA:</strong> ~{{ inc.sugerencia_ia_monto | number:'1.2-2' }} Bs</p>
           </div>
 
           <div class="card-cotizacion" *ngIf="inc.candidato_estado === 'cotizado'" style="margin-top: 10px; padding: 10px; background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 6px;">
-            <p style="margin: 0; font-size: 0.9rem; color: #0f766e;"><strong>💰 Mi Cotización:</strong> {{ inc.cotizacion_monto }} Bs</p>
-            <p style="margin: 4px 0 0; font-size: 0.85rem; color: #0f766e;"><strong>⏱️ Tiempo est.:</strong> {{ inc.cotizacion_tiempo }}</p>
+            <p style="margin: 0; font-size: 0.9rem; color: #0f766e;"><strong><i class="fa-solid fa-wallet me-1"></i> Mi Cotización:</strong> {{ inc.cotizacion_monto }} Bs</p>
+            <p style="margin: 4px 0 0; font-size: 0.85rem; color: #0f766e;"><strong><i class="fa-solid fa-clock me-1"></i> Tiempo est.:</strong> {{ inc.cotizacion_tiempo }}</p>
           </div>
           
           <div class="card-footer">
             <div class="evidences">
-              <span class="evidence-tag fotos" *ngIf="tieneFotos(inc)">🖼️ Fotos</span>
-              <span class="evidence-tag audio" *ngIf="tieneAudio(inc)">🎙️ Audio</span>
+              <span class="evidence-tag fotos" *ngIf="tieneFotos(inc)"><i class="fa-regular fa-image me-1"></i> Fotos</span>
+              <span class="evidence-tag audio" *ngIf="tieneAudio(inc)"><i class="fa-solid fa-microphone me-1"></i> Audio</span>
             </div>
             <div class="time-ago">
               {{ calcularTiempo(inc.fecha_creacion) }}
@@ -67,7 +67,7 @@
     </ng-container>
 
     <ng-container *ngIf="tabActiva === 'mis-atenciones'">
-      <div *ngIf="misAtenciones.length === 0" class="empty-state">🚧 No tienes auxilios en curso.</div>
+      <div *ngIf="misAtenciones.length === 0" class="empty-state"><i class="fa-solid fa-helmet-safety me-2"></i> No tienes auxilios en curso.</div>
       <div class="card-grid" *ngIf="misAtenciones.length > 0">
         <div *ngFor="let inc of misAtenciones" 
              class="incidente-card asignado-card" 
@@ -75,7 +75,7 @@
           
           <div class="card-header">
             <h3>{{ inc.usuario?.nombre || 'Usuario' }}</h3>
-            <span class="badge" [ngClass]="'badge-' + inc.prioridad">⚠️ {{ inc.prioridad | uppercase }}</span>
+            <span class="badge" [ngClass]="'badge-' + inc.prioridad"><i class="fa-solid fa-circle-exclamation me-1"></i> {{ inc.prioridad | uppercase }}</span>
           </div>
           
           <div class="card-vehicle" *ngIf="inc.vehiculo">
@@ -84,7 +84,7 @@
           <div class="card-vehicle" *ngIf="!inc.vehiculo">Vehículo no especificado</div>
           
           <div class="card-ai" *ngIf="inc.resumen_ia || inc.descripcion">
-            <span class="ai-icon">📊</span>
+            <span class="ai-icon"><i class="fa-solid fa-brain"></i></span>
             <div>
               <span class="ai-label">Resumen:</span>
               <p>{{ inc.resumen_ia || inc.descripcion }}</p>
@@ -92,7 +92,7 @@
           </div>
           
           <div class="card-location">
-            <span>📍 {{ inc.ubicacion || 'Ubicación no especificada' }}</span>
+            <span><i class="fa-solid fa-location-dot me-1"></i> {{ inc.ubicacion || 'Ubicación no especificada' }}</span>
             <span class="distance" *ngIf="inc.distancia_metros">({{ (inc.distancia_metros / 1000) | number:'1.1-1' }} km)</span>
           </div>
           
@@ -104,14 +104,14 @@
               </div>
               
               <!-- ESTADO DE PAGO -->
-              <span *ngIf="inc.pago_estado === 'pagado'" style="font-size: 0.75rem; background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 12px; font-weight: 700; border: 1px solid #bbf7d0;">💵 Pagado</span>
-              <span *ngIf="inc.pago_estado === 'por_cobrar'" style="font-size: 0.75rem; background: #fef3c7; color: #d97706; padding: 3px 8px; border-radius: 12px; font-weight: 700; border: 1px solid #fde68a;">⏳ Cobro Pendiente</span>
-              <span *ngIf="inc.pago_estado === 'pendiente'" style="font-size: 0.75rem; background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 12px; font-weight: 700; border: 1px solid #e2e8f0;">💳 Sin pagar</span>
+              <span *ngIf="inc.pago_estado === 'pagado'" style="font-size: 0.75rem; background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 12px; font-weight: 700; border: 1px solid #bbf7d0;"><i class="fa-solid fa-money-bill-wave me-1"></i> Pagado</span>
+              <span *ngIf="inc.pago_estado === 'por_cobrar'" style="font-size: 0.75rem; background: #fef3c7; color: #d97706; padding: 3px 8px; border-radius: 12px; font-weight: 700; border: 1px solid #fde68a;"><i class="fa-solid fa-clock fa-pulse me-1"></i> Cobro Pendiente</span>
+              <span *ngIf="inc.pago_estado === 'pendiente'" style="font-size: 0.75rem; background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 12px; font-weight: 700; border: 1px solid #e2e8f0;"><i class="fa-solid fa-credit-card me-1"></i> Sin pagar</span>
             </div>
             
             <div class="time-ago" style="text-align: right;">
               <div style="margin-bottom: 4px;">{{ calcularTiempo(inc.fecha_creacion) }}</div>
-              <span *ngIf="inc.tecnico" class="tec-tag" style="font-weight: 600; color: #3b82f6;">🔧 {{ inc.tecnico.nombre }}</span>
+              <span *ngIf="inc.tecnico" class="tec-tag" style="font-weight: 600; color: #3b82f6;"><i class="fa-solid fa-user-gear me-1"></i> {{ inc.tecnico.nombre }}</span>
               <small *ngIf="!inc.tecnico" style="color: #ef4444; font-weight: 600;">Sin asignar</small>
             </div>
           </div>
@@ -128,34 +128,34 @@
     <div class="panel-body" *ngIf="incidenteSeleccionado">
       
       <div class="panel-actions" *ngIf="tabActiva === 'pendientes'" style="margin-bottom: 15px; display: flex; gap: 10px; flex-direction: column;">
-        <button *ngIf="incidenteSeleccionado.candidato_estado !== 'cotizado'" class="btn-primary" style="width: 100%; padding: 12px; font-size: 1.05rem;" (click)="abrirModalCotizar(incidenteSeleccionado)">💰 Enviar Cotización</button>
+        <button *ngIf="incidenteSeleccionado.candidato_estado !== 'cotizado'" class="btn-primary" style="width: 100%; padding: 12px; font-size: 1.05rem;" (click)="abrirModalCotizar(incidenteSeleccionado)"><i class="fa-solid fa-paper-plane me-1"></i> Enviar Cotización</button>
         <div *ngIf="incidenteSeleccionado.candidato_estado === 'cotizado'" style="background: #f0fdfa; color: #0f766e; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #ccfbf1; font-weight: bold;">
-          ✅ Cotización Enviada
+          <i class="fa-solid fa-circle-check me-1"></i> Cotización Enviada
         </div>
         <button class="btn-reject" style="width: 100%; text-align: center; display: block;" (click)="abrirModalRechazo(incidenteSeleccionado, 'rechazar')">Rechazar / Ignorar</button>
       </div>
 
       <!-- 📝 DESCRIPCIÓN Y AUDIO -->
       <div class="info-card" *ngIf="incidenteSeleccionado.descripcion || incidenteSeleccionado.transcripcion_audio">
-        <label>📝 Problema Reportado:</label>
+        <label><i class="fa-solid fa-circle-info me-1"></i> Problema Reportado:</label>
         <p *ngIf="incidenteSeleccionado.descripcion" class="voice-text" style="font-style: normal;">{{ incidenteSeleccionado.descripcion }}</p>
         
         <ng-container *ngIf="incidenteSeleccionado.transcripcion_audio">
-          <label style="margin-top: 10px; display: block;">🎙️ Transcripción de Audio:</label>
+          <label style="margin-top: 10px; display: block;"><i class="fa-solid fa-microphone me-1"></i> Transcripción de Audio:</label>
           <p class="voice-text">"{{ incidenteSeleccionado.transcripcion_audio }}"</p>
         </ng-container>
       </div>
 
       <!-- 🤖 ANÁLISIS IA -->
       <div class="info-card" style="background: #f0fdf4; border-left: 4px solid #22c55e;" *ngIf="incidenteSeleccionado.clasificacion_ia || incidenteSeleccionado.resumen_ia">
-        <label style="color: #166534;">🤖 Análisis IA:</label>
+        <label style="color: #166534;"><i class="fa-solid fa-robot me-1"></i> Análisis IA:</label>
         <p *ngIf="incidenteSeleccionado.clasificacion_ia" style="margin-top: 4px; font-weight: bold; color: #15803d;">{{ incidenteSeleccionado.clasificacion_ia }}</p>
         <p *ngIf="incidenteSeleccionado.resumen_ia" style="margin-top: 4px; font-size: 0.9rem;">{{ incidenteSeleccionado.resumen_ia }}</p>
       </div>
 
       <!-- 📷 EVIDENCIAS -->
       <div class="info-card" *ngIf="incidenteSeleccionado.evidencias?.length > 0">
-        <label>📷 Evidencia Adjunta:</label>
+        <label><i class="fa-solid fa-camera me-1"></i> Evidencia Adjunta:</label>
         <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
           <ng-container *ngFor="let ev of incidenteSeleccionado.evidencias">
             <a *ngIf="ev.tipo_archivo === 'imagen'" [href]="'http://localhost:8000' + ev.url_archivo" target="_blank" style="display: block; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; height: 80px; width: 80px;">
@@ -169,18 +169,18 @@
         </div>
       </div>
       <div class="info-grid">
-        <label>👤 Cliente:</label>
+        <label><i class="fa-solid fa-user me-1"></i> Cliente:</label>
         <p>{{ incidenteSeleccionado.cliente_nombre || 'Usuario' }}</p>
-        <label>📞 Contacto:</label>
+        <label><i class="fa-solid fa-phone me-1"></i> Contacto:</label>
         <p>{{ incidenteSeleccionado.telefono_cliente || 'No disponible' }}</p>
         
-        <label>🔧 Técnico Asignado:</label>
+        <label><i class="fa-solid fa-user-gear me-1"></i> Técnico Asignado:</label>
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
           <p style="margin: 0;"><strong>{{ incidenteSeleccionado.tecnico?.nombre || 'Sin asignar' }}</strong></p>
-          <button *ngIf="puedeReasignarTecnico(incidenteSeleccionado)" (click)="abrirReasignacion()" class="btn-link-action" style="color: #2563eb; background: none; border: none; cursor: pointer; text-decoration: underline; font-size: 0.8rem;">🔄 Reasignar</button>
+          <button *ngIf="puedeReasignarTecnico(incidenteSeleccionado)" (click)="abrirReasignacion()" class="btn-link-action" style="color: #2563eb; background: none; border: none; cursor: pointer; text-decoration: underline; font-size: 0.8rem;"><i class="fa-solid fa-arrows-rotate me-1"></i> Reasignar</button>
         </div>
         
-        <label>🚗 Vehículo:</label>
+        <label><i class="fa-solid fa-car me-1"></i> Vehículo:</label>
         <p *ngIf="incidenteSeleccionado.vehiculo; else sinVehiculo">
           <strong>{{ incidenteSeleccionado.vehiculo.marca }} {{ incidenteSeleccionado.vehiculo.modelo }}</strong>
           <br>
@@ -190,7 +190,7 @@
           <p style="color: #94a3b8;">No especificado</p>
         </ng-template>
 
-        <label style="display: block; margin-top: 15px; margin-bottom: 8px;">📍 Ubicación del Incidente:</label>
+        <label style="display: block; margin-top: 15px; margin-bottom: 8px;"><i class="fa-solid fa-map-pin me-1"></i> Ubicación del Incidente:</label>
         
         <ng-container *ngIf="incidenteSeleccionado.latitud && incidenteSeleccionado.longitud; else sinCoordenadas">
            <app-mapa-tecnico [incidente]="incidenteSeleccionado"></app-mapa-tecnico>
@@ -199,7 +199,7 @@
            <a [href]="'https://www.google.com/maps/?q=' + incidenteSeleccionado.latitud + ',' + incidenteSeleccionado.longitud"
               target="_blank"
               class="mapa-link" style="display: block; text-align: center; margin-top: 8px; font-size: 0.85rem; padding: 8px;">
-             Abrir en Google Maps ↗️
+             Abrir en Google Maps <i class="fa-solid fa-arrow-up-right-from-square ms-1"></i>
            </a>
         </ng-container>
         
@@ -208,12 +208,12 @@
         </ng-template>
         
         <label style="font-size: 0.85rem; color: #64748b; display: block; margin-top: 10px;">
-          📏 Coordenadas: {{ incidenteSeleccionado.latitud | number:'1.4-4' }}, 
+          Coordenadas: {{ incidenteSeleccionado.latitud | number:'1.4-4' }}, 
           {{ incidenteSeleccionado.longitud | number:'1.4-4' }}
         </label>
       </div>
       <div class="panel-footer">
-        <a [href]="'tel:' + incidenteSeleccionado.telefono_cliente" class="btn-call">📞 Llamar al Cliente</a>
+        <a [href]="'tel:' + incidenteSeleccionado.telefono_cliente" class="btn-call"><i class="fa-solid fa-phone me-1"></i> Llamar al Cliente</a>
         
         <div class="panel-actions">
           <!-- Botones para mis atenciones -->
@@ -238,8 +238,8 @@
                     class="btn-reject" style="width: 100%; text-align: center; display: block;"
                     (click)="abrirModalRechazo(incidenteSeleccionado, 'cancelar')">Cancelar Incidente</button>
 
-            <div *ngIf="incidenteSeleccionado.pago_estado === 'por_cobrar'" style="color: #d97706; font-weight: bold; text-align: center; padding: 10px; background: #fffbeb; border-radius: 8px;">⏳ Cobro Emitido Pendiente</div>
-            <div *ngIf="incidenteSeleccionado.pago_estado === 'pagado'" style="color: #10b981; font-weight: bold; text-align: center; padding: 10px; background: #dcfce7; border-radius: 8px;">✅ Servicio Pagado</div>
+            <div *ngIf="incidenteSeleccionado.pago_estado === 'por_cobrar'" style="color: #d97706; font-weight: bold; text-align: center; padding: 10px; background: #fffbeb; border-radius: 8px;"><i class="fa-solid fa-clock fa-pulse me-1"></i> Cobro Emitido Pendiente</div>
+            <div *ngIf="incidenteSeleccionado.pago_estado === 'pagado'" style="color: #10b981; font-weight: bold; text-align: center; padding: 10px; background: #dcfce7; border-radius: 8px;"><i class="fa-solid fa-circle-check me-1"></i> Servicio Pagado</div>
           </ng-container>
         </div>
       </div>
@@ -248,7 +248,7 @@
 
   <div class="modal-overlay" *ngIf="mostrarModalAsignar">
     <div class="modal-card">
-      <div class="modal-header"><h3>🔧 Asignación de Personal</h3></div>
+      <div class="modal-header"><h3><i class="fa-solid fa-user-gear me-2"></i> Asignación de Personal</h3></div>
       <div class="modal-body">
         <p>Selecciona quién atenderá este servicio:</p>
         <select [(ngModel)]="idTecnicoSeleccionado" class="modern-input">
@@ -279,10 +279,10 @@
 
   <div class="modal-overlay" *ngIf="mostrarModalCobro">
     <div class="modal-card">
-      <div class="modal-header"><h3>💵 Generar Cobro</h3></div>
+      <div class="modal-header"><h3><i class="fa-solid fa-file-invoice-dollar me-2"></i> Generar Cobro</h3></div>
       <div class="modal-body">
         <div class="alert-info" style="background: #fff3cd; border-left: 4px solid #ff9800; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 0.9em; color: #856404;">
-          ⚠️ La plataforma retiene el 10% como comisión por servicios. Verás el desglose abajo.
+          <i class="fa-solid fa-circle-exclamation me-1"></i> La plataforma retiene el 10% como comisión por servicios. Verás el desglose abajo.
         </div>
         
         <label>Monto a cobrar (Bs.):</label>
@@ -312,10 +312,10 @@
 
   <div class="modal-overlay" *ngIf="mostrarModalCotizar">
     <div class="modal-card">
-      <div class="modal-header"><h3>💡 Enviar Cotización</h3></div>
+      <div class="modal-header"><h3><i class="fa-solid fa-paper-plane me-2"></i> Enviar Cotización</h3></div>
       <div class="modal-body">
         <div class="alert-info" *ngIf="sugerenciaMonto > 0" style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 0.9em; color: #1e3a8a;">
-          🤖 <strong>Sugerencia IA:</strong> Según tu historial y la categoría del incidente, te sugerimos cobrar <strong>{{ sugerenciaMonto }} Bs.</strong>
+          <i class="fa-solid fa-robot me-1"></i> <strong>Sugerencia IA:</strong> Según tu historial y la categoría del incidente, te sugerimos cobrar <strong>{{ sugerenciaMonto }} Bs.</strong>
         </div>
         
         <label>Monto a cobrar (Bs.):</label>
@@ -334,7 +334,7 @@
 
   <div class="modal-overlay" *ngIf="mostrarModalReparacion">
     <div class="modal-card">
-      <div class="modal-header"><h3>⏱️ Tiempo Estimado de Reparación</h3></div>
+      <div class="modal-header"><h3><i class="fa-solid fa-stopwatch me-2"></i> Tiempo Estimado de Reparación</h3></div>
       <div class="modal-body">
         <p>Ingresa el tiempo estimado basado en el diagnóstico inicial (ej: 2 horas, 45 min):</p>
         <input type="text" [(ngModel)]="tiempoReparacionInput" class="modern-input" placeholder="Ej: 2 horas">

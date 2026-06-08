@@ -1,18 +1,18 @@
 <div class="page-container">
   <div class="header">
     <div>
-      <h2>🔔 Centro de Notificaciones</h2>
+      <h2><i class="fa-solid fa-bell text-primary me-2"></i> Centro de Notificaciones</h2>
       <p>Historial de alertas, emergencias y pagos</p>
     </div>
     <button *ngIf="esTecnico" class="btn-back" (click)="volver()">Volver</button>
   </div>
 
   <div *ngIf="cargando" class="loading-state">
-    ⏳ Cargando tu historial...
+    <i class="fa-solid fa-circle-notch fa-spin me-2"></i> Cargando tu historial...
   </div>
 
   <div *ngIf="!cargando && notificaciones.length === 0" class="empty-state">
-    <span class="empty-icon">📭</span>
+    <span class="empty-icon"><i class="fa-regular fa-folder-open text-muted"></i></span>
     <h3>No tienes notificaciones</h3>
     <p>Aquí aparecerán los avisos de nuevos auxilios y actualizaciones.</p>
   </div>
@@ -21,11 +21,12 @@
     
     <div *ngFor="let noti of notificaciones" 
          class="noti-card" 
-         [ngClass]="{'unread': !noti.leido}"> <div class="noti-icon">
-        <span *ngIf="noti.tipo === 'emergencia'">🚨</span>
-        <span *ngIf="noti.tipo === 'pago'">💰</span>
-        <span *ngIf="noti.tipo === 'sistema'">⚙️</span>
-        <span *ngIf="!['emergencia', 'pago', 'sistema'].includes(noti.tipo)">🔔</span>
+         [ngClass]="{'unread': !noti.leido}">
+      <div class="noti-icon">
+        <span *ngIf="noti.tipo === 'emergencia'"><i class="fa-solid fa-triangle-exclamation text-danger"></i></span>
+        <span *ngIf="noti.tipo === 'pago'"><i class="fa-solid fa-wallet text-success"></i></span>
+        <span *ngIf="noti.tipo === 'sistema'"><i class="fa-solid fa-gears text-secondary"></i></span>
+        <span *ngIf="!['emergencia', 'pago', 'sistema'].includes(noti.tipo)"><i class="fa-solid fa-bell text-primary"></i></span>
       </div>
 
       <div class="noti-content">
@@ -38,7 +39,7 @@
 
       <div class="noti-actions">
         <button *ngIf="!noti.leido" class="btn-read" (click)="marcarComoLeida(noti.id)">
-          ✓ Marcar como leída
+          <i class="fa-solid fa-check me-1"></i> Marcar como leída
         </button>
       </div>
       
