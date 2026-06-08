@@ -47,6 +47,7 @@ export const routes: Routes = [
       { path: 'notificaciones', component: NotificacionesComponent },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'historial', component: HistorialComponent },
+      { path: 'mi-perfil', loadComponent: () => import('./features/mi-perfil/mi-perfil').then(m => m.MiPerfilComponent) }
     ]
   },
   // Este es el que te está mandando al login si algo falla arriba

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TalleresService } from '../../core/services/talleres';
 import * as L from 'leaflet';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-perfil-taller',
@@ -15,6 +16,7 @@ export class PerfilTallerComponent implements OnInit {
   private talleresService = inject(TalleresService);
   private zone = inject(NgZone);
   private cdr = inject(ChangeDetectorRef);
+  private route = inject(ActivatedRoute);
   private map: any;
   private marker: any;
 
@@ -84,6 +86,12 @@ export class PerfilTallerComponent implements OnInit {
         }
         this.cdr.detectChanges();
         this.initMap();
+        
+        // Si viene con checkout=true y no es premium, gatillar suscripción de Stripe
+        const checkoutParam = this.route.snapshot.queryParams['checkout'];
+        if (checkoutParam === 'true' && this.taller.plan_suscripcion !== 'premium') {
+          this.suscribirPremium();
+        }
       },
       error: (err) => {
         console.error('Error al cargar taller', err);

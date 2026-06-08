@@ -1,7 +1,16 @@
 <div class="calificaciones-container">
-  <div class="header">
-    <h1>Calificaciones Recibidas</h1>
-    <p class="subtitle">Descubre qué opinan tus clientes sobre tus servicios</p>
+  
+  <!-- HEADER -->
+  <div class="cal-header">
+    <div class="cal-header-left">
+      <div class="cal-title-row">
+        <span class="cal-icon"><i class="fa-solid fa-star"></i></span>
+        <div>
+          <h1 class="cal-title">Calificaciones Recibidas</h1>
+          <p class="cal-subtitle">Descubre qué opinan tus clientes sobre tus servicios</p>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div *ngIf="isLoading" class="loading-state">
@@ -16,25 +25,25 @@
   <!-- FILTROS BACKEND -->
   <div class="filter-bar">
     <div class="filter-group">
-      <label class="filter-label">📅 Desde</label>
+      <label class="filter-label"><i class="fa-regular fa-calendar me-1"></i> Desde</label>
       <input type="date" class="filter-input" [(ngModel)]="fechaInicio" />
     </div>
     <div class="filter-group">
-      <label class="filter-label">📅 Hasta</label>
+      <label class="filter-label"><i class="fa-regular fa-calendar me-1"></i> Hasta</label>
       <input type="date" class="filter-input" [(ngModel)]="fechaFin" />
     </div>
     <div class="filter-group">
-      <label class="filter-label">👨‍🔧 Técnico</label>
+      <label class="filter-label"><i class="fa-solid fa-user-gear me-1"></i> Técnico</label>
       <select class="filter-input" [(ngModel)]="tecnicoSeleccionado">
         <option [ngValue]="null">Todos los técnicos</option>
         <option *ngFor="let tec of tecnicos" [ngValue]="tec.id">{{ tec.nombre }} {{ tec.apellido }}</option>
       </select>
     </div>
     <button class="btn-apply" (click)="aplicarFiltrosBackend()" [disabled]="isLoading">
-      <span *ngIf="!isLoading">🔍 Aplicar Filtros</span>
-      <span *ngIf="isLoading">⏳ Cargando...</span>
+      <span *ngIf="!isLoading"><i class="fa-solid fa-magnifying-glass me-1"></i> Aplicar Filtros</span>
+      <span *ngIf="isLoading"><i class="fa-solid fa-circle-notch fa-spin me-1"></i> Cargando...</span>
     </button>
-    <button class="btn-clear" (click)="limpiarFiltrosBackend()">↩ Limpiar</button>
+    <button class="btn-clear" (click)="limpiarFiltrosBackend()"><i class="fa-solid fa-arrow-rotate-left me-1"></i> Limpiar</button>
   </div>
 
   <ng-container *ngIf="!isLoading && !errorMessage">
@@ -42,16 +51,18 @@
     <!-- TARJETA RESUMEN -->
     <div class="summary-card" *ngIf="promedioInfo">
       <div class="score-box">
+        <span class="score-label">Promedio General</span>
         <h2 class="score">{{ promedioInfo.promedio | number:'1.1-1' }}</h2>
         <div class="stars-big">
           <span *ngFor="let s of getStarsArray(promedioInfo.promedio)" class="star" [class.filled]="s === 1">★</span>
         </div>
-        <p class="total">{{ promedioInfo.total_calificaciones }} reseñas en total</p>
+        <p class="total"><i class="fa-solid fa-comments me-1"></i> {{ promedioInfo.total_calificaciones }} reseñas</p>
       </div>
+      
       <div class="filters-box">
         <div class="filter-group">
-          <label>Filtrar por estrellas:</label>
-          <select [(ngModel)]="estrellasFiltro" (change)="onFiltroChange()">
+          <label><i class="fa-solid fa-filter me-1"></i> Filtrar por estrellas</label>
+          <select class="custom-select" [(ngModel)]="estrellasFiltro" (change)="onFiltroChange()">
             <option value="TODAS">Todas las estrellas</option>
             <option [ngValue]="5">5 Estrellas</option>
             <option [ngValue]="4">4 Estrellas</option>
@@ -61,8 +72,8 @@
           </select>
         </div>
         <div class="filter-group">
-          <label>Ordenar por:</label>
-          <select [(ngModel)]="fechaOrden" (change)="onFiltroChange()">
+          <label><i class="fa-solid fa-arrow-down-wide-short me-1"></i> Ordenar por</label>
+          <select class="custom-select" [(ngModel)]="fechaOrden" (change)="onFiltroChange()">
             <option value="NUEVAS">Más recientes</option>
             <option value="ANTIGUAS">Más antiguas</option>
           </select>
@@ -73,6 +84,7 @@
     <!-- LISTADO -->
     <div class="reviews-list">
       <div *ngIf="calificacionesFiltradas.length === 0" class="empty-state">
+        <i class="fa-solid fa-comment-slash empty-icon"></i>
         <p>No se encontraron calificaciones con los filtros actuales.</p>
       </div>
 
@@ -82,14 +94,16 @@
             <div class="avatar">{{ cal.cliente_nombre ? cal.cliente_nombre[0] : 'U' }}</div>
             <div>
               <h3 class="client-name">{{ cal.cliente_nombre }} {{ cal.cliente_apellido }}</h3>
-              <p class="client-vehicle" *ngIf="cal.vehiculo_marca">🚗 {{ cal.vehiculo_marca }} {{ cal.vehiculo_modelo }}</p>
+              <span class="client-vehicle" *ngIf="cal.vehiculo_marca">
+                <i class="fa-solid fa-car me-1"></i> {{ cal.vehiculo_marca }} {{ cal.vehiculo_modelo }}
+              </span>
             </div>
           </div>
           <div class="review-meta">
             <div class="stars-small">
               <span *ngFor="let s of getStarsArray(cal.puntuacion)" class="star" [class.filled]="s === 1">★</span>
             </div>
-            <span class="date">{{ cal.fecha_creacion | date:'dd/MM/yyyy HH:mm' }}</span>
+            <span class="date"><i class="fa-regular fa-clock me-1"></i> {{ cal.fecha_creacion | date:'dd/MM/yyyy HH:mm' }}</span>
           </div>
         </div>
         <div class="review-body">

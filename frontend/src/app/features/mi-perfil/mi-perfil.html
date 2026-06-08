@@ -1,0 +1,87 @@
+<div class="perfil-container">
+  <!-- HEADER -->
+  <div class="perfil-header">
+    <div class="perfil-header-left">
+      <div class="perfil-title-row">
+        <span class="perfil-icon"><i class="fa-solid fa-user-gear"></i></span>
+        <div>
+          <h1 class="perfil-title">Mi Perfil</h1>
+          <p class="perfil-subtitle">Administra tus datos personales y credenciales de acceso</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="mensaje" class="alert-banner">
+    <i class="fa-solid fa-circle-info me-2"></i> {{ mensaje }}
+  </div>
+
+  <div class="perfil-grid">
+    <!-- LEFT SIDE: AVATAR CARD -->
+    <div class="card avatar-card">
+      <div class="card-body centered-body">
+        <div class="avatar-large">
+          {{ usuario.nombre ? usuario.nombre[0].toUpperCase() : 'U' }}
+        </div>
+        <h3 class="user-fullname">{{ usuario.nombre }} {{ usuario.apellido || '' }}</h3>
+        <span class="user-role-badge">
+          <i class="fa-solid fa-shield-halved me-1"></i> {{ getRolLabel(usuario.rol_id) }}
+        </span>
+        <div class="taller-association" *ngIf="usuario.taller">
+          <i class="fa-solid fa-shop me-1 text-primary"></i> {{ usuario.taller.nombre }}
+        </div>
+        <div class="email-display">
+          <i class="fa-regular fa-envelope me-1"></i> {{ usuario.correo }}
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDE: FORM FIELDS -->
+    <div class="card form-card">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fa-solid fa-id-card me-2 text-primary"></i> Información Personal</h3>
+      </div>
+      <div class="card-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nombre</label>
+            <input type="text" [(ngModel)]="usuario.nombre" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Apellido</label>
+            <input type="text" [(ngModel)]="usuario.apellido" class="form-input">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Correo Electrónico</label>
+          <input type="email" [value]="usuario.correo" class="form-input readonly-input" readonly>
+          <span class="input-helper"><i class="fa-solid fa-lock me-1"></i> El correo no puede ser modificado por motivos de seguridad</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Teléfono</label>
+          <input type="text" [(ngModel)]="usuario.telefono" class="form-input">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Ciudad</label>
+            <input type="text" [(ngModel)]="usuario.ciudad" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Dirección</label>
+            <input type="text" [(ngModel)]="usuario.direccion" class="form-input">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTION BUTTON -->
+  <div class="actions-section">
+    <button (click)="guardar()" class="btn-save-profile" [disabled]="cargando">
+      <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Cambios
+    </button>
+  </div>
+</div>

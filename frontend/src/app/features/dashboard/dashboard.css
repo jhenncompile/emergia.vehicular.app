@@ -186,53 +186,138 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── KPI SECTIONS ── */
+.kpi-section {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1.5px solid #e2e8f0;
+  padding-bottom: 8px;
+}
+
 /* ── KPI GRID ── */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .kpi-card {
-  background: #fff;
-  border-radius: 14px;
-  padding: 20px 18px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 22px 20px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  border-top: 4px solid transparent;
-  transition: transform 0.2s, box-shadow 0.2s;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.kpi-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  transition: all 0.3s ease;
+}
 
-.kpi-blue  { border-top-color: #339af0; }
-.kpi-green { border-top-color: #51cf66; }
-.kpi-red   { border-top-color: #ff6b6b; }
-.kpi-purple { border-top-color: #cc5de8; }
-.kpi-orange { border-top-color: #f59f00; }
+.kpi-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+  border-color: rgba(59, 130, 246, 0.2);
+}
 
-.kpi-icon { font-size: 1.4rem; }
+.kpi-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  margin-bottom: 4px;
+  transition: transform 0.3s ease;
+}
+
+.kpi-card:hover .kpi-icon {
+  transform: scale(1.1);
+}
 
 .kpi-value {
-  font-size: 1.9rem;
-  font-weight: 800;
-  color: #1a1d23;
-  line-height: 1;
+  font-size: 2.1rem;
+  font-weight: 850;
+  color: #0f172a;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
 }
 
 .kpi-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #495057;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #475569;
 }
 
 .kpi-sub {
-  font-size: 0.75rem;
-  color: #adb5bd;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  font-weight: 500;
 }
+
+/* ── KPI VARIANTS (Curated Color Palettes) ── */
+
+/* Blue (Total Incidentes) */
+.kpi-blue::before { background: #3b82f6; }
+.kpi-blue .kpi-icon { background: #eff6ff; color: #3b82f6; }
+.kpi-blue:hover { background: linear-gradient(180deg, #ffffff 0%, #f0f7ff 100%); }
+
+/* Green (Finalizados) */
+.kpi-green::before { background: #10b981; }
+.kpi-green .kpi-icon { background: #ecfdf5; color: #10b981; }
+.kpi-green:hover { background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%); }
+
+/* Red (Cancelados) */
+.kpi-red::before { background: #ef4444; }
+.kpi-red .kpi-icon { background: #fdf2f2; color: #ef4444; }
+.kpi-red:hover { background: linear-gradient(180deg, #ffffff 0%, #fdf2f2 100%); }
+
+/* Teal (Tasa Éxito) */
+.kpi-teal::before { background: #06b6d4; }
+.kpi-teal .kpi-icon { background: #ecfeff; color: #06b6d4; }
+.kpi-teal:hover { background: linear-gradient(180deg, #ffffff 0%, #f0fdfa 100%); }
+
+/* Orange (T. Prom. Asignación) */
+.kpi-orange::before { background: #f97316; }
+.kpi-orange .kpi-icon { background: #fff7ed; color: #f97316; }
+.kpi-orange:hover { background: linear-gradient(180deg, #ffffff 0%, #fff7ed 100%); }
+
+/* Amber (T. Prom. Llegada) */
+.kpi-amber::before { background: #d97706; }
+.kpi-amber .kpi-icon { background: #fef3c7; color: #d97706; }
+.kpi-amber:hover { background: linear-gradient(180deg, #ffffff 0%, #fef3c7 100%); }
+
+/* Emerald (SLA) */
+.kpi-emerald::before { background: #059669; }
+.kpi-emerald .kpi-icon { background: #d1fae5; color: #059669; }
+.kpi-emerald:hover { background: linear-gradient(180deg, #ffffff 0%, #e6fcf5 100%); }
+
+/* Gold (Calificación) */
+.kpi-gold::before { background: #eab308; }
+.kpi-gold .kpi-icon { background: #fef9c3; color: #eab308; }
+.kpi-gold:hover { background: linear-gradient(180deg, #ffffff 0%, #fef9c3 100%); }
 
 /* ── CHARTS ROW ── */
 .charts-row {
@@ -247,10 +332,17 @@
 }
 
 .chart-card {
-  background: #fff;
-  border-radius: 14px;
-  padding: 22px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  transition: all 0.3s ease;
+}
+
+.chart-card:hover {
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  border-color: rgba(226, 232, 240, 1);
 }
 
 .chart-title {

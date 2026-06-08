@@ -1,7 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router'; // 🆕 Importar RouterLink
+import { ActivatedRoute, Router, RouterLink } from '@angular/router'; // 🆕 Importar ActivatedRoute
 import { AuthService, LoginRequest } from '../../../core/services/auth';
 
 @Component({
@@ -12,10 +12,11 @@ import { AuthService, LoginRequest } from '../../../core/services/auth';
   templateUrl: './login.html', 
   styleUrls: ['./login.css'] 
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   loginForm = this.fb.group({
     username: ['', [Validators.required, Validators.email]],
@@ -24,6 +25,11 @@ export class LoginComponent {
 
   errorMessage = '';
   isLoading = false;
+  isCheckout = false;
+
+  ngOnInit() {
+    this.isCheckout = this.route.snapshot.queryParams['checkout'] === 'true';
+  }
 
   onSubmit() {
     if (this.loginForm.invalid) return;
@@ -51,7 +57,11 @@ export class LoginComponent {
           this.router.navigate(['/tecnico/dashboard']);
         } else if (rolId === 1) {
           // Admin
-          this.router.navigate(['/dashboard']);
+          if (this.isCheckout) {
+            this.router.navigate(['/perfil-taller'], { queryParams: { checkout: 'true' } });
+          } else {
+            this.router.navigate(['/dashboard']);
+          }
         } else {
           // Cliente u otro rol
           this.router.navigate(['/']);

@@ -19,4 +19,13 @@ export class LandingComponent {
   irARegistro() {
     this.router.navigate(['/registro-taller']);
   }
+
+  irAPlanPremium() {
+    const token = localStorage.getItem('token');
+    if (token) {
+      this.router.navigate(['/perfil-taller'], { queryParams: { checkout: 'true' } });
+    } else {
+      this.router.navigate(['/registro-taller'], { queryParams: { checkout: 'true' } });
+    }
+  }
 }

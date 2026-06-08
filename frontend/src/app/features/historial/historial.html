@@ -1,107 +1,140 @@
 <div class="historial-container">
-  <h2>Historial y Métricas</h2>
+  
+  <!-- HEADER -->
+  <div class="hist-header">
+    <div class="hist-header-left">
+      <div class="hist-title-row">
+        <span class="hist-icon"><i class="fa-solid fa-clock-rotate-left"></i></span>
+        <div>
+          <h1 class="hist-title">Historial y Métricas</h1>
+          <p class="hist-subtitle">Consulta el registro de atenciones y el rendimiento operativo</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <div class="filtros-section">
-    <div class="form-group">
-      <label>Desde:</label>
-      <input type="date" [(ngModel)]="fechaInicio">
+  <!-- FILTROS -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label class="filter-label"><i class="fa-regular fa-calendar me-1"></i> Desde</label>
+      <input type="date" class="filter-input" [(ngModel)]="fechaInicio">
     </div>
     
-    <div class="form-group">
-      <label>Hasta:</label>
-      <input type="date" [(ngModel)]="fechaFin">
+    <div class="filter-group">
+      <label class="filter-label"><i class="fa-regular fa-calendar me-1"></i> Hasta</label>
+      <input type="date" class="filter-input" [(ngModel)]="fechaFin">
     </div>
 
-    <div class="form-group">
-      <label>Técnico:</label>
-      <select [(ngModel)]="tecnicoSeleccionado">
+    <div class="filter-group">
+      <label class="filter-label"><i class="fa-solid fa-user-gear me-1"></i> Técnico</label>
+      <select class="filter-input select-input" [(ngModel)]="tecnicoSeleccionado">
         <option [ngValue]="null">Todos los técnicos</option>
         <option *ngFor="let tec of tecnicos" [ngValue]="tec.id">{{ tec.nombre }}</option>
       </select>
     </div>
 
-    <div class="form-group">
-      <label>Estados:</label>
+    <div class="filter-group filter-checkboxes">
+      <label class="filter-label"><i class="fa-solid fa-circle-info me-1"></i> Estados</label>
       <div class="checkbox-group">
         <label *ngFor="let est of estadosDisponibles" class="checkbox-item">
           <input type="checkbox" 
                  [checked]="estadosSeleccionados.includes(est.value)" 
                  (change)="toggleEstado(est.value)">
-          {{ est.label }}
+          <span>{{ est.label }}</span>
         </label>
       </div>
     </div>
 
-    <button class="btn-primary" (click)="aplicarFiltros()">Filtrar</button>
+    <button class="btn-apply" (click)="aplicarFiltros()">
+      <i class="fa-solid fa-magnifying-glass me-1"></i> Filtrar
+    </button>
   </div>
 
+  <!-- KPIS -->
   <div class="kpis-grid" *ngIf="metricas">
-    <div class="kpi-card">
-      <h3>Recaudado Neto (Taller)</h3>
-      <p class="kpi-value text-success">
+    <div class="kpi-card kpi-green">
+      <div class="kpi-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+      <div class="kpi-value text-success">
         Bs. {{ metricas.finanzas?.recaudado_neto | number:'1.2-2' }}
-      </p>
+      </div>
+      <div class="kpi-label">Recaudado Neto (Taller)</div>
+      <div class="kpi-sub">excluye comisión de plataforma</div>
     </div>
-    <div class="kpi-card">
-      <h3>Atenciones Finalizadas</h3>
-      <p class="kpi-value">{{ historial.length }}</p>
+
+    <div class="kpi-card kpi-blue">
+      <div class="kpi-icon"><i class="fa-solid fa-circle-check"></i></div>
+      <div class="kpi-value">{{ historial.length }}</div>
+      <div class="kpi-label">Atenciones Finalizadas</div>
+      <div class="kpi-sub">completadas en período</div>
     </div>
-    <div class="kpi-card">
-      <h3>Promedio de Asignación</h3>
-      <p class="kpi-value">
+
+    <div class="kpi-card kpi-orange">
+      <div class="kpi-icon"><i class="fa-solid fa-stopwatch"></i></div>
+      <div class="kpi-value">
         {{ metricas.tiempo_promedio_asignacion_segundos || 0 | number:'1.0-0' }} s
-      </p>
+      </div>
+      <div class="kpi-label">Promedio de Asignación</div>
+      <div class="kpi-sub">tiempo de respuesta inicial</div>
     </div>
   </div>
 
-  <div class="table-container">
-    <table class="modern-table">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Fecha</th>
-          <th>Estado</th>
-          <th>Prioridad</th>
-          <th>Técnico Asignado</th>
-          <th>Monto Cobrado</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngIf="cargando">
-          <td colspan="7" style="text-align: center;">Cargando historial...</td>
-        </tr>
-        <tr *ngFor="let item of historial">
-          <td><strong>#{{ item.id }}</strong></td>
-          <td>{{ item.fecha_creacion | date:'dd/MM/yyyy HH:mm' }}</td>
-          <td>
-            <span class="badge" [ngClass]="{
-              'badge-success': item.estado === 'finalizado',
-              'badge-danger': item.estado === 'cancelado',
-              'badge-warning': ['asignado_taller', 'en_camino', 'en_atencion'].includes(item.estado)
-            }">
-              {{ etiquetaEstado(item.estado) | uppercase }}
-            </span>
-          </td>
-          <td>{{ item.prioridad }}</td>
-          <td>{{ item.tecnico?.nombre || 'Sin asignar' }}</td>
-          <td class="monto-text" style="color: #51cf66; font-weight: 600;">
-            {{ item.pagos?.monto | number:'1.2-2' }} Bs. | <span style="color: #999; font-size: 0.85em;">-{{ item.pagos?.comision_plataforma | number:'1.2-2' }} Bs.</span>
-          </td>
-          <td>
-            <button
-              *ngIf="item.estado === 'finalizado'"
-              class="btn-reporte"
-              (click)="descargarPDF(item.id)"
-              [disabled]="descargas[item.id]">
-              <span>📄</span> {{ descargas[item.id] ? 'Generando...' : 'Reporte' }}
-            </button>
-          </td>
-        </tr>
-        <tr *ngIf="!cargando && historial.length === 0">
-          <td colspan="7" style="text-align: center;">No hay registros para estos filtros.</td>
-        </tr>
-      </tbody>
-    </table>
+  <!-- TABLA -->
+  <div class="table-card">
+    <div class="table-container">
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+            <th>Prioridad</th>
+            <th>Técnico Asignado</th>
+            <th>Monto Cobrado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="cargando">
+            <td colspan="7" class="status-cell"><i class="fa-solid fa-spinner fa-spin me-2"></i> Cargando historial...</td>
+          </tr>
+          <tr *ngFor="let item of historial">
+            <td><strong>#{{ item.id }}</strong></td>
+            <td><i class="fa-regular fa-calendar me-1 text-muted"></i> {{ item.fecha_creacion | date:'dd/MM/yyyy HH:mm' }}</td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-success': item.estado === 'finalizado',
+                'badge-danger': item.estado === 'cancelado',
+                'badge-warning': ['asignado_taller', 'en_camino', 'en_atencion'].includes(item.estado)
+              }">
+                {{ etiquetaEstado(item.estado) | uppercase }}
+              </span>
+            </td>
+            <td>
+              <span class="prioridad-indicator" [class.alta]="item.prioridad === 'alta'">
+                {{ item.prioridad }}
+              </span>
+            </td>
+            <td><i class="fa-regular fa-user me-1 text-muted"></i> {{ item.tecnico?.nombre || 'Sin asignar' }}</td>
+            <td class="monto-cell">
+              <span class="monto-bruto">{{ item.pagos?.monto | number:'1.2-2' }} Bs.</span>
+              <span class="monto-comision">-{{ item.pagos?.comision_plataforma | number:'1.2-2' }} Bs.</span>
+            </td>
+            <td>
+              <button
+                *ngIf="item.estado === 'finalizado'"
+                class="btn-reporte"
+                (click)="descargarPDF(item.id)"
+                [disabled]="descargas[item.id]">
+                <i class="fa-solid fa-file-pdf"></i>
+                <span>{{ descargas[item.id] ? 'Generando...' : 'Reporte' }}</span>
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="!cargando && historial.length === 0">
+            <td colspan="7" class="status-cell"><i class="fa-solid fa-folder-open me-2"></i> No hay registros para estos filtros.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>

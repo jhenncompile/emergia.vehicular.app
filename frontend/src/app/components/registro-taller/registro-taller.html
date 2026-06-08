@@ -154,7 +154,7 @@
       <!-- Redirect to Login -->
       <p class="redirect-text">
         ¿Ya tienes un taller registrado? 
-        <a routerLink="/login" class="redirect-link">Inicia sesión aquí</a>
+        <a [routerLink]="['/login']" [queryParams]="isCheckout ? { checkout: 'true' } : {}" class="redirect-link">Inicia sesión aquí</a>
       </p>
 
     </form>

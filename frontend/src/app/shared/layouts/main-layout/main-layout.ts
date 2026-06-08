@@ -44,7 +44,11 @@ import { WebSocketNotificacionService } from '../../../core/services/websocket-n
     @media (max-width: 768px) {
       .main-content {
         margin-left: 0;
-        padding: 20px;
+        height: auto;
+        overflow-y: visible;
+      }
+      .content-wrapper {
+        padding: 80px 16px 24px;
       }
     }
   `]

@@ -42,67 +42,74 @@
     <div class="spinner"></div> Calculando KPIs del período seleccionado...
   </div>
 
-  <!-- ═══════════════════════ KPI CARDS ═══════════════════════ -->
-  <div class="kpi-grid" *ngIf="!cargandoMetricas">
+  <!-- ═══════════════════════ SECCIÓN 1: RENDIMIENTO Y OPERACIONES ═══════════════════════ -->
+  <div class="kpi-section" *ngIf="!cargandoMetricas">
+    <h3 class="section-title"><i class="fa-solid fa-chart-line me-2"></i> Rendimiento y Operaciones</h3>
+    <div class="kpi-grid">
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-icon"><i class="fa-solid fa-clipboard-list"></i></div>
+        <div class="kpi-value">{{ kpis.totalIncidentes }}</div>
+        <div class="kpi-label">Total Incidentes</div>
+        <div class="kpi-sub">en el período</div>
+      </div>
 
-    <div class="kpi-card kpi-blue">
-      <div class="kpi-icon"><i class="fa-solid fa-clipboard-list"></i></div>
-      <div class="kpi-value">{{ kpis.totalIncidentes }}</div>
-      <div class="kpi-label">Total Incidentes</div>
-      <div class="kpi-sub">en el período</div>
-    </div>
+      <div class="kpi-card kpi-green">
+        <div class="kpi-icon"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="kpi-value">{{ kpis.incidentesFinalizados }}</div>
+        <div class="kpi-label">Finalizados</div>
+        <div class="kpi-sub">atenciones completadas</div>
+      </div>
 
-    <div class="kpi-card kpi-green">
-      <div class="kpi-icon"><i class="fa-solid fa-circle-check"></i></div>
-      <div class="kpi-value">{{ kpis.incidentesFinalizados }}</div>
-      <div class="kpi-label">Finalizados</div>
-      <div class="kpi-sub">atenciones completadas</div>
-    </div>
+      <div class="kpi-card kpi-red">
+        <div class="kpi-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+        <div class="kpi-value">{{ kpis.incidentesCancelados }}</div>
+        <div class="kpi-label">Incidentes Cancelados</div>
+        <div class="kpi-sub">
+          {{ kpis.porcentajeCancelados }}% del total
+        </div>
+      </div>
 
-    <div class="kpi-card kpi-red">
-      <div class="kpi-icon"><i class="fa-solid fa-circle-xmark"></i></div>
-      <div class="kpi-value">{{ kpis.incidentesCancelados }}</div>
-      <div class="kpi-label">Incidentes Cancelados</div>
-      <div class="kpi-sub">
-        {{ kpis.porcentajeCancelados }}% del total
+      <div class="kpi-card kpi-teal">
+        <div class="kpi-icon"><i class="fa-solid fa-bullseye"></i></div>
+        <div class="kpi-value">{{ kpis.tasaExito }}%</div>
+        <div class="kpi-label">Tasa de Éxito</div>
+        <div class="kpi-sub">completados s/ totales</div>
       </div>
     </div>
+  </div>
 
-    <div class="kpi-card kpi-green">
-      <div class="kpi-icon"><i class="fa-solid fa-bullseye"></i></div>
-      <div class="kpi-value">{{ kpis.tasaExito }}%</div>
-      <div class="kpi-label">Tasa de Éxito</div>
-      <div class="kpi-sub">completados s/ totales</div>
+  <!-- ═══════════════════════ SECCIÓN 2: EFICIENCIA Y CALIDAD DE SERVICIO ═══════════════════════ -->
+  <div class="kpi-section" *ngIf="!cargandoMetricas">
+    <h3 class="section-title"><i class="fa-solid fa-clock-rotate-left me-2"></i> Eficiencia y Calidad de Servicio</h3>
+    <div class="kpi-grid">
+      <div class="kpi-card kpi-orange">
+        <div class="kpi-icon"><i class="fa-solid fa-stopwatch"></i></div>
+        <div class="kpi-value">{{ kpis.tiempoPromedioMin }} min</div>
+        <div class="kpi-label">T. Prom. Asignación</div>
+        <div class="kpi-sub">respuesta inicial</div>
+      </div>
+
+      <div class="kpi-card kpi-amber">
+        <div class="kpi-icon"><i class="fa-solid fa-truck-pickup"></i></div>
+        <div class="kpi-value">{{ kpis.tiempoPromedioLlegadaMin }} min</div>
+        <div class="kpi-label">T. Prom. Llegada</div>
+        <div class="kpi-sub">desde la asignación</div>
+      </div>
+
+      <div class="kpi-card kpi-emerald">
+        <div class="kpi-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+        <div class="kpi-value">{{ kpis.cumplimientoSLA }}%</div>
+        <div class="kpi-label">Cumplimiento SLA</div>
+        <div class="kpi-sub">llegada &lt; 60 min</div>
+      </div>
+
+      <div class="kpi-card kpi-gold">
+        <div class="kpi-icon"><i class="fa-solid fa-star"></i></div>
+        <div class="kpi-value">{{ kpis.promedioCalificacion | number:'1.1-1' }} / 5</div>
+        <div class="kpi-label">Promedio Calificación</div>
+        <div class="kpi-sub">satisfacción del cliente</div>
+      </div>
     </div>
-
-    <div class="kpi-card kpi-orange">
-      <div class="kpi-icon"><i class="fa-solid fa-stopwatch"></i></div>
-      <div class="kpi-value">{{ kpis.tiempoPromedioMin }} min</div>
-      <div class="kpi-label">T. Prom. Asignación</div>
-      <div class="kpi-sub">tiempo de respuesta inicial</div>
-    </div>
-
-    <div class="kpi-card" style="border-top-color: #e67e22; background-color: rgba(230, 126, 34, 0.05);">
-      <div class="kpi-icon" style="color: #e67e22;"><i class="fa-solid fa-truck-pickup"></i></div>
-      <div class="kpi-value">{{ kpis.tiempoPromedioLlegadaMin }} min</div>
-      <div class="kpi-label">T. Prom. Llegada</div>
-      <div class="kpi-sub">desde la asignación</div>
-    </div>
-
-    <div class="kpi-card" style="border-top-color: #27ae60; background-color: rgba(39, 174, 96, 0.05);">
-      <div class="kpi-icon" style="color: #27ae60;"><i class="fa-solid fa-clipboard-check"></i></div>
-      <div class="kpi-value">{{ kpis.cumplimientoSLA }}%</div>
-      <div class="kpi-label">Cumplimiento SLA</div>
-      <div class="kpi-sub">llegada &lt; 60 min</div>
-    </div>
-
-    <div class="kpi-card kpi-gold" style="border-top-color: #ffd43b;">
-      <div class="kpi-icon"><i class="fa-solid fa-star"></i></div>
-      <div class="kpi-value">{{ kpis.promedioCalificacion | number:'1.1-1' }} / 5</div>
-      <div class="kpi-label">Promedio Calificación</div>
-      <div class="kpi-sub">satisfacción del cliente</div>
-    </div>
-
   </div>
 
   <!-- ═══════════════════════ FINANZAS + TÉCNICOS ═══════════════════════ -->

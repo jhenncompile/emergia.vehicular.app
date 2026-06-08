@@ -1,7 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth';
 
 @Component({
@@ -12,12 +12,18 @@ import { AuthService } from '../../core/services/auth';
   templateUrl: './registro-taller.html',
   styleUrls: ['./registro-taller.css']
 })
-export class RegistroTallerComponent {
+export class RegistroTallerComponent implements OnInit {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   hidePassword = true;
+  isCheckout = false;
+
+  ngOnInit() {
+    this.isCheckout = this.route.snapshot.queryParams['checkout'] === 'true';
+  }
 
   togglePasswordVisibility() {
     this.hidePassword = !this.hidePassword;
@@ -41,7 +47,12 @@ export class RegistroTallerComponent {
       this.authService.registerTaller(this.registerForm.value as any).subscribe({
         next: () => {
           alert('¡Taller registrado con éxito!');
-          this.router.navigate(['/dashboard']);
+          const isCheckout = this.route.snapshot.queryParams['checkout'] === 'true';
+          if (isCheckout) {
+            this.router.navigate(['/perfil-taller'], { queryParams: { checkout: 'true' } });
+          } else {
+            this.router.navigate(['/dashboard']);
+          }
         },
         error: (err) => {
           console.error(err);
