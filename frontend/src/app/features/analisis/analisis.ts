@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
 import * as L from 'leaflet';
-import 'leaflet.heat'; // Asegurarse de tener importado el plugin de calor
 
 import { AnalisisService, TipoCount, HeatPoint } from '../../core/services/analisis';
 
@@ -87,7 +86,7 @@ export class Analisis implements OnInit, AfterViewInit {
     }).addTo(this.map);
   }
 
-  private actualizarHeatmap(data: HeatPoint[]) {
+  private async actualizarHeatmap(data: HeatPoint[]) {
     if (this.heatLayer) {
       this.map.removeLayer(this.heatLayer);
     }
@@ -95,6 +94,10 @@ export class Analisis implements OnInit, AfterViewInit {
     // Transformar datos para leaflet.heat: [lat, lng, intensidad]
     const heatData = data.map(p => [p.lat, p.lng, p.peso] as L.HeatLatLngTuple);
     
+    // Asegurar que L está global antes de cargar el plugin (necesario en prod)
+    (window as any).L = L;
+    await import('leaflet.heat');
+
     // @ts-ignore - plugin estático
     this.heatLayer = L.heatLayer(heatData, {
       radius: 25,
