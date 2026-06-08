@@ -1778,7 +1778,7 @@ def marcar_llegada_tecnico(
         estado_nuevo=actualizado.estado,
     )
 
-    return jsonable_encoder(actualizado)
+    return actualizado
 
 @router.patch("/{id}/finalizar", response_model=IncidenteSchema)
 def finalizar_incidente(
@@ -1830,7 +1830,7 @@ def finalizar_incidente(
         estado_nuevo=actualizado.estado,
     )
 
-    return jsonable_encoder(actualizado)
+    return actualizado
 @router.patch("/{id}/rechazar", response_model=IncidenteSchema)
 def rechazar_pedido_auxilio(
     *,

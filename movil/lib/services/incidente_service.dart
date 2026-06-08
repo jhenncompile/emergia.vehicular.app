@@ -356,7 +356,7 @@ class IncidenteService {
   }) async {
     try {
       final response = await apiService.patch(
-        '/api/v1/incidentes/$incidenteId/marcar-llegada-tecnico',
+        '/api/v1/incidentes/$incidenteId/marcar-llegada',
         body: {},
       );
 

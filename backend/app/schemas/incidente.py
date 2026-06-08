@@ -129,6 +129,7 @@ class Incidente(IncidenteBase):
     cotizacion_tiempo: Optional[str] = None
     tiempo_llegada_estimado: Optional[str] = None
     evidencias: Optional[List[EvidenciaInfo]] = None
+    calificado: Optional[bool] = False
 
     @root_validator(pre=True)
     def extraer_datos_virtuales(cls, obj):
@@ -180,6 +181,7 @@ class Incidente(IncidenteBase):
                 "tiempo_llegada_estimado": getattr(obj, "tiempo_llegada_estimado", None),
                 "tiempo_reparacion_estimado": getattr(obj, "tiempo_reparacion_estimado", None),
                 "evidencias": getattr(obj, "evidencias", []), # 📷 evidencias
+                "calificado": getattr(obj, "calificacion", None) is not None,
             }
         return obj
 

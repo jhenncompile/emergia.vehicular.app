@@ -266,7 +266,8 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
             if (!esTecnico &&
                 (incidente['estado']?.toString().toLowerCase() == 'finalizado' ||
                     incidente['estado']?.toString().toLowerCase() == 'completado') &&
-                incidente['taller'] != null) ...
+                incidente['taller'] != null &&
+                incidente['calificado'] != true) ...
               [
                 const SizedBox(height: 8),
                 SizedBox(
@@ -283,6 +284,11 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                           ),
                         ),
                       );
+                      if (result == true) {
+                        setState(() {
+                          incidente['calificado'] = true;
+                        });
+                      }
                       // Si calificó, podemos refrescar si es necesario
                       if (result == true && mounted) {
                         _cargarDatos(context);

@@ -233,6 +233,8 @@ class _CalificacionScreenState extends State<CalificacionScreen>
                   maxLength: 300,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.transparent,
                     hintText: 'Escribe un comentario (opcional)...',
                     hintStyle:
                         TextStyle(color: Colors.white.withValues(alpha: 0.4)),

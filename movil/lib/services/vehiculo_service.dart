@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
 
 /// Servicio para gestionar vehiculos del usuario.
@@ -44,22 +46,38 @@ class VehiculoService {
   Future<List<Map<String, dynamic>>> obtenerMisVehiculos({
     required int usuarioId,
   }) async {
+    final cacheKey = 'vehiculos_cache_$usuarioId';
     try {
       final response = await apiService.get(
         '/api/v1/vehiculos/usuario/$usuarioId',
       );
 
+      List<Map<String, dynamic>> result = [];
       if (response is List) {
-        return List<Map<String, dynamic>>.from(
+        result = List<Map<String, dynamic>>.from(
           response.map((item) => item as Map<String, dynamic>),
         );
+      } else if (response is Map<String, dynamic>) {
+        result = [response];
+      } else {
+        throw Exception('Formato de respuesta inesperado');
       }
-      if (response is Map<String, dynamic>) {
-        return [response];
-      }
-      throw Exception('Formato de respuesta inesperado');
+
+      // Guardar en caché local
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(cacheKey, jsonEncode(result));
+
+      return result;
     } catch (e) {
-      throw Exception('Error al obtener vehiculos: $e');
+      // Si falla la red, intentar leer de caché local
+      final prefs = await SharedPreferences.getInstance();
+      final cacheData = prefs.getString(cacheKey);
+      if (cacheData != null) {
+        final List<dynamic> decoded = jsonDecode(cacheData);
+        return List<Map<String, dynamic>>.from(
+            decoded.map((item) => item as Map<String, dynamic>));
+      }
+      throw Exception('Error al obtener vehiculos y no hay caché local: $e');
     }
   }
 

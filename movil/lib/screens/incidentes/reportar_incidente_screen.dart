@@ -905,22 +905,62 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
         await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: const Row(
               children: [
                 Icon(Icons.wifi_off, color: Colors.orange),
                 SizedBox(width: 8),
-                Text('Sin conexión'),
+                Text('Sin conexión', style: TextStyle(color: Colors.white)),
               ],
             ),
-            content: const Text(
-              'No se detectó conexión a internet.\n\n'
-              'Tu emergencia fue guardada localmente y está marcada como '
-              '"Pendiente de sincronización". Se enviará al servidor automáticamente '
-              'cuando vuelvas a tener conexión.',
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.hourglass_top, color: Colors.orange, size: 20),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Tu emergencia está EN COLA',
+                          style: TextStyle(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'No se detectó conexión a internet, pero tu emergencia fue guardada en el dispositivo.',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '✅ Se enviará automáticamente al servidor en cuanto se restablezca la conexión.',
+                  style: TextStyle(color: Colors.white60, fontSize: 13),
+                ),
+              ],
             ),
             actions: [
               ElevatedButton(
                 onPressed: () => Navigator.of(ctx).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
                 child: const Text('Entendido'),
               ),
             ],

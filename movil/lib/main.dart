@@ -35,6 +35,7 @@ import 'services/vehiculo_service.dart';
 import 'theme/colors.dart';
 import 'services/local_notification_service.dart';
 import 'services/sync_service.dart';
+import 'providers/connectivity_provider.dart';
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
@@ -137,6 +138,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) =>
               UsuarioProvider(usuarioService: context.read<UsuarioService>()),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => ConnectivityProvider(),
         ),
         ChangeNotifierProvider(
           create: (context) => TecnicoProvider(
@@ -807,28 +811,38 @@ class _HomeDashboardState extends State<HomeDashboard> {
                 ),
               )
             else
-              Container(
-                padding: const EdgeInsets.all(14),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.success,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.white),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Estado: Activo. Listo para reportar incidentes.',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+              Consumer<ConnectivityProvider>(
+                builder: (context, connectivity, _) {
+                  final isOnline = connectivity.isOnline;
+                  return Container(
+                    padding: const EdgeInsets.all(14),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: isOnline ? AppColors.success : Colors.red.shade700,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ],
-                ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isOnline ? Icons.check_circle : Icons.wifi_off,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isOnline
+                                ? 'Estado: Activo. Listo para reportar incidentes.'
+                                : 'Estado: Offline. Guardando localmente.',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
         _actionCard(
           context,

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/incidente_service.dart';
@@ -31,6 +32,10 @@ class SyncService extends ChangeNotifier {
   int _pendientesCount = 0;
   String? _ultimoErrorSync;
 
+  // Suscripción a cambios de conectividad
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  bool _estabaOffline = false;
+
   static const String _kSyncStatusKey = 'sync_status_map';
 
   SyncService({required this.incidenteService});
@@ -41,6 +46,7 @@ class SyncService extends ChangeNotifier {
 
   /// Inicia el monitoreo periódico para detectar reconexión.
   /// Lanza un intento de sync cada 30 segundos mientras haya pendientes.
+  /// Además escucha cambios de red para sincronizar al reconectarse.
   void iniciarMonitoreo() {
     _actualizarContador();
     _timer?.cancel();
@@ -49,11 +55,26 @@ class SyncService extends ChangeNotifier {
         await intentarSincronizar();
       }
     });
+
+    // Escuchar reconexión para sincronizar inmediatamente
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
+      (results) async {
+        final hayConexion = results.any((r) => r != ConnectivityResult.none);
+        if (hayConexion && _estabaOffline && _pendientesCount > 0) {
+          // Se reconectó con pendientes: sincronizar automáticamente
+          await intentarSincronizar();
+        }
+        _estabaOffline = !hayConexion;
+      },
+    );
   }
 
   void detenerMonitoreo() {
     _timer?.cancel();
     _timer = null;
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
   }
 
   @override

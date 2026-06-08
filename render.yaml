@@ -1,28 +1,28 @@
 services:
-  # --- BACKEND ---
   - type: web
     name: taller-pro-api
-    env: python
-    region: ohio # O la más cercana a ti
-    # Build: Instala y corre migraciones automáticamente
-    buildCommand: cd backend && pip install -r requirements.txt && python -m alembic upgrade head
+    runtime: python
+    region: ohio
+    buildCommand: cd backend && pip install -r requirements.txt
+    preDeployCommand: cd backend && python -m alembic upgrade head
     startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: taller-pro-db
           property: connectionString
-      - key: JWT_SECRET
-        generateValue: true # Render generará uno seguro por ti
+      - key: SECRET_KEY
+        generateValue: true
       - key: ALGORITHM
         value: "HS256"
+      - key: ENVIRONMENT
+        value: production
 
-  # --- FRONTEND ---
   - type: web
     name: taller-pro-client
-    env: static
+    runtime: static
     buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist/taller-pro/browser # Ajusta según tu angular.json
+    staticPublishPath: frontend/dist/taller-pro/browser
     routes:
       - type: rewrite
         source: /*
@@ -30,4 +30,5 @@ services:
 
 databases:
   - name: taller-pro-db
-    plan: free # Plan gratuito de PostgreSQL en Render
+    region: ohio
+    plan: free
