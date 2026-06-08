@@ -39,6 +39,7 @@ export class AuxiliosComponent implements OnInit {
   montoCobro: number = 0;
   cotizacionTiempo: string = '';
   tiempoReparacionInput: string = '';
+  procesandoCobro: boolean = false;
   sugerenciaMonto: number = 0;
   idTecnicoSeleccionado: number = 0;
   motivoRechazo: string = '';
@@ -47,6 +48,13 @@ export class AuxiliosComponent implements OnInit {
   ngOnInit() { 
     this.cargarDatos();
     this.cargarTecnicos();
+    
+    // Suscribirse a websocket para auto-actualizar estados
+    this.wsNotificacionService.notificaciones$.subscribe(notif => {
+      if (notif && notif.incidente_id) {
+        this.cargarDatos(); // Recargar datos si hay cualquier novedad del incidente
+      }
+    });
   }
 
   cargarDatos() {
@@ -114,7 +122,7 @@ export class AuxiliosComponent implements OnInit {
   }
 
   puedeCobrar(inc: any): boolean {
-    return inc?.estado === 'en_atencion' && inc?.pago_estado === 'pendiente';
+    return (inc?.estado === 'en_atencion' || inc?.estado === 'finalizado') && inc?.pago_estado === 'pendiente';
   }
 
   puedeCancelar(inc: any): boolean {
@@ -290,17 +298,20 @@ export class AuxiliosComponent implements OnInit {
 
   abrirModalCobro(incidente: any) {
     this.incidenteAccion = incidente;
-    this.montoCobro = 0;
+    this.montoCobro = incidente.cotizacion_monto || 0;
     this.mostrarModalCobro = true;
   }
 
   cerrarModalCobro() {
     this.mostrarModalCobro = false;
     this.incidenteAccion = null;
+    this.procesandoCobro = false;
   }
   generarCobro() {
     if (this.montoCobro <= 0) return alert('Monto inválido.');
+    if (this.procesandoCobro) return;
   
+    this.procesandoCobro = true;
     const token = localStorage.getItem('token');
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
     const url = `${environment.apiUrl}/pagos/generar-cobro/${this.incidenteAccion.id}?monto=${this.montoCobro}&metodo=por_definir`;
@@ -313,7 +324,10 @@ export class AuxiliosComponent implements OnInit {
         this.cerrarModalCobro();
         this.cargarDatos(); // 🔄 Recargamos para que el estado 'pago_estado' cambie en la tabla
       },
-      error: (e) => alert('Error al generar cobro: ' + e.error?.detail)
+      error: (e) => {
+        this.procesandoCobro = false;
+        alert('Error al generar cobro: ' + e.error?.detail);
+      }
     });
   }
   abrirModalReparacion(incidente: any) {

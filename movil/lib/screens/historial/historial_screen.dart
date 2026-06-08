@@ -38,32 +38,31 @@ class _HistorialScreenState extends State<HistorialScreen> {
         final historial = provider.misIncidentes.where(_esHistorico).toList();
 
         if (provider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
-        return RefreshIndicator(
-          onRefresh: _cargar,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Text(
-                esTecnico ? 'Historico Tecnico' : 'Historial',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Histórico de servicios'),
+          ),
+          body: RefreshIndicator(
+            onRefresh: _cargar,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (historial.isEmpty)
+                  _emptyCard(
+                    esTecnico
+                        ? 'No tienes incidentes historicos aun'
+                        : 'No hay servicios completados aun',
+                  ),
+                ...historial.map(
+                  (item) => _historialCard(context, item, esTecnico),
                 ),
-              ),
-              const SizedBox(height: 12),
-              if (historial.isEmpty)
-                _emptyCard(
-                  esTecnico
-                      ? 'No tienes incidentes historicos aun'
-                      : 'No hay servicios completados aun',
-                ),
-              ...historial.map(
-                (item) => _historialCard(context, item, esTecnico),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -81,7 +80,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            Icon(Icons.history, size: 54, color: Colors.grey.shade500),
+            Icon(Icons.notifications_off_outlined, size: 54, color: Colors.grey.shade500),
             const SizedBox(height: 10),
             Text(
               mensaje,

@@ -70,6 +70,17 @@ class OfflineIncidenteService {
     await prefs.setString(_kPendingKey, jsonEncode(existentes));
   }
 
+  /// Marca un incidente local como sincronizado en lugar de eliminarlo
+  static Future<void> marcarComoSincronizado(int idLocal) async {
+    final prefs = await SharedPreferences.getInstance();
+    final existentes = await obtenerPendientes();
+    final index = existentes.indexWhere((inc) => inc['id'] == idLocal);
+    if (index != -1) {
+      existentes[index]['estado'] = 'sincronizado';
+      await prefs.setString(_kPendingKey, jsonEncode(existentes));
+    }
+  }
+
   /// Detecta si el error es de falta de conexión a internet.
   static bool esErrorDeConexion(Object error) {
     final mensaje = error.toString().toLowerCase();

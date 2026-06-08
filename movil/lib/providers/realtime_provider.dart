@@ -99,11 +99,15 @@ class RealtimeProvider extends ChangeNotifier {
     final body = event['mensaje']?.toString();
 
     if (title != null && title.isNotEmpty && body != null && body.isNotEmpty) {
+      String payloadStr = incidentId?.toString() ?? '';
+      if (event['evento'] == 'cobro_generado' || event['tipo'] == 'cobro_generado') {
+        payloadStr = 'pago';
+      }
       LocalNotificationService().showNotification(
         id: incidentId ?? DateTime.now().millisecondsSinceEpoch % 100000,
         title: title,
         body: body,
-        payload: incidentId?.toString(),
+        payload: payloadStr,
       );
     } else if (incidentId != null && newStatus != null && newStatus.isNotEmpty) {
       LocalNotificationService().showNotification(

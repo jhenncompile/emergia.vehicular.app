@@ -459,3 +459,56 @@ class NotificacionService:
         except Exception as e:
             logger.error(f"❌ Error en flujo FCM: {str(e)}")
             return False
+
+    @staticmethod
+    async def notificar_cliente(
+        usuario_id: int,
+        titulo: str,
+        mensaje: str,
+        tipo: str,
+        incidente_id: int
+    ) -> bool:
+        """
+        Envía notificación WebSocket al cliente de manera asíncrona.
+        """
+        data = {
+            "titulo": titulo,
+            "mensaje": mensaje,
+            "tipo": tipo,
+            "incidente_id": incidente_id,
+            "evento": tipo
+        }
+        return await manager.send_personal_notification(usuario_id, data)
+
+    @staticmethod
+    async def broadcast_ubicacion_tecnico(
+        db: Session,
+        incidente_id: int,
+        latitud: float,
+        longitud: float,
+        taller_id: int,
+        tecnico_id: int,
+        cliente_id: int
+    ) -> bool:
+        """
+        Envía la ubicación del técnico a Taller y Cliente vía WebSocket.
+        """
+        data = {
+            "tipo": "ubicacion_tecnico",
+            "evento": "ubicacion_tecnico",
+            "incidente_id": incidente_id,
+            "latitud": latitud,
+            "longitud": longitud,
+            "tecnico_id": tecnico_id,
+            "taller_id": taller_id
+        }
+        
+        # Enviar al taller (admins)
+        from app.crud.crud_usuario import usuario_crud
+        admins = usuario_crud.get_admins_taller(db, taller_id=taller_id)
+        for admin in admins:
+            await manager.send_personal_notification(admin.id, data)
+            
+        # Enviar al cliente
+        await manager.send_personal_notification(cliente_id, data)
+        return True

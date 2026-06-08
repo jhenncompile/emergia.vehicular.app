@@ -51,6 +51,28 @@ class NotificacionService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> obtenerHistorialNotificaciones({
+    required int usuarioId,
+  }) async {
+    try {
+      final response = await apiService.get(
+        '/api/v1/notificaciones/usuario/$usuarioId/historial',
+      );
+
+      if (response is List) {
+        return List<Map<String, dynamic>>.from(
+          response.map((item) => item as Map<String, dynamic>),
+        );
+      }
+      if (response is Map<String, dynamic>) {
+        return [response];
+      }
+      throw Exception('Formato de respuesta inesperado');
+    } catch (e) {
+      throw Exception('Error al obtener historial notificaciones: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> marcarComoLeida({
     required int notificacionId,
     int usuarioId = 0,

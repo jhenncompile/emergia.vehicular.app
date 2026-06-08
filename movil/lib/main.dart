@@ -14,6 +14,7 @@ import 'providers/tecnico_provider.dart';
 import 'providers/usuario_provider.dart';
 import 'providers/vehiculo_provider.dart';
 import 'screens/historial/historial_screen.dart';
+import 'screens/notificaciones/notificaciones_screen.dart';
 import 'screens/incidentes/mis_incidentes_screen.dart';
 import 'screens/incidentes/reportar_incidente_screen.dart';
 import 'screens/incidentes/map_screen.dart';
@@ -152,6 +153,15 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) => SyncService(
             incidenteService: context.read<IncidenteService>(),
+            onSyncComplete: () {
+              final auth = context.read<AuthProvider>();
+              if (auth.userId != null) {
+                context.read<IncidenteProvider>().cargarMisIncidentes(
+                  usuarioId: auth.userId!,
+                  esTecnico: auth.isTecnico,
+                );
+              }
+            },
           ),
         ),
         ChangeNotifierProxyProvider2<
@@ -379,13 +389,13 @@ class _HomePageState extends State<HomePage> {
               onNavigate: (index) => setState(() => _selectedIndex = index),
             ),
             const MisIncidentesScreen(),
-            const HistorialScreen(),
+            const NotificacionesScreen(),
             const PerfilScreen(),
           ]
         : const <Widget>[
             HomeDashboard(),
             MisAtencionesScreen(),
-            HistorialScreen(),
+            NotificacionesScreen(),
             PerfilScreen(),
           ];
     final items = esTecnico
@@ -399,8 +409,8 @@ class _HomePageState extends State<HomePage> {
               label: 'Asignados',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.history),
-              label: 'Historial',
+              icon: Icon(Icons.notifications_outlined),
+              label: 'Notificaciones',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),
@@ -417,8 +427,8 @@ class _HomePageState extends State<HomePage> {
               label: 'Atenciones',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.history),
-              label: 'Historial',
+              icon: Icon(Icons.notifications_outlined),
+              label: 'Notificaciones',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),
@@ -612,7 +622,11 @@ class _TecnicoDashboardState extends State<TecnicoDashboard> {
                 icon: Icons.history,
                 title: 'Historico de servicios',
                 subtitle: '$historico incidentes finalizados o cancelados',
-                onTap: () => widget.onNavigate(2),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const HistorialScreen()),
+                  );
+                },
               ),
               _actionCard(
                 context,
@@ -846,7 +860,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
               ),
         _actionCard(
           context,
-          color: AppColors.secondaryColor,
+          color: Colors.red,
           icon: Icons.warning_amber_rounded,
           title: 'Reportar Incidente',
           subtitle: 'Describe tu emergencia',
@@ -858,18 +872,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
             );
           },
         ),
-        _actionCard(
-          context,
-          color: const Color(0xFF2563EB),
-          icon: Icons.build_circle_outlined,
-          title: 'Mis Atenciones',
-          subtitle: 'Servicios activos y pendientes',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const MisAtencionesScreen()),
-            );
-          },
-        ),
+
         _actionCard(
           context,
           color: AppColors.accentColor,
@@ -886,8 +889,8 @@ class _HomeDashboardState extends State<HomeDashboard> {
           context,
           color: const Color(0xFF7E22CE),
           icon: Icons.payment_outlined,
-          title: 'Pagos y Facturas',
-          subtitle: 'Modulo disponible parcialmente',
+          title: 'Pagos',
+          subtitle: 'Gestiona tus cobros pendientes',
           onTap: () {
             Navigator.of(
               context,

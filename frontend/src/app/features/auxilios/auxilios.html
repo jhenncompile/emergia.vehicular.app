@@ -305,7 +305,9 @@
       </div>
       <div class="modal-footer">
         <button class="btn-outline" (click)="cerrarModalCobro()">Cerrar</button>
-        <button class="btn-primary" (click)="generarCobro()">Emitir Cobro</button>
+        <button class="btn-primary" [disabled]="procesandoCobro" (click)="generarCobro()">
+          {{ procesandoCobro ? 'Emitiendo...' : 'Emitir Cobro' }}
+        </button>
       </div>
     </div>
   </div>

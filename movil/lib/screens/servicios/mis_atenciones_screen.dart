@@ -6,6 +6,8 @@ import '../../providers/incidente_provider.dart';
 import '../../theme/colors.dart';
 import '../ia/diagnostico_ia_screen.dart';
 import 'seguimiento_screen.dart';
+import '../pagos/pagos_screen.dart';
+import '../incidentes/map_screen.dart';
 
 class MisAtencionesScreen extends StatefulWidget {
   const MisAtencionesScreen({super.key});
@@ -146,41 +148,16 @@ class _MisAtencionesScreenState extends State<MisAtencionesScreen> {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => DiagnosticoIAScreen(
-                            incidente: incidente,
-                            onCompleted: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      SeguimientoScreen(incidente: incidente),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.smart_toy_outlined),
-                    label: const Text('Diagnostico IA'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) =>
-                              SeguimientoScreen(incidente: incidente),
+                          builder: (_) => const MapScreen(),
                         ),
                       );
                     },
                     icon: const Icon(Icons.location_on_outlined),
-                    label: const Text('Rastrear'),
+                    label: const Text('Rastrear en Mapa'),
                   ),
                 ),
               ],
@@ -223,11 +200,9 @@ class _MisAtencionesScreenState extends State<MisAtencionesScreen> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Pagos desde movil aun no habilitados en backend.',
-                      ),
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const PagosScreen(initialIndex: 1),
                     ),
                   );
                 },

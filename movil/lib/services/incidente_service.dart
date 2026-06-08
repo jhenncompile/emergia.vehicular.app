@@ -357,7 +357,6 @@ class IncidenteService {
     try {
       final response = await apiService.patch(
         '/api/v1/incidentes/$incidenteId/marcar-llegada',
-        body: {},
       );
 
       if (response is Map<String, dynamic>) {

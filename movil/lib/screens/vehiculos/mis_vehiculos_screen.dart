@@ -204,7 +204,7 @@ class _MisVehiculosScreenState extends State<MisVehiculosScreen> {
   }) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: AppColors.secondaryColor),
+        Icon(icon, size: 16, color: Colors.lightBlue),
         const SizedBox(width: 8),
         Text(
           '$label: ',

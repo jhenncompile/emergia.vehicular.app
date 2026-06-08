@@ -36,7 +36,6 @@ class NotificacionProvider extends ChangeNotifier {
     }
   }
 
-  /// Cargar notificaciones no leídas
   Future<void> cargarNotificacionesNoLeidas({required int usuarioId}) async {
     _isLoading = true;
     _errorMessage = null;
@@ -46,6 +45,24 @@ class NotificacionProvider extends ChangeNotifier {
       _notificacionesNoLeidas = await notificacionService
           .obtenerNotificacionesNoLeidas(usuarioId: usuarioId);
       _countNoLeidas = _notificacionesNoLeidas.length;
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> cargarHistorialNotificaciones({required int usuarioId}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _notificacionesNoLeidas = await notificacionService
+          .obtenerHistorialNotificaciones(usuarioId: usuarioId);
+      _countNoLeidas = _notificacionesNoLeidas.where((n) => n['leido'] != true).length;
       _isLoading = false;
       notifyListeners();
     } catch (e) {

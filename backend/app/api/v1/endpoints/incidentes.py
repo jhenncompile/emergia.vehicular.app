@@ -24,7 +24,7 @@ from fastapi.encoders import jsonable_encoder
 from app.models.usuario import Usuario
 from app.models.vehiculo import Vehiculo
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fpdf import FPDF
 from app.models.pago import Pago
 from app.models.bitacora import Bitacora # 👈 Agrega esta importación
@@ -895,10 +895,6 @@ def _construir_resumen_ia(
     error_imagen_ia: str | None,
 ) -> str:
     texto_base = " ".join(parte for parte in [descripcion, transcripcion or ""] if parte)
-    motivos = _detectar_motivos(
-        " ".join(parte for parte in [texto_base, " ".join(labels_imagen)] if parte),
-        labels_imagen,
-    )
     accion = ACCIONES_POR_CATEGORIA.get(
         categoria,
         ACCIONES_POR_CATEGORIA["Otro / No clasificado"],
@@ -906,37 +902,10 @@ def _construir_resumen_ia(
 
     partes = [
         f"Resumen: {_resumen_situacion(categoria, texto_base)}",
-        f"Categoría sugerida: {categoria} (confianza {confianza_categoria.lower()}).",
-        f"Criticidad: {criticidad} ({motivo_criticidad}).",
+        f"Categoría: {categoria}",
+        f"Criticidad: {criticidad}",
+        f"Acción sugerida: {accion}"
     ]
-
-    if motivos_categoria:
-        partes.append(
-            "Señales usadas para clasificar: "
-            + "; ".join(motivos_categoria[:4])
-            + "."
-        )
-
-    if motivos:
-        partes.append("Motivos detectados: " + "; ".join(motivos) + ".")
-
-    resumen_imagen = _resumen_imagen(labels_imagen)
-    if resumen_imagen:
-        partes.append(resumen_imagen)
-        if set(labels_imagen).issubset({"vehículo", "motocicleta", "bicicleta"}):
-            partes.append(
-                "Nota visual: la imagen confirma presencia de vehículo, pero no confirma el tipo de falla."
-            )
-
-    if alternativas:
-        partes.append("También revisar: " + ", ".join(alternativas[:3]) + ".")
-
-    partes.append(f"Acción sugerida: {accion}")
-
-    if error_audio_ia:
-        partes.append(f"Nota audio: {error_audio_ia}")
-    if error_imagen_ia:
-        partes.append(f"Nota imagen: {error_imagen_ia}")
 
     return "\n".join(partes)
 
@@ -1127,6 +1096,19 @@ async def _crear_incidente_multimedia(
             status_code=404,
             detail="Vehiculo no encontrado para el cliente autenticado.",
         )
+
+    # Validación de duplicados (ej. reintento offline)
+    hace_5_minutos = datetime.utcnow() - timedelta(minutes=5)
+    duplicado = db.query(Incidente).filter(
+        Incidente.usuario_id == current_user.id,
+        Incidente.vehiculo_id == vehiculo_id,
+        Incidente.descripcion == descripcion,
+        Incidente.fecha_creacion >= hace_5_minutos
+    ).first()
+    
+    if duplicado:
+        logger.info(f"Incidente duplicado detectado y omitido para usuario {current_user.id}")
+        return duplicado
 
     transcripcion = None
     error_audio_ia = None
@@ -1450,30 +1432,16 @@ def leer_incidentes_pendientes(
                 incidente.latitud is not None and 
                 incidente.longitud is not None):
                 try:
-                    from app.services.routing_service import RoutingService
-                    ruta = RoutingService.obtener_ruta_sync(
-                        float(taller_actual.longitud),
+                    # Usar Haversine para cálculo rápido en lista
+                    distancia = incidente_crud.calcular_distancia_haversine(
                         float(taller_actual.latitud),
-                        float(incidente.longitud),
-                        float(incidente.latitud)
+                        float(taller_actual.longitud),
+                        float(incidente.latitud),
+                        float(incidente.longitud)
                     )
-                    if ruta["error"] is None and ruta["duracion_minutos"] is not None:
-                        # Convertir a metros para mantener consistencia con el fallback
-                        incidente.distancia_metros = float(ruta["distancia_km"]) * 1000
-                        # Agregar 5 mins base de preparación del técnico al tiempo de manejo OSRM
-                        mins_totales = int(ruta["duracion_minutos"]) + 5
-                        incidente.tiempo_llegada_estimado = f"~{mins_totales} min"
-                    else:
-                        # Fallback a Haversine si falla OSRM
-                        distancia = incidente_crud.calcular_distancia_haversine(
-                            float(taller_actual.latitud),
-                            float(taller_actual.longitud),
-                            float(incidente.latitud),
-                            float(incidente.longitud)
-                        )
-                        incidente.distancia_metros = distancia
-                        mins = max(1, int((distancia / 1000.0) * 4) + 5)
-                        incidente.tiempo_llegada_estimado = f"~{mins} min"
+                    incidente.distancia_metros = distancia
+                    mins = max(1, int((distancia / 1000.0) * 4) + 5)
+                    incidente.tiempo_llegada_estimado = f"~{mins} min"
                 except (ValueError, TypeError):
                     pass
             resultado.append(incidente)
@@ -1748,6 +1716,9 @@ def marcar_llegada_tecnico(
     )
     if not es_tecnico and not es_admin_taller:
         raise HTTPException(status_code=403, detail="No puedes marcar llegada en este incidente.")
+
+    if incidente_db.estado == EstadoIncidente.EN_ATENCION:
+        return incidente_db
 
     if incidente_db.estado != EstadoIncidente.EN_CAMINO:
         raise HTTPException(status_code=400, detail="Solo se puede marcar llegada desde en_camino.")

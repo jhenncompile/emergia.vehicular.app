@@ -210,12 +210,12 @@ class TecnicoProvider extends ChangeNotifier {
 
     try {
       _errorMessage = null;
-      await incidenteService.marcarLlegadaTecnico(
+      final response = await incidenteService.marcarLlegadaTecnico(
         incidenteId: _incidenteActivo!['id'] as int,
       );
       
       _llego = true;
-      _incidenteActivo!['estado'] = 'en_atencion';
+      _incidenteActivo = response; // Actualizar con la respuesta completa del backend
       
       // Detener tracking automáticamente
       await detenerTracking();
@@ -224,6 +224,7 @@ class TecnicoProvider extends ChangeNotifier {
     } catch (e) {
       _errorMessage = 'Error al marcar llegada: $e';
       notifyListeners();
+      rethrow;
     }
   }
 

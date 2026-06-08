@@ -26,6 +26,7 @@ class ResultadoSync {
 /// incidentes guardados offline. Implementa el flujo de CU-N04.
 class SyncService extends ChangeNotifier {
   final IncidenteService incidenteService;
+  final VoidCallback? onSyncComplete;
 
   Timer? _timer;
   bool _sincronizando = false;
@@ -38,7 +39,7 @@ class SyncService extends ChangeNotifier {
 
   static const String _kSyncStatusKey = 'sync_status_map';
 
-  SyncService({required this.incidenteService});
+  SyncService({required this.incidenteService, this.onSyncComplete});
 
   bool get sincronizando => _sincronizando;
   int get pendientesCount => _pendientesCount;
@@ -48,7 +49,7 @@ class SyncService extends ChangeNotifier {
   /// Lanza un intento de sync cada 30 segundos mientras haya pendientes.
   /// Además escucha cambios de red para sincronizar al reconectarse.
   void iniciarMonitoreo() {
-    _actualizarContador();
+    _prepararEstadoInicial();
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 30), (_) async {
       if (_pendientesCount > 0) {
@@ -60,7 +61,8 @@ class SyncService extends ChangeNotifier {
     _connectivitySubscription?.cancel();
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
       (results) async {
-        final hayConexion = results.any((r) => r != ConnectivityResult.none);
+        final hayConexion = _hayConexion(results);
+        await refrescarPendientes();
         if (hayConexion && _estabaOffline && _pendientesCount > 0) {
           // Se reconectó con pendientes: sincronizar automáticamente
           await intentarSincronizar();
@@ -83,10 +85,28 @@ class SyncService extends ChangeNotifier {
     super.dispose();
   }
 
+  Future<void> _prepararEstadoInicial() async {
+    await refrescarPendientes();
+    final results = await Connectivity().checkConnectivity();
+    final hayConexion = _hayConexion(results);
+    _estabaOffline = !hayConexion;
+    if (hayConexion && _pendientesCount > 0) {
+      await intentarSincronizar();
+    }
+  }
+
+  bool _hayConexion(List<ConnectivityResult> results) {
+    return results.any((result) => result != ConnectivityResult.none);
+  }
+
+  /// Recalcula los incidentes pendientes y notifica a la UI inmediatamente.
+  Future<void> refrescarPendientes() => _actualizarContador();
+
   /// Actualiza el contador de pendientes sin sincronizar.
   Future<void> _actualizarContador() async {
-    final pendientes = await OfflineIncidenteService.obtenerPendientes();
-    _pendientesCount = pendientes.length;
+    final todos = await OfflineIncidenteService.obtenerPendientes();
+    final pendientesReales = todos.where((inc) => inc['estado'] != 'sincronizado').toList();
+    _pendientesCount = pendientesReales.length;
     notifyListeners();
   }
 
@@ -97,7 +117,9 @@ class SyncService extends ChangeNotifier {
       return const ResultadoSync(totalPendientes: 0, sincronizados: 0, errores: 0);
     }
 
-    final pendientes = await OfflineIncidenteService.obtenerPendientes();
+    final todos = await OfflineIncidenteService.obtenerPendientes();
+    final pendientes = todos.where((inc) => inc['estado'] != 'sincronizado').toList();
+
     if (pendientes.isEmpty) {
       _pendientesCount = 0;
       notifyListeners();
@@ -128,8 +150,8 @@ class SyncService extends ChangeNotifier {
           imagenPath: incidente['imagen_path'] as String?,
         );
 
-        // Éxito: eliminar de pendientes y marcar como sincronizado
-        await OfflineIncidenteService.eliminarPendiente(idLocal);
+        // Éxito: marcar como sincronizado en lugar de eliminarlo
+        await OfflineIncidenteService.marcarComoSincronizado(idLocal);
         await _marcarEstado(idLocal, EstadoSync.sincronizado);
         sincronizados++;
       } catch (e) {
@@ -143,6 +165,10 @@ class SyncService extends ChangeNotifier {
     await _actualizarContador();
     _sincronizando = false;
     notifyListeners();
+
+    if (sincronizados > 0) {
+      onSyncComplete?.call();
+    }
 
     return ResultadoSync(
       totalPendientes: pendientes.length,
