@@ -12,7 +12,7 @@ import '../../providers/tecnico_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/taller_service.dart';
 import '../../theme/colors.dart';
-import 'mis_incidentes_screen.dart'; // Para reutilizar logica o navegar, aunque es mejor importar el modal
+// Para reutilizar logica o navegar, aunque es mejor importar el modal
 
 
 class MapScreen extends StatefulWidget {
@@ -143,7 +143,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               tallerNombre = tallerOfrecido['nombre'] ?? 'Taller';
               
               tallerMarkers.add(Marker(
-                point: tallerLocation!,
+                point: tallerLocation,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
@@ -154,7 +154,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       height: 36,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.0,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withOpacity(0.8)),
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withValues(alpha: 0.8)),
                       ),
                     ),
                   ],
@@ -192,7 +192,7 @@ if (tallerData.isNotEmpty) {
               tallerNombre = tallerData['nombre'] ?? 'Taller';
               
               tallerMarkers.add(Marker(
-                 point: tallerLocation!,
+                 point: tallerLocation,
                  child: Stack(
                    alignment: Alignment.center,
                    children: [
@@ -219,7 +219,7 @@ if (tallerData.isNotEmpty) {
               ));
 
               // Fetch route when we have a location and the incident is assigned or in motion
-              if ((isAsignado || isEnCamino || isEnAtencion) && _lastTallerLocation?.latitude != tallerLocation?.latitude) {
+              if ((isAsignado || isEnCamino || isEnAtencion) && _lastTallerLocation?.latitude != tallerLocation.latitude) {
                  _lastTallerLocation = tallerLocation;
                  Future.microtask(() => _fetchRoute(tallerLocation!, userLocation));
               }
@@ -263,7 +263,7 @@ if (tallerData.isNotEmpty) {
                       PolylineLayer(
                         polylines: [
                           Polyline(
-                            points: _routePoints.isNotEmpty ? _routePoints : [tallerLocation!, userLocation],
+                            points: _routePoints.isNotEmpty ? _routePoints : [tallerLocation, userLocation],
                             strokeWidth: 5.0,
                             color: Colors.blueAccent,
                           ),
@@ -406,7 +406,7 @@ if (tallerData.isNotEmpty) {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: AppColors.primaryColor.withOpacity(0.1),
+                  backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
                   radius: 30,
                   child: const Icon(Icons.engineering, color: AppColors.primaryColor, size: 30),
                 ),

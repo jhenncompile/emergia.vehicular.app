@@ -8,7 +8,6 @@ import '../../providers/auth_provider.dart';
 import '../../services/incidente_service.dart';
 import '../../services/sync_service.dart';
 import '../../theme/colors.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../calificacion/calificacion_screen.dart';
 
 class MisIncidentesScreen extends StatefulWidget {
@@ -924,7 +923,7 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
               Expanded(
                 child: Text(mensaje, style: const TextStyle(fontSize: 12)),
               ),
-              if (botonReintento != null) botonReintento,
+              ?botonReintento,
             ],
           ),
         );

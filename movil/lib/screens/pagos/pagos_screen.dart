@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/pago_provider.dart';
 import '../../theme/colors.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
 
 class PagosScreen extends StatefulWidget {
   const PagosScreen({super.key});
