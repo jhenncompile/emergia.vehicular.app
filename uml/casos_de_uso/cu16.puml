@@ -1,9 +1,0 @@
-@startuml
-left to right direction
-actor "Taller" as T
-rectangle "Sistema" {
-
-usecase "CU-16: Visualizar solicitudes de auxilio disponibles" as CU16
-}
-T --> CU16
-@enduml
