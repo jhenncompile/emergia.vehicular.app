@@ -478,6 +478,31 @@ if (tallerData.isNotEmpty) {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
+                if (esTecnico && !isAtencion && activo['estado'] == 'en_camino')
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      final provider = context.read<TecnicoProvider>();
+                      try {
+                        await provider.marcarLlegada();
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Llegada marcada exitosamente'), backgroundColor: Colors.green),
+                        );
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.check_circle),
+                    label: const Text('Marcar Llegada'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                  ),
                 if (esTecnico && isAtencion)
                   ElevatedButton.icon(
                     onPressed: () => _mostrarDialogoFinalizar(context),
