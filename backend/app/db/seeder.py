@@ -612,15 +612,16 @@ def seed_db(
         incidentes_subasta.append(incidente)
         
         # Asignar a todos los talleres como sugeridos para que puedan enviar cotización
-        for taller in talleres:
+        for i, taller in enumerate(talleres):
             candidato = IncidenteAsignacionCandidato(
                 incidente_id=incidente.id,
                 taller_id=taller.id,
+                orden=i+1,
                 estado="sugerido",
                 score_total=round(random.uniform(0.7, 0.99), 2),
-                distancia_km=round(random.uniform(1.0, 9.0), 2),
+                score_distancia=round(random.uniform(0.5, 0.99), 2),
                 sugerencia_ia_monto=round(random.uniform(50.0, 200.0), 2),
-                fecha_sugerido=fecha_incidente,
+                fecha_creacion=fecha_incidente,
             )
             db.add(candidato)
     
