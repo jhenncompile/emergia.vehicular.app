@@ -1,13 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException
+import stripe
+import os
+import logging
+from dotenv import load_dotenv
+load_dotenv() # Forzar lectura de .env en caso de que uvicorn no se haya reiniciado
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
 
 from app.models.incidente import Incidente
+from app.models.taller import Taller
 from app.models.pago import Pago as PagoModel
 from app.api import deps
 from app.crud.crud_pago import pago_crud
-from app.crud.crud_bitacora import bitacora_crud # 🚩 Importamos la bitácora
+from app.crud.crud_bitacora import bitacora_crud
+from app.crud.crud_incidente import incidente_crud
 from app.schemas.pago import Pago, PagoCreate
 from app.core.estados import EstadoIncidente
 
@@ -60,6 +70,140 @@ def generar_cobro_incidente(
     )
 
     return {"status": "success", "mensaje": "Cobro generado", "pago_id": nuevo_pago.id}
+
+# STRIPE: Generar PaymentIntent
+@router.post("/intent/{pago_id}")
+def create_payment_intent(
+    pago_id: int,
+    db: Session = Depends(deps.get_db)
+):
+    pago = db.query(PagoModel).filter(PagoModel.id == pago_id).first()
+    if not pago:
+        raise HTTPException(status_code=404, detail="Pago no encontrado")
+    if pago.estado != "pendiente":
+        raise HTTPException(status_code=400, detail="El pago ya no está pendiente")
+        
+    taller = db.query(Taller).filter(Taller.id == pago.taller_id).first()
+    if not taller:
+        raise HTTPException(status_code=404, detail="Taller no encontrado")
+
+    stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+    monto_centavos = int(pago.monto * 100)
+    
+    try:
+        if taller.stripe_account_id:
+            # Flujo Stripe Connect (Divide fondos)
+            comision_centavos = int(monto_centavos * (taller.comision_porcentaje / 100))
+            intent = stripe.PaymentIntent.create(
+                amount=monto_centavos,
+                currency="usd",
+                application_fee_amount=comision_centavos,
+                transfer_data={
+                    "destination": taller.stripe_account_id,
+                },
+                metadata={"pago_id": pago.id, "incidente_id": pago.incidente_id}
+            )
+        else:
+            # Flujo Normal (Para probar si no hay cuenta connect)
+            intent = stripe.PaymentIntent.create(
+                amount=monto_centavos,
+                currency="usd",
+                metadata={"pago_id": pago.id, "incidente_id": pago.incidente_id}
+            )
+        
+        return {
+            "paymentIntent": intent.client_secret,
+            "ephemeralKey": "",
+            "customer": "",
+            "publishableKey": os.getenv("STRIPE_PUBLIC_KEY")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# STRIPE: Webhook
+@router.post("/webhook")
+async def stripe_webhook(request: Request, db: Session = Depends(deps.get_db)):
+    try:
+        payload = await request.body()
+        sig_header = request.headers.get("stripe-signature")
+        endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+        stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, endpoint_secret
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail="Invalid payload")
+        except stripe.error.SignatureVerificationError as e:
+            raise HTTPException(status_code=400, detail="Invalid signature")
+
+        # Manejar eventos de Stripe
+        if event['type'] == 'payment_intent.succeeded':
+            payment_intent = event['data']['object']
+            try:
+                pago_id = payment_intent['metadata']['pago_id']
+            except (KeyError, TypeError):
+                pago_id = None
+
+            if pago_id:
+                try:
+                    # 1. Obtener pago e incidente
+                    pago = pago_crud.obtener_por_id(db, id=int(pago_id))
+                    if not pago:
+                        logger.error(f"Pago {pago_id} no encontrado en DB.")
+                        return {"status": "error", "message": "Pago no encontrado"}
+
+                    # 2. Actualizar estado del pago a 'completado'
+                    pago_actualizado = pago_crud.actualizar(
+                        db,
+                        db_obj=pago,
+                        obj_in={"estado": "completado"}
+                    )
+
+                    # 3. Marcar incidente como 'pagado' (o estado final dependiendo de la lógica de negocio)
+                    incidente = pago.incidente
+                    incidente_crud.actualizar(
+                        db,
+                        db_obj=incidente,
+                        obj_in={"estado": "pagado"}
+                    )
+
+                    logger.info(f"✅ Pago {pago_id} y su Incidente {incidente.id} marcados como completados.")
+                except Exception as e:
+                    logger.error(f"Error procesando webhook success: {str(e)}")
+                    return {"status": "error", "message": str(e)}
+            else:
+                logger.warning("payment_intent.succeeded sin pago_id en metadata.")
+                
+        elif event['type'] == 'checkout.session.completed':
+            session = event['data']['object']
+            try:
+                taller_id = session['metadata']['taller_id']
+                subscription_id = session['subscription']
+            except (KeyError, TypeError):
+                taller_id = None
+                subscription_id = None
+            logger.info(f"🚀 DIAGNOSTICO - Checkout Completado | taller_id: {taller_id} | sub_id: {subscription_id}")
+            if taller_id and subscription_id:
+                taller = db.query(Taller).filter(Taller.id == int(taller_id)).first()
+                if taller:
+                    taller.plan_suscripcion = 'premium'
+                    taller.stripe_subscription_id = subscription_id
+                    db.commit()
+                    logger.info(f"Taller {taller_id} actualizado a plan premium (Sub: {subscription_id})")
+
+        else:
+            logger.info(f"Evento no manejado: {event['type']}")
+        
+        return {"status": "success"}
+    except Exception as e:
+        import traceback
+        with open("webhook_error.log", "w") as f:
+            f.write(traceback.format_exc())
+        raise e
+
 
 # 3. PASO B: CONFIRMAR EL PAGO (Marca como COMPLETADO)
 @router.put("/{pago_id}/confirmar")

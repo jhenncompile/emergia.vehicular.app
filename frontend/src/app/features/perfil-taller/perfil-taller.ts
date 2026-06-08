@@ -142,6 +142,39 @@ export class PerfilTallerComponent implements OnInit {
     });
   }
 
+  suscribirPremium() {
+    this.cargando = true;
+    this.talleresService.suscribirPremium().subscribe({
+      next: (res: any) => {
+        if (res.checkout_url) {
+          window.location.href = res.checkout_url;
+        }
+        this.cargando = false;
+      },
+      error: (err) => {
+        this.mensaje = 'Error al generar checkout ❌';
+        this.cargando = false;
+      }
+    });
+  }
+
+  cancelarSuscripcion() {
+    if(confirm('¿Estás seguro de cancelar tu plan Premium? Perderás los beneficios limitados al terminar el periodo.')) {
+      this.cargando = true;
+      this.talleresService.cancelarSuscripcion().subscribe({
+        next: () => {
+          this.mensaje = 'Suscripción cancelada ✅';
+          this.cargando = false;
+          this.cargarDatos();
+        },
+        error: (err) => {
+          this.mensaje = 'Error al cancelar suscripción ❌';
+          this.cargando = false;
+        }
+      });
+    }
+  }
+
   // Formato de hora (convierte "08:00:00" a "08:00")
   formatTime(time: string | any): string {
     if (!time) return '';

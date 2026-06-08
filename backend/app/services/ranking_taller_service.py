@@ -279,13 +279,14 @@ class RankingTallerService:
 
         return candidatos
 
-    def generar_candidatos_sin_ofrecer(
+    def generar_ofertas_multiples(
         self,
         incidente: Incidente,
         *,
         radio_max_km: float = 40,
     ) -> list[IncidenteAsignacionCandidato]:
-        """Genera y guarda la lista de candidatos en estado pendiente, sin notificar talleres."""
+        """Genera candidatos y los notifica a todos simultáneamente (Subasta/Múltiples Cotizaciones)."""
+        from app.services.cotizacion_service import CotizacionService
         self.asegurar_catalogo_base()
         categoria = self._resolver_categoria(incidente.clasificacion_ia)
         especialidades_requeridas = self._obtener_especialidades_requeridas(categoria)
@@ -314,7 +315,6 @@ class RankingTallerService:
                 taller,
                 especialidades_requeridas,
             )
-            # Se permite que talleres sin la especialidad sean considerados como fallback
 
             score_distancia = self._score_distancia(distancia_metros, radio_max_km)
             score_disponibilidad = self._score_disponibilidad(taller, tecnicos_activos)
@@ -322,6 +322,11 @@ class RankingTallerService:
                 score_disponibilidad * 0.45
                 + score_especialidad * 0.35
                 + score_distancia * 0.20
+            )
+
+            # Sugerencia IA calculada al vuelo
+            sug_monto = CotizacionService.calcular_sugerencia_ia(
+                self.db, taller.id, incidente.clasificacion_ia
             )
 
             calculados.append(
@@ -332,6 +337,7 @@ class RankingTallerService:
                     "score_distancia": round(score_distancia, 4),
                     "score_especialidad": round(score_especialidad, 4),
                     "score_disponibilidad": round(score_disponibilidad, 4),
+                    "sugerencia_ia_monto": sug_monto,
                     "explicacion": self._explicacion(
                         taller,
                         categoria,
@@ -356,30 +362,37 @@ class RankingTallerService:
             IncidenteAsignacionCandidato.incidente_id == incidente.id
         ).delete(synchronize_session=False)
 
-        # Estado del incidente se mantiene o cambia a un estado intermedio de seleccion
-        incidente.estado = EstadoIncidente.PENDIENTE
+        # Estado del incidente será BUSCANDO_TALLER (subasta abierta)
+        incidente.estado = EstadoIncidente.BUSCANDO_TALLER
         self.db.add(incidente)
 
+        ahora = _ahora()
         for index, item in enumerate(calculados, start=1):
-            self.db.add(
-                IncidenteAsignacionCandidato(
-                    incidente_id=incidente.id,
-                    taller_id=item["taller"].id,
-                    orden=index,
-                    score_total=item["score_total"],
-                    score_distancia=item["score_distancia"],
-                    score_especialidad=item["score_especialidad"],
-                    score_disponibilidad=item["score_disponibilidad"],
-                    estado="pendiente",  # Todos pendientes hasta que el cliente elija
-                    explicacion=item["explicacion"],
-                )
+            candidato = IncidenteAsignacionCandidato(
+                incidente_id=incidente.id,
+                taller_id=item["taller"].id,
+                orden=index,
+                score_total=item["score_total"],
+                score_distancia=item["score_distancia"],
+                score_especialidad=item["score_especialidad"],
+                score_disponibilidad=item["score_disponibilidad"],
+                sugerencia_ia_monto=item["sugerencia_ia_monto"],
+                estado="sugerido",  # Todos están sugeridos
+                fecha_oferta=ahora,
+                explicacion=item["explicacion"],
             )
+            self.db.add(candidato)
 
         self.db.commit()
 
         candidatos = self.obtener_candidatos(incidente.id)
         if not candidatos:
             self._notificar_sin_talleres(incidente)
+        else:
+            self._notificar_cliente_busqueda(incidente, len(candidatos))
+            # Notificar a TODOS los sugeridos
+            for candidato in candidatos:
+                self._notificar_oferta_taller(incidente, candidato)
             
         return candidatos
 

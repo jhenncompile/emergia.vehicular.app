@@ -10,11 +10,21 @@ import random
 # =================================================================
 # 🚩 BLOQUE DE IMPORTACIONES DE SEGURIDAD (No tocar)
 # =================================================================
+from sqlalchemy.orm import Session
+from decimal import Decimal
+from app.db.session import SessionLocal
+from faker import Faker
+import random
+
+# =================================================================
+# 🚩 BLOQUE DE IMPORTACIONES DE SEGURIDAD (No tocar)
+# =================================================================
 from app.models.rol import Rol
 from app.models.taller import Taller
 from app.models.usuario import Usuario, Especialidad
 from app.models.vehiculo import Vehiculo   
 from app.models.incidente import Incidente 
+from app.models.asignacion_inteligente import IncidenteAsignacionCandidato
 from app.models.pago import Pago 
 from app.models.bitacora import Bitacora
 from app.models.notificacion import Notificacion
@@ -25,6 +35,27 @@ from app.models.calificacion import Calificacion
 from app.core.estados import CanceladoPor, EstadoIncidente
 from app.core.security import obtener_hash_clave as get_password_hash
 from app.services.ranking_taller_service import MAPEO_CATEGORIA_ESPECIALIDADES
+
+def get_or_create_stripe_account(email: str, nombre: str):
+    stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+    if not stripe.api_key:
+        return None
+    try:
+        account = stripe.Account.create(
+            type="express",
+            country="US",
+            email=email,
+            capabilities={
+                "card_payments": {"requested": True},
+                "transfers": {"requested": True},
+            },
+            business_type="company",
+            business_profile={"url": "https://vialia-auxilio.com", "name": nombre}
+        )
+        return account.id
+    except Exception as e:
+        print(f"Error creando cuenta stripe: {e}")
+        return None
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -304,6 +335,17 @@ def seed_db(
         taller = db.query(Taller).filter(Taller.id == idx).first()
         if not taller:
             lat, lon = generar_coords_en_zona(t_data["zona"])
+            
+            # Asignar cuenta Stripe
+            cuenta_stripe = t_data.get("stripe_account_id")
+            if not cuenta_stripe:
+                if idx == 1:
+                    cuenta_stripe = "acct_1TfpJPRFvD93OkDf" # La cuenta conectada por defecto
+                else:
+                    # Para no spamear la API, los demas talleres los dejamos sin stripe o creamos on the fly
+                    # cuenta_stripe = get_or_create_stripe_account(f"taller{idx}@emergencia.com", t_data["nombre"])
+                    cuenta_stripe = None
+                    
             taller = Taller(
                 id=idx,
                 nombre=t_data["nombre"],
@@ -311,7 +353,8 @@ def seed_db(
                 comision_porcentaje=t_data["comision"],
                 latitud=lat,
                 longitud=lon,
-                estado=True
+                estado=True,
+                stripe_account_id=cuenta_stripe
             )
             taller.zona = t_data["zona"]
             db.add(taller)
@@ -531,6 +574,58 @@ def seed_db(
     
     db.commit()
     logger.info(f"✅ Creados {len(incidentes)} incidentes finalizados")
+    
+    # ---------------------------------------------------------
+    # 7.5 INCIDENTES BUSCANDO TALLER (Subasta para pruebas)
+    # ---------------------------------------------------------
+    logger.info("🚨 Creando INCIDENTES EN SUBASTA (Para pruebas)...")
+    incidentes_subasta = []
+    
+    for inc_idx in range(2):
+        fecha_incidente = hoy - timedelta(minutes=random.randint(5, 30))
+        cliente = random.choice(clientes)
+        vehiculos_cliente = db.query(Vehiculo).filter(Vehiculo.usuario_id == cliente.id).all()
+        if not vehiculos_cliente: continue
+        vehiculo = random.choice(vehiculos_cliente)
+        
+        clasificacion = random.choice(CLASIFICACIONES_INCIDENTES)
+        zona = random.choice(ZONAS_SC)
+        lat, lon = generar_coords_en_zona(zona)
+        
+        incidente = Incidente(
+            vehiculo_id=vehiculo.id,
+            usuario_id=cliente.id,
+            descripcion=fake.sentence(nb_words=10),
+            ubicacion=zona["nombre"],
+            latitud=lat,
+            longitud=lon,
+            prioridad=random.choice(["alta", "media"]),
+            estado=EstadoIncidente.BUSCANDO_TALLER,
+            pago_estado="pendiente",
+            clasificacion_ia=clasificacion,
+            resumen_ia=fake.sentence(nb_words=8),
+            fecha_creacion=fecha_incidente,
+        )
+        db.add(incidente)
+        db.commit()
+        db.refresh(incidente)
+        incidentes_subasta.append(incidente)
+        
+        # Asignar a todos los talleres como sugeridos para que puedan enviar cotización
+        for taller in talleres:
+            candidato = IncidenteAsignacionCandidato(
+                incidente_id=incidente.id,
+                taller_id=taller.id,
+                estado="sugerido",
+                score_total=round(random.uniform(0.7, 0.99), 2),
+                distancia_km=round(random.uniform(1.0, 9.0), 2),
+                sugerencia_ia_monto=round(random.uniform(50.0, 200.0), 2),
+                fecha_sugerido=fecha_incidente,
+            )
+            db.add(candidato)
+    
+    db.commit()
+    logger.info(f"✅ Creados {len(incidentes_subasta)} incidentes en subasta")
     
     # ---------------------------------------------------------
     # 8. PAGOS (para incidentes finalizados)

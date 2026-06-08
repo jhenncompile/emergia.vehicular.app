@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_stripe/flutter_stripe.dart' hide Card; // 🚩 Import Stripe
 
 import 'backend_config.dart';
 import 'providers/auth_provider.dart';
@@ -54,6 +55,11 @@ void main() async {
     debugPrint("Error inicializando Firebase: $e");
   }
   await LocalNotificationService().initialize();
+  
+  // 🚩 Setup Stripe
+  Stripe.publishableKey = 'pk_test_51TfaqoRFvDNKnuYCx0gIUcFPWSe3FsytLXYVjojUI6KkkK3q74lWSx2eTK4ygKiMKW5OHNqxmfvcrRPa9YdB3TDR00sUOo6yCP';
+  await Stripe.instance.applySettings();
+  
   runApp(const MyApp());
 }
 

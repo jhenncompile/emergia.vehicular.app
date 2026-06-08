@@ -603,7 +603,7 @@ if (tallerData.isNotEmpty) {
       builder: (ctx) => const Center(child: CircularProgressIndicator()),
     );
 
-    final candidatos = await provider.obtenerCandidatos(incidenteId);
+    final candidatos = await provider.obtenerCotizaciones(incidenteId);
 
     if (!context.mounted) return;
     Navigator.of(context).pop(); // Cerrar loader
@@ -643,29 +643,34 @@ if (tallerData.isNotEmpty) {
                     itemCount: candidatos.length,
                     itemBuilder: (ctx, i) {
                       final c = candidatos[i];
-                      final distanceStr = c['distancia_km'] != null
-                          ? '${c['distancia_km']} km'
-                          : 'Desconocido';
-
+                      
                       return ListTile(
                         leading: const CircleAvatar(
                           backgroundColor: AppColors.primaryColor,
                           child: Icon(Icons.build, color: Colors.white),
                         ),
                         title: Text(c['taller_nombre'] ?? 'Taller sin nombre'),
-                        subtitle: Text('Distancia: $distanceStr\nCalificación: ${c['calificacion_promedio']} ⭐'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Monto cotizado: ${c['monto'] ?? c['sugerencia_ia_monto'] ?? '0.00'} Bs',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                            Text('Tiempo estimado: ${c['tiempo_estimado'] ?? 'No especificado'}'),
+                          ],
+                        ),
                         isThreeLine: true,
                         trailing: ElevatedButton(
                           onPressed: () async {
-                            final tallerId = c['taller_id'] as int;
-                            final ok = await provider.seleccionarTaller(
+                            Navigator.pop(context); // Cierra el bottom sheet
+                            final ok = await provider.seleccionarCotizacion(
                               incidenteId: incidenteId,
-                              tallerId: tallerId,
+                              tallerId: c['taller_id'],
                             );
 
                             if (!ctx.mounted) return;
                             if (ok) {
-                              Navigator.of(ctx).pop(); // Cierra el modal inferior
                               ScaffoldMessenger.of(ctx).showSnackBar(
                                 const SnackBar(
                                   content: Text('Solicitud enviada al taller.'),

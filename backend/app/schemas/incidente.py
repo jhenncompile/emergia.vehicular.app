@@ -74,6 +74,7 @@ class IncidenteBase(BaseModel):
     tiempo_asignacion_segundos: Optional[int] = None
     fecha_creacion: Optional[datetime] = None
     fecha_llegada_tecnico: Optional[datetime] = None
+    tiempo_reparacion_estimado: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -95,12 +96,16 @@ class IncidenteUpdate(BaseModel):
     cancelado_por: Optional[str] = None
     tiempo_asignacion_segundos: Optional[int] = None
     fecha_llegada_tecnico: Optional[datetime] = None
+    tiempo_reparacion_estimado: Optional[str] = None
     resumen_ia: Optional[str] = None
 
 
 class IncidenteCancel(BaseModel):
     motivo_cancelacion: str
     cancelado_por: Optional[str] = None
+
+class TiempoReparacionUpdate(BaseModel):
+    tiempo_reparacion_estimado: str
 
 class Incidente(IncidenteBase):
     id: int
@@ -118,6 +123,11 @@ class Incidente(IncidenteBase):
     mensaje_asignacion: Optional[str] = None
     taller_ofrecido: Optional[TallerInfo] = None
     candidato_ofrecido_id: Optional[int] = None
+    candidato_estado: Optional[str] = None
+    sugerencia_ia_monto: Optional[Decimal] = None
+    cotizacion_monto: Optional[Decimal] = None
+    cotizacion_tiempo: Optional[str] = None
+    tiempo_llegada_estimado: Optional[str] = None
     evidencias: Optional[List[EvidenciaInfo]] = None
 
     @root_validator(pre=True)
@@ -163,6 +173,35 @@ class Incidente(IncidenteBase):
                 "mensaje_asignacion": getattr(obj, "mensaje_asignacion", None),
                 "taller_ofrecido": getattr(obj, "taller_ofrecido", None),
                 "candidato_ofrecido_id": getattr(obj, "candidato_ofrecido_id", None),
+                "candidato_estado": getattr(obj, "candidato_estado", None),
+                "sugerencia_ia_monto": getattr(obj, "sugerencia_ia_monto", None),
+                "cotizacion_monto": getattr(obj, "cotizacion_monto", None),
+                "cotizacion_tiempo": getattr(obj, "cotizacion_tiempo", None),
+                "tiempo_llegada_estimado": getattr(obj, "tiempo_llegada_estimado", None),
+                "tiempo_reparacion_estimado": getattr(obj, "tiempo_reparacion_estimado", None),
                 "evidencias": getattr(obj, "evidencias", []), # 📷 evidencias
             }
         return obj
+
+# Esquemas para la nueva funcionalidad de Cotizaciones Multiples
+class CotizacionTallerCreate(BaseModel):
+    monto: float
+    tiempo_estimado: str
+
+class CotizacionInfo(BaseModel):
+    id: int
+    taller_id: int
+    taller_nombre: Optional[str] = None
+    taller_latitud: Optional[float] = None
+    taller_longitud: Optional[float] = None
+    distancia_metros: Optional[float] = None
+    monto: float
+    tiempo_estimado: str
+    sugerencia_ia_monto: Optional[float] = None
+    estado: str
+    
+    class Config:
+        from_attributes = True
+
+class IncidenteConCotizaciones(Incidente):
+    cotizaciones: List[CotizacionInfo] = []

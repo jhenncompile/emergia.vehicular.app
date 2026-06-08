@@ -32,6 +32,7 @@ class Incidente(Base):
     tiempo_asignacion_segundos = Column(Integer, nullable=True)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
     fecha_llegada_tecnico = Column(DateTime(timezone=True), nullable=True)
+    tiempo_reparacion_estimado = Column(String(50), nullable=True)
 
     # --- CAMPOS PARA LA IA ---
     transcripcion_audio = Column(Text)

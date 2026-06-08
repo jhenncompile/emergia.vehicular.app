@@ -960,7 +960,7 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
       builder: (ctx) => const Center(child: CircularProgressIndicator()),
     );
 
-    final candidatos = await provider.obtenerCandidatos(incidenteId);
+    final candidatos = await provider.obtenerCotizaciones(incidenteId);
 
     if (!context.mounted) return;
     Navigator.of(context).pop(); // Cerrar loader
@@ -1014,19 +1014,17 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Distancia: $distanceStr'),
-                            Row(
-                              children: [
-                                const Icon(Icons.star, size: 16, color: Colors.amber),
-                                const SizedBox(width: 4),
-                                Text(rating.toStringAsFixed(1)),
-                              ],
+                            Text(
+                              'Monto cotizado: ${c['monto'] ?? c['sugerencia_ia_monto'] ?? '0.00'} Bs',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
                             ),
+                            Text('Tiempo estimado: ${c['tiempo_estimado'] ?? 'No especificado'}'),
                           ],
                         ),
+                        isThreeLine: true,
                         trailing: ElevatedButton(
                           onPressed: () async {
-                            final success = await provider.seleccionarTaller(
+                            final success = await provider.seleccionarCotizacion(
                               incidenteId: incidenteId,
                               tallerId: c['taller_id'],
                             );

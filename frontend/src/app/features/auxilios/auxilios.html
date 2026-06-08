@@ -41,7 +41,16 @@
           
           <div class="card-location">
             <span>📍 {{ inc.ubicacion || 'Ubicación no especificada' }}</span>
-            <span class="distance" *ngIf="inc.distancia_metros">({{ (inc.distancia_metros / 1000) | number:'1.1-1' }} km)</span>
+            <span class="distance" *ngIf="inc.distancia_metros">({{ (inc.distancia_metros / 1000) | number:'1.1-1' }} km) - {{ inc.tiempo_llegada_estimado || '?' }}</span>
+          </div>
+
+          <div class="card-cotizacion" *ngIf="inc.candidato_estado === 'sugerido' && inc.sugerencia_ia_monto != null" style="margin-top: 10px; padding: 10px; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 6px;">
+            <p style="margin: 0; font-size: 0.9rem; color: #0369a1;"><strong>🤖 Sugerencia IA:</strong> ~{{ inc.sugerencia_ia_monto | number:'1.2-2' }} Bs</p>
+          </div>
+
+          <div class="card-cotizacion" *ngIf="inc.candidato_estado === 'cotizado'" style="margin-top: 10px; padding: 10px; background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 6px;">
+            <p style="margin: 0; font-size: 0.9rem; color: #0f766e;"><strong>💰 Mi Cotización:</strong> {{ inc.cotizacion_monto }} Bs</p>
+            <p style="margin: 4px 0 0; font-size: 0.85rem; color: #0f766e;"><strong>⏱️ Tiempo est.:</strong> {{ inc.cotizacion_tiempo }}</p>
           </div>
           
           <div class="card-footer">
@@ -117,6 +126,15 @@
       <button class="close-btn" (click)="cerrarPanel()">✕</button>
     </div>
     <div class="panel-body" *ngIf="incidenteSeleccionado">
+      
+      <div class="panel-actions" *ngIf="tabActiva === 'pendientes'" style="margin-bottom: 15px; display: flex; gap: 10px; flex-direction: column;">
+        <button *ngIf="incidenteSeleccionado.candidato_estado !== 'cotizado'" class="btn-primary" style="width: 100%; padding: 12px; font-size: 1.05rem;" (click)="abrirModalCotizar(incidenteSeleccionado)">💰 Enviar Cotización</button>
+        <div *ngIf="incidenteSeleccionado.candidato_estado === 'cotizado'" style="background: #f0fdfa; color: #0f766e; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #ccfbf1; font-weight: bold;">
+          ✅ Cotización Enviada
+        </div>
+        <button class="btn-reject" style="width: 100%; text-align: center; display: block;" (click)="abrirModalRechazo(incidenteSeleccionado, 'rechazar')">Rechazar / Ignorar</button>
+      </div>
+
       <!-- 📝 DESCRIPCIÓN Y AUDIO -->
       <div class="info-card" *ngIf="incidenteSeleccionado.descripcion || incidenteSeleccionado.transcripcion_audio">
         <label>📝 Problema Reportado:</label>
@@ -198,12 +216,6 @@
         <a [href]="'tel:' + incidenteSeleccionado.telefono_cliente" class="btn-call">📞 Llamar al Cliente</a>
         
         <div class="panel-actions">
-          <!-- Botones para pendientes -->
-          <ng-container *ngIf="tabActiva === 'pendientes'">
-            <button class="btn-primary" style="width: 100%;" (click)="aceptarIncidente(incidenteSeleccionado.id)">Aceptar Oferta</button>
-            <button class="btn-reject" style="width: 100%; text-align: center; display: block;" (click)="abrirModalRechazo(incidenteSeleccionado, 'rechazar')">Rechazar Oferta</button>
-          </ng-container>
-
           <!-- Botones para mis atenciones -->
           <ng-container *ngIf="tabActiva === 'mis-atenciones'">
             <button *ngIf="puedeAsignarTecnico(incidenteSeleccionado)"
@@ -214,6 +226,10 @@
                     class="btn-primary" style="width: 100%;"
                     (click)="marcarLlegada(incidenteSeleccionado.id)">Marcar Llegada</button>
             
+            <button *ngIf="incidenteSeleccionado.estado === 'en_atencion'"
+                    class="btn-primary" style="width: 100%; margin-bottom: 8px; background-color: #0284c7;"
+                    (click)="abrirModalReparacion(incidenteSeleccionado)">Estimar Tiempo Reparación</button>
+
             <button *ngIf="puedeCobrar(incidenteSeleccionado)"
                     class="btn-pay" style="width: 100%;"
                     (click)="abrirModalCobro(incidenteSeleccionado)">Generar Cobro</button>
@@ -293,4 +309,41 @@
       </div>
     </div>
   </div>
+
+  <div class="modal-overlay" *ngIf="mostrarModalCotizar">
+    <div class="modal-card">
+      <div class="modal-header"><h3>💡 Enviar Cotización</h3></div>
+      <div class="modal-body">
+        <div class="alert-info" *ngIf="sugerenciaMonto > 0" style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 0.9em; color: #1e3a8a;">
+          🤖 <strong>Sugerencia IA:</strong> Según tu historial y la categoría del incidente, te sugerimos cobrar <strong>{{ sugerenciaMonto }} Bs.</strong>
+        </div>
+        
+        <label>Monto a cobrar (Bs.):</label>
+        <input type="number" class="modern-input" [(ngModel)]="montoCobro" placeholder="0.00" style="margin-bottom: 15px;">
+        
+        <label>Tiempo estimado de reparación:</label>
+        <input type="text" class="modern-input" [(ngModel)]="cotizacionTiempo" placeholder="Ej. 30 minutos">
+        
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline" (click)="cerrarModalCotizar()">Cancelar</button>
+        <button class="btn-primary" (click)="confirmarCotizacion()">Enviar Propuesta</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" *ngIf="mostrarModalReparacion">
+    <div class="modal-card">
+      <div class="modal-header"><h3>⏱️ Tiempo Estimado de Reparación</h3></div>
+      <div class="modal-body">
+        <p>Ingresa el tiempo estimado basado en el diagnóstico inicial (ej: 2 horas, 45 min):</p>
+        <input type="text" [(ngModel)]="tiempoReparacionInput" class="modern-input" placeholder="Ej: 2 horas">
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="cerrarModalReparacion()">Cancelar</button>
+        <button class="btn-primary" (click)="guardarTiempoReparacion()">Guardar Tiempo</button>
+      </div>
+    </div>
+  </div>
+
 </div>

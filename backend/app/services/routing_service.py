@@ -104,6 +104,39 @@ class RoutingService:
                 "geometry": None,
                 "pasos": []
             }
+            
+    @staticmethod
+    def obtener_ruta_sync(
+        lon_origen: float,
+        lat_origen: float,
+        lon_destino: float,
+        lat_destino: float
+    ) -> Dict[str, Any]:
+        """Versión sincrónica para llamar en endpoints normales (def)"""
+        try:
+            url = (
+                f"{RoutingService.OSRM_BASE}/driving/"
+                f"{lon_origen},{lat_origen};"
+                f"{lon_destino},{lat_destino}"
+                f"?overview=false"  # no necesitamos geometry para ETA
+            )
+            import httpx
+            with httpx.Client() as client:
+                response = client.get(url, timeout=RoutingService.TIMEOUT)
+                if response.status_code != 200:
+                    return {"error": "Error OSRM", "distancia_km": None, "duracion_minutos": None}
+                data = response.json()
+                if data.get("code") != "Ok" or not data.get("routes"):
+                    return {"error": "No route", "distancia_km": None, "duracion_minutos": None}
+                
+                route = data["routes"][0]
+                return {
+                    "error": None,
+                    "distancia_km": round(route["distance"] / 1000, 2),
+                    "duracion_minutos": round(route["duration"] / 60, 1),
+                }
+        except Exception as e:
+            return {"error": str(e), "distancia_km": None, "duracion_minutos": None}
     
     @staticmethod
     def _extraer_pasos(route: Dict) -> List[Dict]:

@@ -343,7 +343,7 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
       builder: (ctx) => const Center(child: CircularProgressIndicator()),
     );
 
-    final candidatos = await provider.obtenerCandidatos(incidenteId);
+    final candidatos = await provider.obtenerCotizaciones(incidenteId);
 
     if (!context.mounted) return;
     Navigator.of(context).pop(); // Cerrar loader
@@ -382,28 +382,22 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                     controller: scrollController,
                     itemCount: candidatos.length,
                     itemBuilder: (ctx, i) {
-                      final c = candidatos[i];
-                      final distanceStr = c['distancia_km'] != null
-                          ? '${c['distancia_km']} km'
-                          : 'Distancia desconocida';
-                      final rating = c['calificacion_promedio'] ?? 0.0;
-
-                      final scoreEsp = c['score_especialidad'] ?? 0.0;
-                      final isFallback = scoreEsp <= 0;
-                      final subtitle = isFallback 
-                          ? 'Distancia: $distanceStr\n⚠️ Sin la especialidad exacta'
-                          : 'Distancia: $distanceStr';
+                      final candidato = candidatos[i];
+                      final rating = candidato['calificacion_promedio'] ?? 0.0;
 
                       return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: isFallback ? Colors.orangeAccent : Colors.blueAccent,
-                          child: const Icon(Icons.build, color: Colors.white),
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.build),
                         ),
-                        title: Text(c['taller_nombre'] ?? 'Taller'),
+                        title: Text(candidato['taller_nombre'] ?? 'Taller sin nombre'),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(subtitle),
+                            Text(
+                              'Monto cotizado: ${candidato['monto'] ?? candidato['sugerencia_ia_monto'] ?? '0.00'} Bs',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                            Text('Tiempo estimado: ${candidato['tiempo_estimado'] ?? 'No especificado'}'),
                             Row(
                               children: [
                                 const Icon(Icons.star, size: 16, color: Colors.amber),
@@ -413,14 +407,15 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                             ),
                           ],
                         ),
+                        isThreeLine: true,
                         trailing: ElevatedButton(
                           onPressed: () async {
-                            final success = await provider.seleccionarTaller(
+                            Navigator.pop(context); // Cierra el bottom sheet
+                            final success = await provider.seleccionarCotizacion(
                               incidenteId: incidenteId,
-                              tallerId: c['taller_id'],
+                              tallerId: candidato['taller_id'],
                             );
-                            if (!ctx.mounted) return;
-                            Navigator.of(ctx).pop();
+                            if (!context.mounted) return;
                             if (success) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -538,6 +533,11 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                 _buildDetalleRow(
                   'Resumen IA',
                   _texto(incidente['resumen_ia'])!,
+                ),
+              if (_texto(incidente['tiempo_reparacion_estimado']) != null)
+                _buildDetalleRow(
+                  'Tiempo de Reparación',
+                  _texto(incidente['tiempo_reparacion_estimado'])!,
                 ),
               if (punto != null)
                 _buildDetalleMapa(punto)
@@ -848,6 +848,89 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
     if (text == null || text.isEmpty) return null;
     return text;
   }
+  /// Indicador visual del estado de sincronización para incidentes offline.
+  Widget _buildSyncStatusWidget(BuildContext context, Map<String, dynamic> incidente) {
+    final idLocal = incidente['id'] as int;
+
+    return FutureBuilder<EstadoSync>(
+      future: SyncService.obtenerEstado(idLocal),
+      builder: (context, snapshot) {
+        final estado = snapshot.data ?? EstadoSync.pendiente;
+
+        Widget icon;
+        String mensaje;
+        Color color;
+        Widget? botonReintento;
+
+        switch (estado) {
+          case EstadoSync.pendiente:
+            icon = const Icon(Icons.access_time, size: 14, color: Colors.orange);
+            mensaje = 'Pendiente de sincronización';
+            color = Colors.orange.shade50;
+            break;
+          case EstadoSync.sincronizando:
+            icon = const SizedBox(
+              width: 14, height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            );
+            mensaje = 'Sincronizando...';
+            color = Colors.blue.shade50;
+            break;
+          case EstadoSync.sincronizado:
+            icon = const Icon(Icons.check_circle, size: 14, color: Colors.green);
+            mensaje = 'Sincronizado correctamente';
+            color = Colors.green.shade50;
+            break;
+          case EstadoSync.error:
+            icon = const Icon(Icons.error_outline, size: 14, color: Colors.red);
+            mensaje = 'Error al sincronizar';
+            color = Colors.red.shade50;
+            botonReintento = TextButton.icon(
+              onPressed: () async {
+                final syncService = context.read<SyncService>();
+                final ok = await syncService.reintentar(idLocal);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok ? '✅ Sincronizado' : '❌ Sigue sin conexión'),
+                      backgroundColor: ok ? Colors.green : Colors.red,
+                    ),
+                  );
+                  setState(() {}); // Refrescar el FutureBuilder
+                }
+              },
+              icon: const Icon(Icons.refresh, size: 14),
+              label: const Text('Reintentar', style: TextStyle(fontSize: 12)),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              ),
+            );
+            break;
+        }
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color == Colors.orange.shade50 ? Colors.orange : Colors.transparent),
+          ),
+          child: Row(
+            children: [
+              icon,
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(mensaje, style: const TextStyle(fontSize: 12)),
+              ),
+              if (botonReintento != null) botonReintento,
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _EvidenciasIncidenteSection extends StatefulWidget {
@@ -1069,90 +1152,6 @@ class _EvidenciasIncidenteSectionState
   }
 
 
-
-  /// Indicador visual del estado de sincronización para incidentes offline.
-  Widget _buildSyncStatusWidget(BuildContext context, Map<String, dynamic> incidente) {
-    final idLocal = incidente['id'] as int;
-
-    return FutureBuilder<EstadoSync>(
-      future: SyncService.obtenerEstado(idLocal),
-      builder: (context, snapshot) {
-        final estado = snapshot.data ?? EstadoSync.pendiente;
-
-        Widget icon;
-        String mensaje;
-        Color color;
-        Widget? botonReintento;
-
-        switch (estado) {
-          case EstadoSync.pendiente:
-            icon = const Icon(Icons.access_time, size: 14, color: Colors.orange);
-            mensaje = 'Pendiente de sincronización';
-            color = Colors.orange.shade50;
-            break;
-          case EstadoSync.sincronizando:
-            icon = const SizedBox(
-              width: 14, height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            );
-            mensaje = 'Sincronizando...';
-            color = Colors.blue.shade50;
-            break;
-          case EstadoSync.sincronizado:
-            icon = const Icon(Icons.check_circle, size: 14, color: Colors.green);
-            mensaje = 'Sincronizado correctamente';
-            color = Colors.green.shade50;
-            break;
-          case EstadoSync.error:
-            icon = const Icon(Icons.error_outline, size: 14, color: Colors.red);
-            mensaje = 'Error al sincronizar';
-            color = Colors.red.shade50;
-            botonReintento = TextButton.icon(
-              onPressed: () async {
-                final syncService = context.read<SyncService>();
-                final ok = await syncService.reintentar(idLocal);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(ok ? '✅ Sincronizado' : '❌ Sigue sin conexión'),
-                      backgroundColor: ok ? Colors.green : Colors.red,
-                    ),
-                  );
-                  setState(() {}); // Refrescar el FutureBuilder
-                }
-              },
-              icon: const Icon(Icons.refresh, size: 14),
-              label: const Text('Reintentar', style: TextStyle(fontSize: 12)),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              ),
-            );
-            break;
-        }
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color == Colors.orange.shade50 ? Colors.orange : Colors.transparent),
-          ),
-          child: Row(
-            children: [
-              icon,
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(mensaje, style: const TextStyle(fontSize: 12)),
-              ),
-              if (botonReintento != null) botonReintento,
-            ],
-          ),
-        );
-      },
-    );
-  }
 
   @override
   void dispose() {

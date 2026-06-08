@@ -215,24 +215,27 @@ class IncidenteProvider extends ChangeNotifier {
     }
   }
 
-  /// Obtener lista de talleres candidatos para un incidente
-  Future<List<Map<String, dynamic>>> obtenerCandidatos(int incidenteId) async {
+  /// Obtener lista de cotizaciones de talleres para un incidente
+  Future<List<Map<String, dynamic>>> obtenerCotizaciones(int incidenteId) async {
+    _isLoading = true;
     _errorMessage = null;
-    // No usamos _isLoading = true aqui para evitar que la UI principal se reconstruya
-    // y desmonte los dialogos (showDialog) que se hayan abierto.
+    notifyListeners();
 
     try {
-      final candidatos = await incidenteService.obtenerCandidatos(incidenteId);
-      return candidatos;
+      final cotizaciones = await incidenteService.obtenerCotizaciones(incidenteId);
+      _isLoading = false;
+      notifyListeners();
+      return cotizaciones;
     } catch (e) {
       _errorMessage = e.toString();
+      _isLoading = false;
       notifyListeners();
       return [];
     }
   }
 
-  /// Seleccionar manualmente el taller para el incidente
-  Future<bool> seleccionarTaller({
+  /// Cliente selecciona una cotización y su taller asociado
+  Future<bool> seleccionarCotizacion({
     required int incidenteId,
     required int tallerId,
   }) async {
@@ -241,12 +244,14 @@ class IncidenteProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await incidenteService.seleccionarTaller(
+      await incidenteService.seleccionarCotizacion(
         incidenteId: incidenteId,
         tallerId: tallerId,
       );
-      // Actualizar estado local a BUSCANDO_TALLER
-      actualizarEstadoLocal(id: incidenteId, estado: 'buscando_taller');
+
+      // Actualizar el estado en la lista local (simulando que el WS lo actualizará después)
+      actualizarEstadoLocal(id: incidenteId, estado: 'asignado_taller');
+
       _isLoading = false;
       notifyListeners();
       return true;
@@ -257,6 +262,7 @@ class IncidenteProvider extends ChangeNotifier {
       return false;
     }
   }
+
 
   void limpiar() {
     _misIncidentes = [];

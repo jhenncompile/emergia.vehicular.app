@@ -95,6 +95,11 @@ class IncidenteAsignacionCandidato(Base):
     fecha_respuesta = Column(DateTime(timezone=True), nullable=True)
     expira_en = Column(DateTime(timezone=True), nullable=True)
     motivo_rechazo = Column(Text, nullable=True)
+    
+    # Nuevos campos para cotizacion multiple
+    cotizacion_monto = Column(Float, nullable=True)
+    cotizacion_tiempo = Column(String(100), nullable=True)
+    sugerencia_ia_monto = Column(Float, nullable=True)
 
     incidente = relationship("Incidente", back_populates="asignacion_candidatos")
     taller = relationship("Taller", back_populates="asignacion_candidatos")

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/pago_provider.dart';
 import '../../theme/colors.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 
 class PagosScreen extends StatefulWidget {
   const PagosScreen({super.key});
@@ -299,10 +300,77 @@ class _PagosScreenState extends State<PagosScreen>
     }
   }
 
-  void _pagarAhora(BuildContext context, Map<String, dynamic> pago) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('🔄 Sistema de pago en desarrollo...')),
-    );
+  Future<void> _pagarAhora(BuildContext context, Map<String, dynamic> pago) async {
+    final pagoProvider = context.read<PagoProvider>();
+    final pagoService = pagoProvider.pagoService; // Asegúrate de poder acceder a esto o pásalo
+
+    try {
+      // 1. Mostrar loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // 2. Obtener PaymentIntent desde backend
+      final pagoId = pago['id'] ?? pago['pago_id'];
+      if (pagoId == null) {
+        throw Exception("ID de pago no encontrado");
+      }
+      
+      final intentData = await pagoService.crearPaymentIntent(pagoId as int);
+
+      // 3. Inicializar PaymentSheet
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: intentData['paymentIntent'],
+          merchantDisplayName: 'VialIA Auxilio',
+          style: ThemeMode.system,
+        ),
+      );
+
+      // 4. Mostrar PaymentSheet
+      if (context.mounted) {
+        Navigator.pop(context); // Quitar loading
+      }
+      await Stripe.instance.presentPaymentSheet();
+
+      // 5. Éxito
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('¡Pago realizado con éxito!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Recargar listas
+        final userId = context.read<AuthProvider>().userId;
+        if (userId != null) {
+          pagoProvider.cargarHistorialPagos(usuarioId: userId);
+          pagoProvider.cargarFacturasPendientes(usuarioId: userId);
+        }
+      }
+    } on StripeException catch (e) {
+      if (context.mounted) {
+        if (Navigator.canPop(context)) Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Pago cancelado: ${e.error.localizedMessage}'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        if (Navigator.canPop(context)) Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _descargarFactura(BuildContext context, Map<String, dynamic> pago) {
