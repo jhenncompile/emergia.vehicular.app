@@ -29,7 +29,7 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./",\
         "packageDependencies": [\
           ["@angular/build", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.7"],\
-          ["@angular/cdk", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:22.0.0"],\
+          ["@angular/cdk", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.14"],\
           ["@angular/cli", "npm:21.2.7"],\
           ["@angular/common", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.8"],\
           ["@angular/compiler", "npm:21.2.8"],\
@@ -412,17 +412,17 @@ const RAW_RUNTIME_STATE =
       }]\
     ]],\
     ["@angular/cdk", [\
-      ["npm:22.0.0", {\
-        "packageLocation": "../../../../../../../AppData/Local/Yarn/Berry/cache/@angular-cdk-npm-22.0.0-061d7a6791-10c0.zip/node_modules/@angular/cdk/",\
+      ["npm:21.2.14", {\
+        "packageLocation": "../../../../../../../AppData/Local/Yarn/Berry/cache/@angular-cdk-npm-21.2.14-a561de9a19-10c0.zip/node_modules/@angular/cdk/",\
         "packageDependencies": [\
-          ["@angular/cdk", "npm:22.0.0"]\
+          ["@angular/cdk", "npm:21.2.14"]\
         ],\
         "linkType": "SOFT"\
       }],\
-      ["virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:22.0.0", {\
-        "packageLocation": "./.yarn/__virtual__/@angular-cdk-virtual-d0bb3f4c19/8/AppData/Local/Yarn/Berry/cache/@angular-cdk-npm-22.0.0-061d7a6791-10c0.zip/node_modules/@angular/cdk/",\
+      ["virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.14", {\
+        "packageLocation": "./.yarn/__virtual__/@angular-cdk-virtual-1505f8e5c8/8/AppData/Local/Yarn/Berry/cache/@angular-cdk-npm-21.2.14-a561de9a19-10c0.zip/node_modules/@angular/cdk/",\
         "packageDependencies": [\
-          ["@angular/cdk", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:22.0.0"],\
+          ["@angular/cdk", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.14"],\
           ["@angular/common", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.8"],\
           ["@angular/core", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.8"],\
           ["@angular/platform-browser", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.8"],\
@@ -5557,7 +5557,7 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./",\
         "packageDependencies": [\
           ["@angular/build", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.7"],\
-          ["@angular/cdk", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:22.0.0"],\
+          ["@angular/cdk", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.14"],\
           ["@angular/cli", "npm:21.2.7"],\
           ["@angular/common", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.8"],\
           ["@angular/compiler", "npm:21.2.8"],\
@@ -6556,7 +6556,7 @@ const RAW_RUNTIME_STATE =
       ["virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:10.0.0", {\
         "packageLocation": "./.yarn/__virtual__/ng2-charts-virtual-dff850ef7f/8/AppData/Local/Yarn/Berry/cache/ng2-charts-npm-10.0.0-5befb0c17a-10c0.zip/node_modules/ng2-charts/",\
         "packageDependencies": [\
-          ["@angular/cdk", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:22.0.0"],\
+          ["@angular/cdk", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.14"],\
           ["@angular/common", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.8"],\
           ["@angular/core", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.8"],\
           ["@angular/platform-browser", "virtual:a6159c546d6791e57f05669bc030cc2dcda55c85afff4cb0c314b5dc65bcf06edc3abb13ba82b2c4a4570c1b10068ae436fac54292748e85e0abffa978154200#npm:21.2.8"],\

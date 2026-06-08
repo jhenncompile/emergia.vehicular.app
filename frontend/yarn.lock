@@ -301,18 +301,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@angular/cdk@npm:^22.0.0":
-  version: 22.0.0
-  resolution: "@angular/cdk@npm:22.0.0"
+"@angular/cdk@npm:^21.2.0":
+  version: 21.2.14
+  resolution: "@angular/cdk@npm:21.2.14"
   dependencies:
     parse5: "npm:^8.0.0"
     tslib: "npm:^2.3.0"
   peerDependencies:
-    "@angular/common": ^22.0.0 || ^23.0.0
-    "@angular/core": ^22.0.0 || ^23.0.0
-    "@angular/platform-browser": ^22.0.0 || ^23.0.0
+    "@angular/common": ^21.0.0 || ^22.0.0
+    "@angular/core": ^21.0.0 || ^22.0.0
+    "@angular/platform-browser": ^21.0.0 || ^22.0.0
     rxjs: ^6.5.3 || ^7.4.0
-  checksum: 10c0/67f9ee6add9be9aa8de2a8b59fb292d7ca1e97773c3b6e76f8ce7d7d38b2d038a62378755607da0b152172f8dd0aed16b149ba27f09e254c3345a10755410976
+  checksum: 10c0/9c52a7942d8758ae0659583762ab6a56cde4fb97e3f6b47fca80e2bb0d99c4e9925a45136eefbb1442b98fd781f211fbe788adc0da2c091a5e58687d3818042f
   languageName: node
   linkType: hard
 
@@ -4150,7 +4150,7 @@ __metadata:
   resolution: "frontend-taller@workspace:."
   dependencies:
     "@angular/build": "npm:^21.2.6"
-    "@angular/cdk": "npm:^22.0.0"
+    "@angular/cdk": "npm:^21.2.0"
     "@angular/cli": "npm:^21.2.6"
     "@angular/common": "npm:^21.2.0"
     "@angular/compiler": "npm:^21.2.0"
