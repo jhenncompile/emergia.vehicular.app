@@ -6,7 +6,8 @@ import '../../theme/colors.dart';
 import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
 
 class PagosScreen extends StatefulWidget {
-  const PagosScreen({super.key});
+  const PagosScreen({super.key, this.initialIndex = 0});
+  final int initialIndex;
 
   @override
   State<PagosScreen> createState() => _PagosScreenState();
@@ -19,7 +20,7 @@ class _PagosScreenState extends State<PagosScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialIndex);
 
     // Cargar datos
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -36,10 +37,14 @@ class _PagosScreenState extends State<PagosScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pagos y Facturas'),
+        title: const Text('Pagos', style: TextStyle(color: Colors.white)),
         backgroundColor: AppColors.primaryColor,
+        iconTheme: const IconThemeData(color: Colors.white),
         bottom: TabBar(
           controller: _tabController,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
           tabs: const [
             Tab(text: 'Historial'),
             Tab(text: 'Pendientes'),
@@ -81,7 +86,10 @@ class _PagosScreenState extends State<PagosScreen>
           itemCount: pagoProvider.misPagos.length,
           itemBuilder: (context, index) {
             final pago = pagoProvider.misPagos[index];
-            return _buildPagoCard(context, pago, false);
+            return InkWell(
+              onTap: () => _mostrarDetallePago(context, pago),
+              child: _buildPagoCard(context, pago, false),
+            );
           },
         );
       },
@@ -243,30 +251,11 @@ class _PagosScreenState extends State<PagosScreen>
 
             if (esPendiente) ...[
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => _pagarAhora(context, pago),
-                      child: const Text('Pagar Ahora'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _descargarFactura(context, pago),
-                      child: const Text('Ver Factura'),
-                    ),
-                  ),
-                ],
-              ),
-            ] else ...[
-              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => _descargarComprobante(context, pago),
-                  child: const Text('Descargar Comprobante'),
+                child: ElevatedButton(
+                  onPressed: () => _pagarAhora(context, pago),
+                  child: const Text('Pagar Ahora'),
                 ),
               ),
             ],
@@ -335,7 +324,10 @@ class _PagosScreenState extends State<PagosScreen>
       }
       await Stripe.instance.presentPaymentSheet();
 
-      // 5. Éxito
+      // 5. Confirmar pago al backend directamente (fallback en caso de que webhook no llegue localmente)
+      await pagoService.confirmarPagoCliente(pagoId as int);
+
+      // 6. Éxito
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -373,15 +365,56 @@ class _PagosScreenState extends State<PagosScreen>
     }
   }
 
-  void _descargarFactura(BuildContext context, Map<String, dynamic> pago) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('📥 Descargando factura...')));
+  void _mostrarDetallePago(BuildContext context, Map<String, dynamic> pago) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Detalles del Pago',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            _buildDetalleRow('ID Pago:', '${pago['id'] ?? pago['pago_id']}'),
+            _buildDetalleRow('Incidente ID:', '${pago['incidente_id']}'),
+            _buildDetalleRow('Taller:', pago['taller']?['nombre'] ?? 'Desconocido'),
+            _buildDetalleRow('Monto:', '\$${pago['monto']}'),
+            _buildDetalleRow('Método:', '${pago['metodo_pago'] ?? 'No especificado'}'),
+            _buildDetalleRow('Estado:', '${pago['estado'] ?? 'desconocido'}'.toUpperCase()),
+            _buildDetalleRow('Fecha:', _formatearFecha(pago['fecha_pago'])),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cerrar'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  void _descargarComprobante(BuildContext context, Map<String, dynamic> pago) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('📥 Descargando comprobante...')),
+  Widget _buildDetalleRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+        ],
+      ),
     );
   }
 

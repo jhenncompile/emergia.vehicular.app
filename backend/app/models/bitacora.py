@@ -13,7 +13,7 @@ class Bitacora(Base):
     
     tabla = Column(String(50)) 
     tabla_id = Column(Integer) 
-    accion = Column(String(20)) 
+    accion = Column(String(50))
     
     valor_anterior = Column(JSON, nullable=True)
     valor_nuevo = Column(JSON, nullable=True)

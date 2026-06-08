@@ -57,9 +57,23 @@ class IncidenteProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final remotosUsuario = esTecnico
-          ? await incidenteService.obtenerIncidentesTecnico()
-          : await incidenteService.obtenerMisIncidentes();
+      // Cargar pendientes locales primero
+      if (!esTecnico) {
+        final offlineList = await OfflineIncidenteService.obtenerPendientes();
+        _localIncidentes.clear();
+        // Solo agregar los que no estén ya sincronizados (los sincronizados vendrán de la API)
+        _localIncidentes.addAll(offlineList.where((inc) => inc['estado'] != 'sincronizado'));
+      }
+
+      List<dynamic> remotosUsuario = [];
+      try {
+        remotosUsuario = esTecnico
+            ? await incidenteService.obtenerIncidentesTecnico()
+            : await incidenteService.obtenerMisIncidentes();
+      } catch (e) {
+        // Si falla la red, usar solo locales
+        remotosUsuario = [];
+      }
 
       final combinados = esTecnico
           ? remotosUsuario

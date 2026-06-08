@@ -1,5 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../main.dart';
+import '../screens/pagos/pagos_screen.dart';
+import 'package:flutter/material.dart';
 
 class LocalNotificationService {
   static final LocalNotificationService _instance = LocalNotificationService._internal();
@@ -27,8 +29,16 @@ class LocalNotificationService {
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         if (response.payload != null) {
-          // Volver a la pantalla principal al tocar la notificación
-          navigatorKey.currentState?.popUntil((route) => route.isFirst);
+          if (response.payload == 'pago') {
+            navigatorKey.currentState?.push(
+              MaterialPageRoute(
+                builder: (_) => const PagosScreen(initialIndex: 1),
+              ),
+            );
+          } else {
+            // Volver a la pantalla principal al tocar la notificación
+            navigatorKey.currentState?.popUntil((route) => route.isFirst);
+          }
         }
       },
     );

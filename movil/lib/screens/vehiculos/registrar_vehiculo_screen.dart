@@ -148,7 +148,7 @@ class _RegistrarVehiculoScreenState extends State<RegistrarVehiculoScreen> {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon, color: AppColors.secondaryColor),
+        prefixIcon: Icon(icon, color: Colors.lightBlue),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );

@@ -101,37 +101,23 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header con ID y Estado
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  esTecnico
-                      ? 'Asignado #${incidente['id']}'
-                      : 'Incidente #${incidente['id']}',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.displayLarge?.copyWith(fontSize: 14),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getColorEstado(incidente['estado']),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                const Icon(Icons.assignment_turned_in_outlined),
+                const SizedBox(width: 8),
+                Expanded(
                   child: Text(
-                    incidente['estado'] == 'pendiente_sync'
-                        ? 'SIN CONEXIÓN'
-                        : incidente['estado']?.toString().toUpperCase() ?? 'PENDIENTE',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    esTecnico
+                        ? 'Asignado #${incidente['id']}'
+                        : 'Incidente #${incidente['id']}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
+                ),
+                _chip(
+                  incidente['estado'] == 'pendiente_sync'
+                      ? 'SIN CONEXIÓN'
+                      : (incidente['estado']?.toString().toUpperCase() ?? 'PENDIENTE'),
+                  _getColorEstado(incidente['estado']),
                 ),
                 if (incidente['es_local'] == true) ...[  
                   const SizedBox(width: 6),
@@ -142,105 +128,44 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                 ],
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
 
-            // Indicador de estado de sincronización (solo para incidentes offline)
             if (incidente['es_local'] == true)
               _buildSyncStatusWidget(context, incidente),
 
-            if (esTecnico) ...[
-              Row(
-                children: [
-                  const Icon(
-                    Icons.person_outline,
-                    size: 16,
-                    color: AppColors.secondaryColor,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _nombrePersona(incidente['usuario']) ??
-                          'Cliente no disponible',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-            ],
-
-            // Descripción
             Text(
-              _textoIncidente(incidente) ?? 'Sin descripción',
+              _textoIncidente(incidente) ?? 'Incidente',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 8),
-
-            // Vehículo
-            Row(
-              children: [
-                const Icon(
-                  Icons.directions_car,
-                  size: 16,
-                  color: AppColors.secondaryColor,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _vehiculoLabel(incidente['vehiculo']) ??
-                      'Vehiculo desconocido',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            
+            if (esTecnico)
+              _infoLine(
+                Icons.person_outline,
+                _nombrePersona(incidente['usuario']) ?? 'Cliente no disponible',
+              ),
+            _infoLine(
+              Icons.directions_car_outlined,
+              _vehiculoLabel(incidente['vehiculo']) ?? 'Vehiculo no disponible',
             ),
-            const SizedBox(height: 8),
-
-            // Ubicación
-            Row(
-              children: [
-                const Icon(
-                  Icons.location_on,
-                  size: 16,
-                  color: AppColors.secondaryColor,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    incidente['ubicacion'] ?? 'Ubicación desconocida',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                ),
-              ],
+            _infoLine(
+              Icons.location_on_outlined,
+              incidente['ubicacion'] ?? 'Sin ubicación',
             ),
-            const SizedBox(height: 12),
-
-            // Fecha
-            Text(
-              'Reportado el: ${_formatearFecha(_fechaIncidente(incidente))}',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            _infoLine(
+              Icons.calendar_today_outlined,
+              _formatearFecha(_fechaIncidente(incidente)),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
-            // Botón de ver detalles
+            // Botones de acción
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton(
+              child: OutlinedButton.icon(
                 onPressed: () => _verDetalles(context, incidente),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                ),
-                child: Text(esTecnico ? 'Ver Datos' : 'Ver Detalles'),
+                icon: const Icon(Icons.info_outline),
+                label: Text(esTecnico ? 'Ver Datos' : 'Ver Detalles'),
               ),
             ),
 
@@ -301,15 +226,11 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                         );
                       }
                     },
-                    icon: const Icon(Icons.star_rounded, size: 18),
-                    label: const Text('Calificar Taller'),
+                    icon: const Icon(Icons.star),
+                    label: const Text('Calificar Servicio'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFC107),
-                      foregroundColor: Colors.black87,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ),
@@ -348,14 +269,24 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
       builder: (ctx) => const Center(child: CircularProgressIndicator()),
     );
 
-    final candidatos = await provider.obtenerCotizaciones(incidenteId);
+    List<Map<String, dynamic>> candidatos = [];
+    try {
+      candidatos = await provider.obtenerCotizaciones(incidenteId);
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // Cerrar loader
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cargar opciones: $e')),
+      );
+      return;
+    }
 
     if (!context.mounted) return;
     Navigator.of(context).pop(); // Cerrar loader
 
     if (candidatos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se encontraron talleres candidatos.')),
+        const SnackBar(content: Text('No se encontraron talleres disponibles para cambiar.')),
       );
       return;
     }
@@ -936,6 +867,43 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
       },
     );
   }
+  Widget _infoLine(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.secondaryColor),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
 }
 
 class _EvidenciasIncidenteSection extends StatefulWidget {
@@ -1155,6 +1123,7 @@ class _EvidenciasIncidenteSectionState
       ),
     );
   }
+
 
 
 

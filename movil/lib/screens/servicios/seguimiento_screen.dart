@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import '../../providers/incidente_provider.dart';
 import '../../providers/tecnico_provider.dart';
 
 class SeguimientoScreen extends StatefulWidget {
@@ -321,14 +322,28 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> {
               if (tecnicoProvider.puedeMarcarLlegada())
                 ElevatedButton.icon(
                   onPressed: () async {
-                    await tecnicoProvider.marcarLlegada();
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Llegada marcada exitosamente'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+                    try {
+                      await tecnicoProvider.marcarLlegada();
+                      if (!context.mounted) return;
+                      context.read<IncidenteProvider>().actualizarEstadoLocal(
+                        id: incidente['id'] as int,
+                        estado: 'en_atencion',
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Llegada marcada exitosamente'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Error al marcar llegada'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   },
                   icon: const Icon(Icons.check_circle),
                   label: const Text('Marcar Llegada'),
@@ -399,8 +414,11 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> {
     if (confirm == true) {
       if (!context.mounted) return;
       try {
+        final idToUpdate = provider.incidenteActivo?['id'] ?? 0;
         await provider.finalizarIncidente();
         if (!context.mounted) return;
+        final incProvider = context.read<IncidenteProvider>();
+        incProvider.actualizarEstadoLocal(id: idToUpdate, estado: 'finalizado');
         Navigator.pop(context); // Volver al dashboard
       } catch (e) {
         if (!context.mounted) return;
@@ -454,8 +472,11 @@ class _SeguimientoScreenState extends State<SeguimientoScreen> {
     if (confirm == true) {
       if (!context.mounted) return;
       try {
+        final idToUpdate = provider.incidenteActivo?['id'] ?? 0;
         await provider.cancelarIncidente(motivoCtrl.text.trim());
         if (!context.mounted) return;
+        final incProvider = context.read<IncidenteProvider>();
+        incProvider.actualizarEstadoLocal(id: idToUpdate, estado: 'cancelado');
         Navigator.pop(context); // Volver al dashboard
       } catch (e) {
         if (!context.mounted) return;

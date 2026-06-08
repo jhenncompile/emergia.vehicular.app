@@ -14,6 +14,7 @@ import 'package:record/record.dart';
 import '../../providers/incidente_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/vehiculo_provider.dart';
+import '../../services/sync_service.dart';
 import '../../theme/colors.dart';
 import 'map_screen.dart';
 
@@ -901,6 +902,9 @@ class _ReportarIncidenteScreenState extends State<ReportarIncidenteScreen> {
       final guardadoOffline = incidenteProvider.guardadoOffline;
 
       if (guardadoOffline) {
+        await context.read<SyncService>().refrescarPendientes();
+        if (!context.mounted) return;
+
         // CU-N03: Sin internet, guardado localmente
         await showDialog<void>(
           context: context,

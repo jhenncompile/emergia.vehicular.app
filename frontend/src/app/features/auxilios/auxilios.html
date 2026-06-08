@@ -158,11 +158,11 @@
         <label><i class="fa-solid fa-camera me-1"></i> Evidencia Adjunta:</label>
         <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
           <ng-container *ngFor="let ev of incidenteSeleccionado.evidencias">
-            <a *ngIf="ev.tipo_archivo === 'imagen'" [href]="'http://localhost:8000' + ev.url_archivo" target="_blank" style="display: block; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; height: 80px; width: 80px;">
-              <img [src]="'http://localhost:8000' + ev.url_archivo" style="width: 100%; height: 100%; object-fit: cover;">
+            <a *ngIf="ev.tipo_archivo === 'imagen'" [href]="evidenciaUrl(ev.url_archivo)" target="_blank" style="display: block; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; height: 80px; width: 80px;">
+              <img [src]="evidenciaUrl(ev.url_archivo)" style="width: 100%; height: 100%; object-fit: cover;">
             </a>
             <audio *ngIf="ev.tipo_archivo === 'audio'" controls style="width: 100%; margin-top: 5px;">
-              <source [src]="'http://localhost:8000' + ev.url_archivo" type="audio/mpeg">
+              <source [src]="evidenciaUrl(ev.url_archivo)">
               Tu navegador no soporta el audio.
             </audio>
           </ng-container>
@@ -305,7 +305,9 @@
       </div>
       <div class="modal-footer">
         <button class="btn-outline" (click)="cerrarModalCobro()">Cerrar</button>
-        <button class="btn-primary" (click)="generarCobro()">Emitir Cobro</button>
+        <button class="btn-primary" [disabled]="procesandoCobro" (click)="generarCobro()">
+          {{ procesandoCobro ? 'Emitiendo...' : 'Emitir Cobro' }}
+        </button>
       </div>
     </div>
   </div>

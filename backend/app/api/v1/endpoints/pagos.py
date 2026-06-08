@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 from app.models.incidente import Incidente
@@ -20,6 +20,7 @@ from app.crud.crud_bitacora import bitacora_crud
 from app.crud.crud_incidente import incidente_crud
 from app.schemas.pago import Pago, PagoCreate
 from app.core.estados import EstadoIncidente
+from app.services.notificacion_service import NotificacionService
 
 router = APIRouter()
 
@@ -69,7 +70,100 @@ def generar_cobro_incidente(
         nuevo={"monto": monto, "metodo": metodo, "estado": "pendiente"}
     )
 
+    # 🚩 NOTIFICACIÓN AL CLIENTE
+    NotificacionService.crear_notificacion(
+        db,
+        usuario_id=incidente.usuario_id,
+        titulo="Nuevo Cobro Pendiente",
+        mensaje=f"El taller ha generado un cobro de {monto} Bs por el incidente #{incidente_id}.",
+        tipo="cobro_generado",
+        extra_data={"evento": "cobro_generado", "pago_id": nuevo_pago.id, "incidente_id": incidente_id}
+    )
+
     return {"status": "success", "mensaje": "Cobro generado", "pago_id": nuevo_pago.id}
+
+# --- ENDPOINTS PARA EL CLIENTE ---
+
+@router.get("/cliente/pendientes")
+def listar_pagos_pendientes_cliente(
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user)
+):
+    pagos = db.query(PagoModel).filter(PagoModel.usuario_id == current_user.id, PagoModel.estado == 'pendiente').order_by(PagoModel.id.desc()).all()
+    resultado = []
+    for p in pagos:
+        taller = db.query(Taller).filter(Taller.id == p.taller_id).first()
+        resultado.append({
+            "id": p.id,
+            "incidente_id": p.incidente_id,
+            "monto": float(p.monto),
+            "estado": p.estado,
+            "metodo_pago": p.metodo_pago,
+            "fecha_pago": str(p.fecha),
+            "taller": {"nombre": taller.nombre if taller else "Desconocido"}
+        })
+    return resultado
+
+@router.get("/cliente/historial")
+def listar_historial_pagos_cliente(
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user)
+):
+    pagos = db.query(PagoModel).filter(PagoModel.usuario_id == current_user.id, PagoModel.estado != 'pendiente').order_by(PagoModel.id.desc()).all()
+    resultado = []
+    for p in pagos:
+        taller = db.query(Taller).filter(Taller.id == p.taller_id).first()
+        resultado.append({
+            "id": p.id,
+            "incidente_id": p.incidente_id,
+            "monto": float(p.monto),
+            "estado": p.estado,
+            "metodo_pago": p.metodo_pago,
+            "fecha_pago": str(p.fecha),
+            "taller": {"nombre": taller.nombre if taller else "Desconocido"}
+        })
+    return resultado
+
+
+@router.post("/cliente/{pago_id}/confirmar")
+def confirmar_pago_cliente(
+    pago_id: int,
+    metodo_pago: Optional[str] = "Stripe / Tarjeta",
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user)
+):
+    pago = db.query(PagoModel).filter(PagoModel.id == pago_id, PagoModel.usuario_id == current_user.id).first()
+    if not pago:
+        raise HTTPException(status_code=404, detail="Pago no encontrado")
+    
+    if pago.estado != "pendiente":
+        return {"status": "success", "mensaje": "El pago ya fue procesado"}
+
+    pago.estado = "completado"
+    pago.metodo_pago = metodo_pago
+    db.add(pago)
+
+    incidente = db.query(Incidente).filter(Incidente.id == pago.incidente_id).first()
+    if incidente:
+        incidente.pago_estado = "pagado"
+        incidente.estado = EstadoIncidente.FINALIZADO
+        db.add(incidente)
+
+    db.commit()
+
+    from app.crud.crud_bitacora import bitacora_crud
+    bitacora_crud.registrar(
+        db,
+        usuario_id=current_user.id,
+        taller_id=pago.taller_id,
+        tabla="pago",
+        tabla_id=pago.id,
+        accion="CONFIRMAR_PAGO",
+        anterior={"estado": "pendiente"},
+        nuevo={"estado": "completado"}
+    )
+    return {"status": "success", "mensaje": "Pago completado"}
+
 
 # STRIPE: Generar PaymentIntent
 @router.post("/intent/{pago_id}")

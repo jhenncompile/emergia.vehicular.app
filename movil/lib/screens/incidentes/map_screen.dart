@@ -485,6 +485,10 @@ if (tallerData.isNotEmpty) {
                       try {
                         await provider.marcarLlegada();
                         if (!context.mounted) return;
+                        context.read<IncidenteProvider>().actualizarEstadoLocal(
+                          id: activo['id'] as int,
+                          estado: 'en_atencion',
+                        );
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Llegada marcada exitosamente'), backgroundColor: Colors.green),
                         );
@@ -566,7 +570,7 @@ if (tallerData.isNotEmpty) {
 
   Widget _buildCarousel(int incidenteId) {
     return SizedBox(
-      height: 150,
+      height: 170,
       child: PageView.builder(
         controller: PageController(viewportFraction: 0.85),
         itemCount: _cotizaciones.length,
@@ -601,11 +605,11 @@ if (tallerData.isNotEmpty) {
                   const Spacer(),
                   SizedBox(
                     width: double.infinity,
-                    height: 36,
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 10)),
                       onPressed: () => _aceptarCotizacion(c['taller_id'], incidenteId),
                       child: const Text("Aceptar Cotización"),
+
                     ),
                   ),
                 ],
@@ -650,7 +654,14 @@ if (tallerData.isNotEmpty) {
       final provider = context.read<TecnicoProvider>();
       try {
         await provider.finalizarIncidente();
-        if (context.mounted) Navigator.pop(context);
+        if (context.mounted) {
+          final incProvider = context.read<IncidenteProvider>();
+          final incActivo = incProvider.incidenteActivoCliente;
+          if (incActivo != null) {
+            incProvider.actualizarEstadoLocal(id: incActivo['id'], estado: 'finalizado');
+          }
+          Navigator.pop(context);
+        }
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -700,7 +711,14 @@ if (tallerData.isNotEmpty) {
       final provider = context.read<TecnicoProvider>();
       try {
         await provider.cancelarIncidente(motivo);
-        if (mounted) Navigator.pop(context);
+        if (mounted) {
+          final incProvider = context.read<IncidenteProvider>();
+          final incActivo = incProvider.incidenteActivoCliente;
+          if (incActivo != null) {
+            incProvider.actualizarEstadoLocal(id: incActivo['id'], estado: 'cancelado');
+          }
+          Navigator.pop(context);
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

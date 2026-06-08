@@ -109,4 +109,7 @@ class CRUDUsuario(CRUDBase[Usuario, UsuarioCreate, UsuarioUpdate]):
         db.refresh(db_obj)
         return db_obj
     
+    def get_admins_taller(self, db: Session, *, taller_id: int):
+        return db.query(Usuario).filter(Usuario.taller_id == taller_id, Usuario.rol_id == 1).all()
+    
 usuario_crud = CRUDUsuario(Usuario)
