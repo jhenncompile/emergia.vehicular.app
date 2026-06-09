@@ -556,6 +556,13 @@ class _TecnicoDashboardState extends State<TecnicoDashboard> {
     // Cargar incidente activo en TecnicoProvider para seguimiento
     if (tecnicoProvider != null) {
       await tecnicoProvider.cargarIncidenteActivo(usuarioId: userId);
+      
+      if (tecnicoProvider.incidenteActivo != null && !tecnicoProvider.isTracking) {
+        final estado = (tecnicoProvider.incidenteActivo!['estado'] ?? '').toString();
+        if (estado == 'en_camino' || estado == 'en_atencion') {
+          tecnicoProvider.iniciarTracking();
+        }
+      }
     }
   }
 

@@ -102,20 +102,24 @@ class TecnicoProvider extends ChangeNotifier {
 
       // Obtener ubicación inicial y ruta
       _ubicacionActual = await locationService.getCurrentLocation();
+      if (_ubicacionActual != null) {
+        await _procesarUbicacion(_ubicacionActual!);
+      }
       await _actualizarRuta();
       notifyListeners();
 
-      // Escuchar cambios de ubicación cada 10 segundos
-      _locationSubscription = locationService.locationUpdates.listen(
-        (position) async {
+      // Forzar actualización cada 10 segundos estrictos
+      _trackingTimer?.cancel();
+      _trackingTimer = Timer.periodic(const Duration(seconds: intervaloTrackingSegundos), (timer) async {
+        try {
+          final position = await locationService.getCurrentLocation();
           _ubicacionActual = position;
           await _procesarUbicacion(position);
-        },
-        onError: (e) {
+        } catch (e) {
           _errorMessage = 'Error en tracking de ubicación: $e';
           notifyListeners();
-        },
-      );
+        }
+      });
 
       _estadoConexion = 'conectado';
       notifyListeners();
@@ -132,6 +136,7 @@ class TecnicoProvider extends ChangeNotifier {
     _isTracking = false;
     _estadoConexion = 'desconectado';
     await _locationSubscription?.cancel();
+    _trackingTimer?.cancel();
     await locationService.stopTracking();
     notifyListeners();
   }
@@ -141,9 +146,8 @@ class TecnicoProvider extends ChangeNotifier {
     if (_incidenteActivo == null) return;
 
     try {
-      // Obtener coordenadas del incidente
-      final latIncidente = _incidenteActivo!['latitud'] as double?;
-      final lonIncidente = _incidenteActivo!['longitud'] as double?;
+      final latIncidente = double.tryParse(_incidenteActivo!['latitud']?.toString() ?? '');
+      final lonIncidente = double.tryParse(_incidenteActivo!['longitud']?.toString() ?? '');
       
       if (latIncidente == null || lonIncidente == null) return;
 

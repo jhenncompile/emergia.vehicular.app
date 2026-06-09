@@ -8,7 +8,7 @@ from app.api.v1.endpoints import (
 api_router = APIRouter()
 
 api_router.include_router(emergencia.router, prefix="/emergencia", tags=["Emergencia"])
-api_router.include_router(seguimiento.router, tags=["Seguimiento"])
+api_router.include_router(seguimiento.router, prefix="/incidentes", tags=["Seguimiento"])
 
 api_router.include_router(auth.router, prefix="/auth", tags=["Autenticación"])
 api_router.include_router(usuario.router, prefix="/usuarios", tags=["Usuarios"])

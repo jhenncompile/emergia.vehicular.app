@@ -136,6 +136,8 @@ class RealtimeProvider extends ChangeNotifier {
 
   bool _isIncidentEvent(Map<String, dynamic> event) {
     final type = event['tipo']?.toString() ?? '';
+    if (type == 'ubicacion_tecnico') return false;
+    
     final realtimeEvent = event['evento']?.toString() ?? '';
 
     return event['incidente_id'] != null ||

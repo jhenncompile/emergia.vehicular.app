@@ -19,7 +19,7 @@ from app.services.tracking_service import TrackingService
 from app.services.routing_service import RoutingService
 from app.services.notificacion_service import NotificacionService
 
-router = APIRouter(prefix="/api/v1/incidentes", tags=["seguimiento"])
+router = APIRouter()
 
 
 @router.post("/{incidente_id}/ubicacion-tecnico", response_model=LocationTecnicoResponse)

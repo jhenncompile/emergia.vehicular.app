@@ -69,6 +69,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadTalleres();
+      final auth = context.read<AuthProvider>();
+      if (auth.isTecnico) {
+        final tecnicoProvider = context.read<TecnicoProvider>();
+        if (!tecnicoProvider.isTracking && tecnicoProvider.incidenteActivo != null) {
+          final estado = (tecnicoProvider.incidenteActivo!['estado'] ?? '').toString();
+          if (estado == 'en_camino' || estado == 'en_atencion') {
+            tecnicoProvider.iniciarTracking();
+          }
+        }
+      }
     });
   }
 
@@ -146,6 +156,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         }
 
         final esTecnico = context.watch<AuthProvider>().isTecnico;
+        final tecnicoProvider = esTecnico ? context.watch<TecnicoProvider>() : null;
 
         final estado = (activo['estado'] ?? '').toString().toLowerCase();
         final double lat = activo['latitud'] is double ? activo['latitud'] : double.tryParse(activo['latitud']?.toString() ?? '0') ?? 0.0;
@@ -209,50 +220,83 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _talleres.firstWhere(
         (t) => t['id'] == activo['taller_id'],
         orElse: () => <String, dynamic>{});
-if (tallerData.isNotEmpty) {
-              final incidentId = activo['id'] as int;
-              final liveUbic = provider.getUbicacionTecnicoEnVivo(incidentId);
+           final incidentId = activo['id'] as int;
+           final liveUbic = provider.getUbicacionTecnicoEnVivo(incidentId);
 
-              double tLat = tallerData['latitud'] is double ? tallerData['latitud'] : double.tryParse(tallerData['latitud']?.toString() ?? '0') ?? 0.0;
-              double tLng = tallerData['longitud'] is double ? tallerData['longitud'] : double.tryParse(tallerData['longitud']?.toString() ?? '0') ?? 0.0;
+           if (tallerData.isNotEmpty || esTecnico || liveUbic != null) {
+
+              // 1. Coordenadas fijas del Taller
+              LatLng? realTallerLocation;
+              if (tallerData.isNotEmpty) {
+                final lat = tallerData['latitud'] is double ? tallerData['latitud'] : double.tryParse(tallerData['latitud']?.toString() ?? '0') ?? 0.0;
+                final lng = tallerData['longitud'] is double ? tallerData['longitud'] : double.tryParse(tallerData['longitud']?.toString() ?? '0') ?? 0.0;
+                realTallerLocation = LatLng(lat, lng);
+              }
               
+              // 2. Coordenadas móviles del Técnico
+              LatLng? tecnicoLocation;
               if (liveUbic != null) {
-                tLat = liveUbic['lat']!;
-                tLng = liveUbic['lng']!;
+                tecnicoLocation = LatLng(liveUbic['lat']!, liveUbic['lng']!);
+              } else if (esTecnico && tecnicoProvider?.ubicacionActual != null) {
+                tecnicoLocation = LatLng(tecnicoProvider!.ubicacionActual!.latitude, tecnicoProvider.ubicacionActual!.longitude);
               }
 
-              tallerLocation = LatLng(tLat, tLng);
-              tallerNombre = tallerData['nombre'] ?? 'Taller';
+              // Usar la ubicación del técnico si existe, sino la del taller para la ruta
+              tallerLocation = tecnicoLocation ?? realTallerLocation;
+              tallerNombre = tallerData['nombre'] ?? (esTecnico ? 'Tu Ubicación' : 'Taller');
               
-              tallerMarkers.add(Marker(
-                 point: tallerLocation,
-                 child: Stack(
-                   alignment: Alignment.center,
-                   children: [
-                     Icon(
-                       (isEnCamino || liveUbic != null) ? Icons.directions_car : Icons.build_circle,
-                       color: (isEnCamino || liveUbic != null) ? Colors.blue : Colors.green,
-                       size: 36,
-                     ),
-                     // Show workshop name under the marker
-                     Positioned(
-                       bottom: -20,
-                       child: Text(
-                         tallerNombre,
-                         style: const TextStyle(
-                           color: Colors.black,
-                           fontWeight: FontWeight.bold,
-                           fontSize: 12,
-                           backgroundColor: Colors.white70,
+              // Dibujar marcador del Taller (siempre verde y estático)
+              if (realTallerLocation != null) {
+                 tallerMarkers.add(Marker(
+                   point: realTallerLocation,
+                   child: Stack(
+                     alignment: Alignment.center,
+                     children: [
+                       const Icon(Icons.build_circle, color: Colors.green, size: 36),
+                       Positioned(
+                         bottom: -20,
+                         child: Text(
+                           tallerNombre,
+                           style: const TextStyle(
+                             color: Colors.black,
+                             fontWeight: FontWeight.bold,
+                             fontSize: 12,
+                             backgroundColor: Colors.white70,
+                           ),
                          ),
                        ),
-                     ),
-                   ],
-                 ),
-              ));
+                     ],
+                   ),
+                 ));
+              }
+
+              // Dibujar marcador del Técnico (siempre azul y móvil)
+              if (tecnicoLocation != null) {
+                 tallerMarkers.add(Marker(
+                   point: tecnicoLocation,
+                   child: Stack(
+                     alignment: Alignment.center,
+                     children: [
+                       const Icon(Icons.directions_car, color: Colors.blue, size: 36),
+                       Positioned(
+                         bottom: -20,
+                         child: Text(
+                           esTecnico ? 'Tu Ubicación' : 'Técnico',
+                           style: const TextStyle(
+                             color: Colors.black,
+                             fontWeight: FontWeight.bold,
+                             fontSize: 12,
+                             backgroundColor: Colors.white70,
+                           ),
+                         ),
+                       ),
+                     ],
+                   ),
+                 ));
+              }
 
               // Fetch route when we have a location and the incident is assigned or in motion
-              if ((isAsignado || isEnCamino || isEnAtencion) && _lastTallerLocation?.latitude != tallerLocation.latitude) {
+              if ((isAsignado || isEnCamino || isEnAtencion) && _lastTallerLocation != tallerLocation) {
                  _lastTallerLocation = tallerLocation;
                  Future.microtask(() => _fetchRoute(tallerLocation!, userLocation));
               }
