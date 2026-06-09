@@ -5,6 +5,7 @@ import { AuthService } from './core/services/auth';
 import { ToastComponent } from './shared/components/toast/toast';
 import { ToastService } from './core/services/toast.service';
 import { WebSocketNotificacionService } from './core/services/websocket-notificacion.service';
+import { SyncWebService } from './core/services/sync-web.service';
 
 @Component({
   selector: 'app-root',
@@ -18,6 +19,7 @@ export class App {
   public authService = inject(AuthService);
   private toastService = inject(ToastService);
   private wsNotificacionService = inject(WebSocketNotificacionService);
+  public syncWeb = inject(SyncWebService);
 
   constructor() {
     this.wsNotificacionService.notificaciones$.subscribe(noti => {

@@ -1,9 +1,10 @@
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig, provideZoneChangeDetection, isDevMode } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withFetch } from '@angular/common/http';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 
 import { routes } from './app.routes';
+import { provideServiceWorker } from '@angular/service-worker';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -11,6 +12,10 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     // Esto es vital para que Angular pueda hablar con FastAPI
     provideHttpClient(withFetch()),
-    provideCharts(withDefaultRegisterables())
-  ]
+    provideCharts(withDefaultRegisterables()),
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
+  ],
 };

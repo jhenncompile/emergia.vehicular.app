@@ -59,6 +59,7 @@
               <span class="evidence-tag audio" *ngIf="tieneAudio(inc)"><i class="fa-solid fa-microphone me-1"></i> Audio</span>
             </div>
             <div class="time-ago">
+              <span class="badge offline" *ngIf="estaPendienteSync(inc.id)" style="font-size: 0.75rem; background: #fee2e2; color: #b91c1c; padding: 3px 8px; border-radius: 12px; margin-right: 5px;" title="Pendiente de sincronizar">⏳ Offline</span>
               {{ calcularTiempo(inc.fecha_creacion) }}
             </div>
           </div>
@@ -110,7 +111,10 @@
             </div>
             
             <div class="time-ago" style="text-align: right;">
-              <div style="margin-bottom: 4px;">{{ calcularTiempo(inc.fecha_creacion) }}</div>
+              <div style="margin-bottom: 4px;">
+                <span class="badge offline" *ngIf="estaPendienteSync(inc.id)" style="font-size: 0.75rem; background: #fee2e2; color: #b91c1c; padding: 3px 8px; border-radius: 12px; margin-right: 5px;" title="Pendiente de sincronizar">⏳ Offline</span>
+                {{ calcularTiempo(inc.fecha_creacion) }}
+              </div>
               <span *ngIf="inc.tecnico" class="tec-tag" style="font-weight: 600; color: #3b82f6;"><i class="fa-solid fa-user-gear me-1"></i> {{ inc.tecnico.nombre }}</span>
               <small *ngIf="!inc.tecnico" style="color: #ef4444; font-weight: 600;">Sin asignar</small>
             </div>

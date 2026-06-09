@@ -1,2 +1,5 @@
+<div *ngIf="!(syncWeb.isOnline$ | async)" class="offline-banner" style="background-color: #ef4444; color: white; text-align: center; padding: 10px; font-weight: bold; position: sticky; top: 0; z-index: 9999; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
+  <i class="fa-solid fa-wifi-slash me-2"></i> Estás sin conexión. Los cambios se guardarán localmente y se enviarán al volver la red.
+</div>
 <router-outlet></router-outlet>
 <app-toast></app-toast>

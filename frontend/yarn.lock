@@ -188,6 +188,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@angular-devkit/core@npm:21.2.14":
+  version: 21.2.14
+  resolution: "@angular-devkit/core@npm:21.2.14"
+  dependencies:
+    ajv: "npm:8.18.0"
+    ajv-formats: "npm:3.0.1"
+    jsonc-parser: "npm:3.3.1"
+    picomatch: "npm:4.0.4"
+    rxjs: "npm:7.8.2"
+    source-map: "npm:0.7.6"
+  peerDependencies:
+    chokidar: ^5.0.0
+  peerDependenciesMeta:
+    chokidar:
+      optional: true
+  checksum: 10c0/7c7afaced9b4d5ac101013152dfcac8f2c1a56d21c0cff27e4af36743a61bdd10ad5f90a511fdc91db67294bf9ae6b666e07ba4ab95005ea55081bbe6700ed4b
+  languageName: node
+  linkType: hard
+
 "@angular-devkit/core@npm:21.2.7":
   version: 21.2.7
   resolution: "@angular-devkit/core@npm:21.2.7"
@@ -204,6 +223,19 @@ __metadata:
     chokidar:
       optional: true
   checksum: 10c0/75b4e05a748a5f02f9700c7d64be336d048b6667a23daf44821e4ae1630765b6d847f7b4c291807a3ee7cf77516fef07ac325cc3068b647d67cbbbf678b1c400
+  languageName: node
+  linkType: hard
+
+"@angular-devkit/schematics@npm:21.2.14":
+  version: 21.2.14
+  resolution: "@angular-devkit/schematics@npm:21.2.14"
+  dependencies:
+    "@angular-devkit/core": "npm:21.2.14"
+    jsonc-parser: "npm:3.3.1"
+    magic-string: "npm:0.30.21"
+    ora: "npm:9.3.0"
+    rxjs: "npm:7.8.2"
+  checksum: 10c0/8bde712e14a02de436e490dc538dea1abb054c8740daaa199078b9088aaae54e639917deadac40df377a0eeec9179e15f884dafa677dc2ec95d4ed708a4163a3
   languageName: node
   linkType: hard
 
@@ -439,6 +471,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@angular/pwa@npm:^21.2.14":
+  version: 21.2.14
+  resolution: "@angular/pwa@npm:21.2.14"
+  dependencies:
+    "@angular-devkit/schematics": "npm:21.2.14"
+    "@schematics/angular": "npm:21.2.14"
+    parse5-html-rewriting-stream: "npm:8.0.0"
+  peerDependencies:
+    "@angular/cli": ^21.2.14
+  peerDependenciesMeta:
+    "@angular/cli":
+      optional: true
+  checksum: 10c0/ca55568b8243553637199c6e946cc11472e713f0e843c19c5bbe3bb07cee467df7a103929c75ae5c382f5db5af17e6e43a0b70bb6bdc8cc2437e6fe1ae6ca524
+  languageName: node
+  linkType: hard
+
 "@angular/router@npm:^21.2.0":
   version: 21.2.8
   resolution: "@angular/router@npm:21.2.8"
@@ -450,6 +498,20 @@ __metadata:
     "@angular/platform-browser": 21.2.8
     rxjs: ^6.5.3 || ^7.4.0
   checksum: 10c0/f30994fb04b10a98cea1fe17f466b112eae7c984d48fa8a3fa2cf5a24d85e48e1fadc743faa21f16fa0c3510ce321b55e34ceef8822098efa064c4cb0ca5e354
+  languageName: node
+  linkType: hard
+
+"@angular/service-worker@npm:^21.2.0":
+  version: 21.2.16
+  resolution: "@angular/service-worker@npm:21.2.16"
+  dependencies:
+    tslib: "npm:^2.3.0"
+  peerDependencies:
+    "@angular/core": 21.2.16
+    rxjs: ^6.5.3 || ^7.4.0
+  bin:
+    ngsw-config: ngsw-config.js
+  checksum: 10c0/f9a2f077ae1e6402651c247c5858eb829befa6f0d59061a45134262cb39f00115b7b92dd9585cd10338d4120f4e1eb43479f8822cedc2c5b845ff5034d2ff551
   languageName: node
   linkType: hard
 
@@ -2777,6 +2839,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@schematics/angular@npm:21.2.14":
+  version: 21.2.14
+  resolution: "@schematics/angular@npm:21.2.14"
+  dependencies:
+    "@angular-devkit/core": "npm:21.2.14"
+    "@angular-devkit/schematics": "npm:21.2.14"
+    jsonc-parser: "npm:3.3.1"
+  checksum: 10c0/153d4297e6ebe7d6cc499c779f8fa8b9f386d7b9686306178eb43be3e3e076b4eb58c376ecd6be2565cb898f790949ae14c38093f56fb96bf79addb93790d0f8
+  languageName: node
+  linkType: hard
+
 "@schematics/angular@npm:21.2.7":
   version: 21.2.7
   resolution: "@schematics/angular@npm:21.2.7"
@@ -4158,7 +4231,9 @@ __metadata:
     "@angular/core": "npm:^21.2.0"
     "@angular/forms": "npm:^21.2.0"
     "@angular/platform-browser": "npm:^21.2.0"
+    "@angular/pwa": "npm:^21.2.14"
     "@angular/router": "npm:^21.2.0"
+    "@angular/service-worker": "npm:^21.2.0"
     "@types/leaflet": "npm:^1.9.21"
     "@types/leaflet.heat": "npm:^0.2.5"
     chart.js: "npm:^4.5.1"

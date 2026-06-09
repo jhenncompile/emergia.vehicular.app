@@ -7,6 +7,7 @@ import { UsuariosService } from '../../core/services/usuarios';
 import { WebSocketNotificacionService } from '../../core/services/websocket-notificacion.service';
 import { environment } from '../../../environments/environment';
 import { MapaTecnicoComponent } from './mapa-tecnico/mapa-tecnico.component';
+import { SyncWebService } from '../../core/services/sync-web.service';
 
 @Component({
   selector: 'app-auxilios',
@@ -19,6 +20,7 @@ export class AuxiliosComponent implements OnInit {
   private incidentesService = inject(IncidentesService);
   private usuariosService = inject(UsuariosService);
   private http = inject(HttpClient);
+  public syncWeb = inject(SyncWebService);
 
   tabActiva: 'pendientes' | 'mis-atenciones' = 'pendientes';
   incidentesPendientes: any[] = [];
@@ -110,8 +112,8 @@ export class AuxiliosComponent implements OnInit {
   }
 
   puedeAsignarTecnico(inc: any): boolean {
-  return inc?.estado === 'asignado_taller';
-}
+    return inc?.estado === 'asignado_taller';
+  }
 
   puedeReasignarTecnico(inc: any): boolean {
     return ['asignado_taller', 'en_camino', 'en_atencion'].includes(inc?.estado);
@@ -164,15 +166,17 @@ export class AuxiliosComponent implements OnInit {
     return `${diffDays} d ago`;
   }
 
+  estaPendienteSync(incId: number): boolean {
+    return this.syncWeb.hasPendingTask(incId);
+  }
+
   // --- LÓGICA DE ASIGNACIÓN Y REASIGNACIÓN ---
 
   // --- FLUJO DE COTIZACION (REEMPLAZA ACEPTAR DIRECTO) ---
   
   abrirModalCotizar(inc: any) {
     this.incidenteAccion = inc;
-    // Buscar la sugerencia de IA en el arreglo de candidatos (si viene incluido en los datos)
-    // O si el backend lo devuelve, por ahora pondremos 0 y el backend generará si no existe
-    this.sugerenciaMonto = inc.sugerencia_ia_monto || 0; // Se asume que backend mandará esto
+    this.sugerenciaMonto = inc.sugerencia_ia_monto || 0; 
     this.montoCobro = this.sugerenciaMonto > 0 ? this.sugerenciaMonto : 100;
     this.cotizacionTiempo = '30 minutos';
     this.mostrarModalCotizar = true;
@@ -183,6 +187,15 @@ export class AuxiliosComponent implements OnInit {
       return alert('Debe ingresar un monto válido y un tiempo estimado.');
     }
     
+    if (!this.syncWeb.isOnline) {
+      const url = `${environment.apiUrl}/incidentes/${this.incidenteAccion.id}/cotizar`;
+      this.syncWeb.enqueueTask(url, 'POST', { monto: this.montoCobro, tiempo_estimado: this.cotizacionTiempo }, this.incidenteAccion.id);
+      
+      this.incidenteAccion.estado = 'cotizado'; // UI optimista (mock visual)
+      this.mostrarModalCotizar = false;
+      return;
+    }
+
     this.incidentesService.enviarCotizacion(this.incidenteAccion.id, this.montoCobro, this.cotizacionTiempo).subscribe({
       next: (res) => {
         alert('Cotización enviada exitosamente. El cliente será notificado.');
@@ -200,6 +213,10 @@ export class AuxiliosComponent implements OnInit {
 
   // Se usa cuando aceptas un incidente nuevo (DEPRECADO POR COTIZAR)
   aceptarIncidente(id: number) {
+    if (!this.syncWeb.isOnline) {
+      alert("Acción 'Aceptar' directa deprecada. Usa 'Cotizar'.");
+      return;
+    }
     this.incidentesService.aceptarIncidente(id).subscribe({
       next: (res) => {
         this.cargarDatos();
@@ -226,6 +243,14 @@ export class AuxiliosComponent implements OnInit {
   confirmarAsignacion() {
     if (!this.idTecnicoSeleccionado) return alert('Debes seleccionar un técnico.');
     
+    if (!this.syncWeb.isOnline) {
+      const url = `${environment.apiUrl}/incidentes/${this.incidenteAccion.id}/asignar`;
+      this.syncWeb.enqueueTask(url, 'PATCH', { tecnico_id: this.idTecnicoSeleccionado }, this.incidenteAccion.id);
+      
+      this.cerrarModalAsignar();
+      return;
+    }
+
     this.incidentesService.asignarTecnico(this.incidenteAccion.id, this.idTecnicoSeleccionado).subscribe({
       next: () => {
         alert('Técnico asignado correctamente 🔧');
@@ -262,6 +287,17 @@ export class AuxiliosComponent implements OnInit {
   confirmarRechazo() {
     if (!this.motivoRechazo.trim()) return alert('Por favor escribe un motivo.');
 
+    if (!this.syncWeb.isOnline) {
+      const url = this.accionMotivo === 'cancelar' 
+        ? `${environment.apiUrl}/incidentes/${this.incidenteAccion.id}/cancelar`
+        : `${environment.apiUrl}/incidentes/${this.incidenteAccion.id}/rechazar`;
+      
+      this.syncWeb.enqueueTask(url, 'POST', { motivo: this.motivoRechazo }, this.incidenteAccion.id);
+      
+      this.mostrarModalRechazo = false;
+      return;
+    }
+
     const request$ = this.accionMotivo === 'cancelar'
       ? this.incidentesService.cancelarIncidente(this.incidenteAccion.id, this.motivoRechazo)
       : this.incidentesService.rechazarIncidente(this.incidenteAccion.id, this.motivoRechazo);
@@ -288,6 +324,18 @@ export class AuxiliosComponent implements OnInit {
 
   marcarLlegada(id: number) {
     if (!confirm('¿Marcar que el técnico llegó al incidente?')) return;
+    
+    if (!this.syncWeb.isOnline) {
+      const url = `${environment.apiUrl}/incidentes/${id}/estado`;
+      this.syncWeb.enqueueTask(url, 'PUT', { estado: 'en_atencion' }, id);
+      
+      // Actualizamos local optimista
+      const inc = [...this.incidentesPendientes, ...this.misAtenciones].find(i => i.id === id);
+      if (inc) inc.estado = 'en_atencion';
+      
+      return;
+    }
+
     this.incidentesService.marcarLlegada(id).subscribe({
       next: (actualizado) => {
         // Actualizamos localmente para no recargar toda la tabla
@@ -320,6 +368,11 @@ export class AuxiliosComponent implements OnInit {
     this.procesandoCobro = false;
   }
   generarCobro() {
+    if (!this.syncWeb.isOnline) {
+      alert("No se puede generar cobros sin conexión a internet.");
+      return;
+    }
+
     if (this.montoCobro <= 0) return alert('Monto inválido.');
     if (this.procesandoCobro) return;
   
@@ -330,11 +383,9 @@ export class AuxiliosComponent implements OnInit {
 
     this.http.post(url, {}, { headers }).subscribe({
       next: (res: any) => {
-        // ✅ ELIMINADO: window.open (Ya no abre links externos)
         alert('Cobro registrado y emitido con éxito 💵');
-      
         this.cerrarModalCobro();
-        this.cargarDatos(); // 🔄 Recargamos para que el estado 'pago_estado' cambie en la tabla
+        this.cargarDatos(); 
       },
       error: (e) => {
         this.procesandoCobro = false;
@@ -342,6 +393,7 @@ export class AuxiliosComponent implements OnInit {
       }
     });
   }
+
   abrirModalReparacion(incidente: any) {
     this.incidenteAccion = incidente;
     this.tiempoReparacionInput = incidente.tiempo_reparacion_estimado || '';
@@ -356,6 +408,15 @@ export class AuxiliosComponent implements OnInit {
 
   guardarTiempoReparacion() {
     if (!this.incidenteAccion || !this.tiempoReparacionInput.trim()) return;
+
+    if (!this.syncWeb.isOnline) {
+      const url = `${environment.apiUrl}/incidentes/${this.incidenteAccion.id}/tiempo-reparacion`;
+      this.syncWeb.enqueueTask(url, 'PUT', { tiempo: this.tiempoReparacionInput }, this.incidenteAccion.id);
+      
+      this.incidenteAccion.tiempo_reparacion_estimado = this.tiempoReparacionInput;
+      this.cerrarModalReparacion();
+      return;
+    }
 
     this.incidentesService.actualizarTiempoReparacion(this.incidenteAccion.id, this.tiempoReparacionInput).subscribe({
       next: () => {
