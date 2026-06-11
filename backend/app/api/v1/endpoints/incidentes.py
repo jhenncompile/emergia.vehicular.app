@@ -2,6 +2,15 @@ import logging
 import unicodedata
 from pathlib import Path
 from uuid import uuid4
+import asyncio
+
+# Diccionario global para locks por usuario y así evitar race conditions (doble click)
+USER_LOCKS = {}
+
+def get_user_lock(user_id: int) -> asyncio.Lock:
+    if user_id not in USER_LOCKS:
+        USER_LOCKS[user_id] = asyncio.Lock()
+    return USER_LOCKS[user_id]
 
 from fastapi import APIRouter, Depends, HTTPException, Response, Query, UploadFile, File, Form
 from sqlalchemy.orm import Session, joinedload
@@ -1087,144 +1096,145 @@ async def _crear_incidente_multimedia(
             detail="Envia una descripcion, un audio o una imagen.",
         )
 
-    vehiculo = db.query(Vehiculo).filter(
-        Vehiculo.id == vehiculo_id,
-        Vehiculo.usuario_id == current_user.id,
-    ).first()
-    if not vehiculo:
-        raise HTTPException(
-            status_code=404,
-            detail="Vehiculo no encontrado para el cliente autenticado.",
-        )
-
-    # Validación de duplicados (ej. reintento offline)
-    hace_5_minutos = datetime.utcnow() - timedelta(minutes=5)
-    duplicado = db.query(Incidente).filter(
-        Incidente.usuario_id == current_user.id,
-        Incidente.vehiculo_id == vehiculo_id,
-        Incidente.descripcion == descripcion,
-        Incidente.fecha_creacion >= hace_5_minutos
-    ).first()
-    
-    if duplicado:
-        logger.info(f"Incidente duplicado detectado y omitido para usuario {current_user.id}")
-        return duplicado
-
-    transcripcion = None
-    error_audio_ia = None
-    detecciones_imagen = []
-    error_imagen_ia = None
-    url_audio = None
-    url_imagen = None
-
-    if audio is not None:
-        if audio.content_type not in ALLOWED_AUDIO_FORMATS:
+    async with get_user_lock(current_user.id):
+        vehiculo = db.query(Vehiculo).filter(
+            Vehiculo.id == vehiculo_id,
+            Vehiculo.usuario_id == current_user.id,
+        ).first()
+        if not vehiculo:
             raise HTTPException(
-                status_code=400,
-                detail="Formato de audio no soportado.",
+                status_code=404,
+                detail="Vehiculo no encontrado para el cliente autenticado.",
             )
 
-        audio_data = await audio.read()
-        if not audio_data:
-            raise HTTPException(status_code=400, detail="El audio esta vacio.")
+        # Validación de duplicados (ej. reintento offline)
+        hace_5_minutos = datetime.utcnow() - timedelta(minutes=5)
+        duplicado = db.query(Incidente).filter(
+            Incidente.usuario_id == current_user.id,
+            Incidente.vehiculo_id == vehiculo_id,
+            Incidente.descripcion == descripcion,
+            Incidente.fecha_creacion >= hace_5_minutos
+        ).first()
+        
+        if duplicado:
+            logger.info(f"Incidente duplicado detectado y omitido para usuario {current_user.id}")
+            return duplicado
 
-        url_audio = _guardar_archivo(
-            carpeta=AUDIO_UPLOADS_DIR,
-            subcarpeta_publica="audio",
-            data=audio_data,
-            nombre_original=audio.filename,
-            extension_default=".wav",
-        )
-        transcripcion, error_audio_ia = _transcribir_audio_si_es_posible(
-            audio_data,
-            audio.content_type,
-        )
+        transcripcion = None
+        error_audio_ia = None
+        detecciones_imagen = []
+        error_imagen_ia = None
+        url_audio = None
+        url_imagen = None
 
-    if imagen is not None:
-        if imagen.content_type not in ALLOWED_IMAGE_FORMATS:
-            raise HTTPException(
-                status_code=400,
-                detail="Formato de imagen no soportado.",
+        if audio is not None:
+            if audio.content_type not in ALLOWED_AUDIO_FORMATS:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Formato de audio no soportado.",
+                )
+
+            audio_data = await audio.read()
+            if not audio_data:
+                raise HTTPException(status_code=400, detail="El audio esta vacio.")
+
+            url_audio = _guardar_archivo(
+                carpeta=AUDIO_UPLOADS_DIR,
+                subcarpeta_publica="audio",
+                data=audio_data,
+                nombre_original=audio.filename,
+                extension_default=".wav",
+            )
+            transcripcion, error_audio_ia = _transcribir_audio_si_es_posible(
+                audio_data,
+                audio.content_type,
             )
 
-        imagen_data = await imagen.read()
-        if not imagen_data:
-            raise HTTPException(status_code=400, detail="La imagen esta vacia.")
+        if imagen is not None:
+            if imagen.content_type not in ALLOWED_IMAGE_FORMATS:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Formato de imagen no soportado.",
+                )
 
-        url_imagen = _guardar_archivo(
-            carpeta=IMAGE_UPLOADS_DIR,
-            subcarpeta_publica="imagenes",
-            data=imagen_data,
-            nombre_original=imagen.filename,
-            extension_default=".jpg",
+            imagen_data = await imagen.read()
+            if not imagen_data:
+                raise HTTPException(status_code=400, detail="La imagen esta vacia.")
+
+            url_imagen = _guardar_archivo(
+                carpeta=IMAGE_UPLOADS_DIR,
+                subcarpeta_publica="imagenes",
+                data=imagen_data,
+                nombre_original=imagen.filename,
+                extension_default=".jpg",
+            )
+            detecciones_imagen, error_imagen_ia = _analizar_imagen_si_es_posible(
+                imagen_data,
+                imagen.content_type,
+            )
+
+        labels_imagen = _labels_detecciones(detecciones_imagen)
+        texto_imagen = " ".join(labels_imagen)
+        texto_para_ia = " ".join(
+            parte for parte in [descripcion, transcripcion, texto_imagen] if parte
         )
-        detecciones_imagen, error_imagen_ia = _analizar_imagen_si_es_posible(
-            imagen_data,
-            imagen.content_type,
+        analisis_categoria = _analizar_categoria(texto_para_ia)
+        clasificacion = str(analisis_categoria["categoria"])
+        criticidad = _analizar_criticidad(texto_para_ia)
+        resumen = _construir_resumen_ia(
+            descripcion=descripcion,
+            transcripcion=transcripcion,
+            labels_imagen=labels_imagen,
+            categoria=clasificacion,
+            confianza_categoria=str(analisis_categoria["confianza"]),
+            motivos_categoria=list(analisis_categoria["motivos_categoria"]),
+            alternativas=list(analisis_categoria["alternativas"]),
+            criticidad=str(criticidad["criticidad"]),
+            motivo_criticidad=str(criticidad["motivo_criticidad"]),
+            error_audio_ia=error_audio_ia,
+            error_imagen_ia=error_imagen_ia,
         )
 
-    labels_imagen = _labels_detecciones(detecciones_imagen)
-    texto_imagen = " ".join(labels_imagen)
-    texto_para_ia = " ".join(
-        parte for parte in [descripcion, transcripcion, texto_imagen] if parte
-    )
-    analisis_categoria = _analizar_categoria(texto_para_ia)
-    clasificacion = str(analisis_categoria["categoria"])
-    criticidad = _analizar_criticidad(texto_para_ia)
-    resumen = _construir_resumen_ia(
-        descripcion=descripcion,
-        transcripcion=transcripcion,
-        labels_imagen=labels_imagen,
-        categoria=clasificacion,
-        confianza_categoria=str(analisis_categoria["confianza"]),
-        motivos_categoria=list(analisis_categoria["motivos_categoria"]),
-        alternativas=list(analisis_categoria["alternativas"]),
-        criticidad=str(criticidad["criticidad"]),
-        motivo_criticidad=str(criticidad["motivo_criticidad"]),
-        error_audio_ia=error_audio_ia,
-        error_imagen_ia=error_imagen_ia,
-    )
-
-    obj_in = IncidenteCreate(
-        usuario_id=current_user.id,
-        vehiculo_id=vehiculo_id,
-        descripcion=descripcion,
-        ubicacion=ubicacion,
-        latitud=latitud,
-        longitud=longitud,
-        prioridad=str(criticidad["prioridad"]),
-        estado=EstadoIncidente.PENDIENTE,
-        pago_estado="pendiente",
-        telefono_cliente=current_user.telefono or "No disponible",
-        transcripcion_audio=transcripcion,
-        clasificacion_ia=clasificacion,
-        resumen_ia=resumen,
-    )
-    incidente = incidente_crud.create(db, obj_in=obj_in, usuario_id=current_user.id)
-
-    if url_audio is not None:
-        evidencia_crud.create(
-            db,
-            obj_in=EvidenciaCreate(
-                incidente_id=incidente.id,
-                tipo_archivo="audio",
-                url_archivo=url_audio,
-            ),
+        obj_in = IncidenteCreate(
             usuario_id=current_user.id,
+            vehiculo_id=vehiculo_id,
+            descripcion=descripcion,
+            ubicacion=ubicacion,
+            latitud=latitud,
+            longitud=longitud,
+            prioridad=str(criticidad["prioridad"]),
+            estado=EstadoIncidente.PENDIENTE,
+            pago_estado="pendiente",
+            telefono_cliente=current_user.telefono or "No disponible",
+            transcripcion_audio=transcripcion,
+            clasificacion_ia=clasificacion,
+            resumen_ia=resumen,
         )
+        incidente = incidente_crud.create(db, obj_in=obj_in, usuario_id=current_user.id)
 
-    if url_imagen is not None:
-        evidencia_crud.create(
-            db,
-            obj_in=EvidenciaCreate(
-                incidente_id=incidente.id,
-                tipo_archivo="imagen",
-                url_archivo=url_imagen,
-            ),
-            usuario_id=current_user.id,
-        )
+        if url_audio is not None:
+            evidencia_crud.create(
+                db,
+                obj_in=EvidenciaCreate(
+                    incidente_id=incidente.id,
+                    tipo_archivo="audio",
+                    url_archivo=url_audio,
+                ),
+                usuario_id=current_user.id,
+            )
 
-    return _generar_ranking_automatico(db, incidente)
+        if url_imagen is not None:
+            evidencia_crud.create(
+                db,
+                obj_in=EvidenciaCreate(
+                    incidente_id=incidente.id,
+                    tipo_archivo="imagen",
+                    url_archivo=url_imagen,
+                ),
+                usuario_id=current_user.id,
+            )
+
+        return _generar_ranking_automatico(db, incidente)
 
 # 1. Reportar incidente (IA) - Mantenemos igual
 @router.post("/", response_model=IncidenteSchema)
