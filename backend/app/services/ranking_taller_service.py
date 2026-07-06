@@ -591,6 +591,83 @@ class RankingTallerService:
 
         return procesados
 
+    def recomendar_talleres_por_especialidad(
+        self,
+        *,
+        especialidad_id: int,
+        latitud: float | None = None,
+        longitud: float | None = None,
+    ) -> list[dict]:
+        """Directorio de talleres (solo consulta).
+
+        Devuelve talleres activos que ofrecen la especialidad indicada,
+        ordenados con la logica de ranking existente pero priorizando la mejor
+        `calificacion_promedio`. No modifica ningun incidente ni estado.
+        """
+        especialidad = (
+            self.db.query(Especialidad)
+            .filter(Especialidad.id == especialidad_id)
+            .first()
+        )
+        if not especialidad:
+            return []
+
+        nombre_especialidad = _normalizar(especialidad.nombre)
+
+        talleres = (
+            self.db.query(Taller)
+            .options(
+                joinedload(Taller.usuarios).joinedload(Usuario.especialidades),
+                joinedload(Taller.horarios),
+            )
+            .filter(Taller.estado == True)
+            .all()
+        )
+
+        resultados = []
+        for taller in talleres:
+            tecnicos_activos = self._tecnicos_activos(taller)
+            if not tecnicos_activos:
+                continue
+            if nombre_especialidad not in self._especialidades_taller(taller):
+                continue
+
+            distancia_metros = None
+            if (
+                latitud is not None
+                and longitud is not None
+                and taller.latitud is not None
+                and taller.longitud is not None
+            ):
+                distancia_metros = incidente_crud.calcular_distancia_haversine(
+                    float(taller.latitud),
+                    float(taller.longitud),
+                    float(latitud),
+                    float(longitud),
+                )
+
+            resultados.append(
+                {
+                    "taller": taller,
+                    "especialidad": especialidad.nombre,
+                    "distancia_metros": distancia_metros,
+                    "calificacion_promedio": taller.calificacion_promedio,
+                    "score_disponibilidad": self._score_disponibilidad(taller, tecnicos_activos),
+                }
+            )
+
+        # Prioridad: mejor calificacion_promedio; a igualdad, mayor disponibilidad
+        # y por ultimo menor distancia.
+        resultados.sort(
+            key=lambda item: (
+                item["calificacion_promedio"] if item["calificacion_promedio"] is not None else -1.0,
+                item["score_disponibilidad"],
+                -(item["distancia_metros"] if item["distancia_metros"] is not None else 1e12),
+            ),
+            reverse=True,
+        )
+        return resultados
+
     def _obtener_categoria_por_nombre(self, nombre: str) -> CategoriaIncidente | None:
         categoria = (
             self.db.query(CategoriaIncidente)

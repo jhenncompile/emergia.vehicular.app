@@ -22,6 +22,8 @@ import 'screens/pagos/pagos_screen.dart';
 import 'screens/perfil/perfil_screen.dart';
 import 'screens/servicios/mis_atenciones_screen.dart';
 import 'screens/vehiculos/mis_vehiculos_screen.dart';
+import 'screens/assistant/assistant_screen.dart';
+import 'screens/talleres/directorio_talleres_screen.dart';
 import 'services/api_service.dart';
 import 'services/auth_service.dart';
 import 'services/incidente_service.dart';
@@ -902,6 +904,30 @@ class _HomeDashboardState extends State<HomeDashboard> {
             Navigator.of(
               context,
             ).push(MaterialPageRoute(builder: (_) => const PagosScreen()));
+          },
+        ),
+        _actionCard(
+          context,
+          color: AppColors.info,
+          icon: Icons.support_agent_outlined,
+          title: 'Chatbot Auxiliar',
+          subtitle: 'Recomendaciones mientras esperas ayuda',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AssistantScreen()),
+            );
+          },
+        ),
+        _actionCard(
+          context,
+          color: const Color(0xFF0D9488),
+          icon: Icons.store_mall_directory_outlined,
+          title: 'Directorio de Talleres',
+          subtitle: 'Consulta talleres por especialidad',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const DirectorioTalleresScreen()),
+            );
           },
         ),
         const SizedBox(height: 12),

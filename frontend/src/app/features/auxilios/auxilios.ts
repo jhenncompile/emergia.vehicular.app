@@ -284,6 +284,14 @@ export class AuxiliosComponent implements OnInit {
     this.mostrarModalRechazo = true;
   }
 
+  // Penalidad si se cancela pasados 5 minutos desde la creacion del incidente.
+  aplicaPenalidad(inc: any): boolean {
+    if (!inc?.fecha_creacion) return false;
+    const creado = new Date(inc.fecha_creacion).getTime();
+    if (isNaN(creado)) return false;
+    return (Date.now() - creado) > 5 * 60 * 1000;
+  }
+
   confirmarRechazo() {
     if (!this.motivoRechazo.trim()) return alert('Por favor escribe un motivo.');
 

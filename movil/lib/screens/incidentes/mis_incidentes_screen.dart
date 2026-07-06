@@ -546,6 +546,16 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
         estado == 'en_camino';
   }
 
+  // Penalidad si se cancela pasados 5 minutos desde la creacion del incidente.
+  bool _aplicaPenalidad(Map<String, dynamic> incidente) {
+    final creadoRaw = incidente['fecha_creacion'];
+    if (creadoRaw == null) return false;
+    final creado = DateTime.tryParse(creadoRaw.toString());
+    if (creado == null) return false;
+    return DateTime.now().toUtc().difference(creado.toUtc()) >
+        const Duration(minutes: 5);
+  }
+
   Future<void> _solicitarCancelacion(
     BuildContext context,
     Map<String, dynamic> incidente,
@@ -556,13 +566,34 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text('Cancelar incidente'),
-          content: TextField(
-            controller: motivoController,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              labelText: 'Motivo',
-              border: OutlineInputBorder(),
-            ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_aplicaPenalidad(incidente))
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF2F2),
+                    border: Border.all(color: const Color(0xFFFECACA)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    '⚠️ Han pasado más de 5 minutos desde el reporte. '
+                    'Al cancelar ahora se generará un cargo de penalidad.',
+                    style: TextStyle(color: Color(0xFFB91C1C), fontSize: 13),
+                  ),
+                ),
+              TextField(
+                controller: motivoController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Motivo',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
           ),
           actions: [
             TextButton(

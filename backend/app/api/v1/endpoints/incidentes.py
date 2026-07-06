@@ -34,8 +34,11 @@ from app.models.usuario import Usuario
 from app.models.vehiculo import Vehiculo
 from typing import Optional
 from datetime import datetime, timezone, timedelta
+from decimal import Decimal
 from fpdf import FPDF
 from app.models.pago import Pago
+from app.crud.crud_pago import pago_crud
+from app.schemas.pago import PagoCreate
 from app.models.bitacora import Bitacora # 👈 Agrega esta importación
 from app.services.notificacion_service import NotificacionService # 👈 Servicio de notificaciones
 from app.services.ai_service import AIService, AIServiceError, HuggingFaceAPIError
@@ -55,6 +58,13 @@ UPLOADS_DIR = Path("uploads") / "incidentes"
 AUDIO_UPLOADS_DIR = UPLOADS_DIR / "audio"
 IMAGE_UPLOADS_DIR = UPLOADS_DIR / "imagenes"
 PUBLIC_UPLOADS_BASE = "/uploads/incidentes"
+
+# --- Penalidad por cancelacion tardia ---
+# Si el cliente cancela pasados estos minutos desde fecha_creacion, se genera
+# un cobro de penalidad usando el modulo de pagos existente.
+MINUTOS_GRACIA_CANCELACION = 5
+MONTO_PENALIDAD_CANCELACION = Decimal("20.00")
+
 ALLOWED_AUDIO_FORMATS = {
     "audio/mpeg",
     "audio/wav",
@@ -1948,6 +1958,12 @@ def cancelar_incidente(
         nuevo=jsonable_encoder(incidente_db),
     )
 
+    # Penalidad por cancelacion tardia del cliente: si pasaron mas de
+    # MINUTOS_GRACIA_CANCELACION desde la creacion y ya habia un taller
+    # involucrado, se genera un cobro de penalidad con el modulo de pagos.
+    if cancelado_por == CanceladoPor.CLIENTE and incidente_db.taller_id:
+        _registrar_penalidad_cancelacion(db, incidente_db, current_user)
+
     NotificacionService.notificar_cambio_estado(
         db=db,
         incidente=incidente_db,
@@ -1956,6 +1972,51 @@ def cancelar_incidente(
     )
 
     return incidente_db
+
+
+def _registrar_penalidad_cancelacion(db: Session, incidente_db: Incidente, current_user) -> None:
+    """Crea un pago de penalidad si el cliente cancelo fuera del periodo de gracia."""
+    fecha_creacion = incidente_db.fecha_creacion
+    if not fecha_creacion:
+        return
+
+    # fecha_creacion es timezone-aware; normalizamos por seguridad.
+    if fecha_creacion.tzinfo is None:
+        fecha_creacion = fecha_creacion.replace(tzinfo=timezone.utc)
+
+    transcurrido = datetime.now(timezone.utc) - fecha_creacion
+    if transcurrido <= timedelta(minutes=MINUTOS_GRACIA_CANCELACION):
+        return
+
+    # Evitamos duplicar cobros para el mismo incidente.
+    pago_existente = db.query(Pago).filter(Pago.incidente_id == incidente_db.id).first()
+    if pago_existente:
+        return
+
+    try:
+        pago_crud.create(
+            db,
+            obj_in=PagoCreate(
+                incidente_id=incidente_db.id,
+                usuario_id=incidente_db.usuario_id,
+                taller_id=incidente_db.taller_id,
+                monto=MONTO_PENALIDAD_CANCELACION,
+                metodo_pago="penalidad",
+                estado="pendiente",
+            ),
+        )
+        bitacora_crud.registrar(
+            db,
+            usuario_id=current_user.id,
+            taller_id=incidente_db.taller_id,
+            tabla="pago",
+            tabla_id=incidente_db.id,
+            accion="PENALIDAD_CANCELACION",
+            anterior=None,
+            nuevo={"monto": str(MONTO_PENALIDAD_CANCELACION), "motivo": "cancelacion_tardia"},
+        )
+    except Exception as exc:  # el cobro fallido no debe revertir la cancelacion
+        logger.error(f"No se pudo registrar la penalidad del incidente {incidente_db.id}: {exc}")
 
 
 # 5. ACTUALIZAR: Cambiar el estado operativo del incidente

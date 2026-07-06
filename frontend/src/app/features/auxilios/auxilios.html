@@ -279,6 +279,10 @@
     <div class="modal-card">
       <div class="modal-header"><h3>{{ accionMotivo === 'cancelar' ? 'Cancelar Incidente' : 'Rechazar Oferta' }}</h3></div>
       <div class="modal-body">
+        <div *ngIf="accionMotivo === 'cancelar' && aplicaPenalidad(incidenteAccion)"
+             style="background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; padding:10px 12px; border-radius:8px; margin-bottom:12px; font-size:0.9rem;">
+          ⚠️ Han pasado más de 5 minutos desde el reporte. Al cancelar ahora se generará un cargo de penalidad.
+        </div>
         <label>Escribe el motivo del rechazo:</label>
         <textarea [(ngModel)]="motivoRechazo" class="modern-input" rows="3"></textarea>
       </div>

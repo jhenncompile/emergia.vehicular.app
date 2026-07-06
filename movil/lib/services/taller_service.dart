@@ -34,6 +34,51 @@ class TallerService {
     }
   }
 
+  /// Directorio: catálogo de especialidades disponibles
+  /// GET /api/v1/taller-config/especialidades
+  Future<List<Map<String, dynamic>>> obtenerEspecialidades() async {
+    try {
+      final response = await apiService.get('/api/v1/taller-config/especialidades');
+
+      if (response is List) {
+        return List<Map<String, dynamic>>.from(
+          response.map((item) => item as Map<String, dynamic>),
+        );
+      }
+      throw Exception('Formato de respuesta inesperado');
+    } catch (e) {
+      throw Exception('Error al obtener especialidades: $e');
+    }
+  }
+
+  /// Directorio: talleres recomendados por especialidad (solo consulta)
+  /// GET /api/v1/talleres/directorio
+  Future<List<Map<String, dynamic>>> obtenerDirectorioPorEspecialidad({
+    required int especialidadId,
+    double? latitud,
+    double? longitud,
+  }) async {
+    try {
+      final response = await apiService.get(
+        '/api/v1/talleres/directorio',
+        queryParams: {
+          'especialidad_id': especialidadId,
+          if (latitud != null) 'latitud': latitud,
+          if (longitud != null) 'longitud': longitud,
+        },
+      );
+
+      if (response is List) {
+        return List<Map<String, dynamic>>.from(
+          response.map((item) => item as Map<String, dynamic>),
+        );
+      }
+      throw Exception('Formato de respuesta inesperado');
+    } catch (e) {
+      throw Exception('Error al obtener el directorio de talleres: $e');
+    }
+  }
+
   /// Obtener un taller específico
   /// GET /api/v1/talleres/{id}
   Future<Map<String, dynamic>> obtenerTaller({required int tallerId}) async {

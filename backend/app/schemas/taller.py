@@ -51,3 +51,19 @@ class Taller(TallerBase):
 
     class Config:
         from_attributes = True
+
+
+# Tarjeta del Directorio de Talleres (solo consulta, app móvil del cliente)
+class TallerDirectorioOut(BaseModel):
+    id: int
+    nombre: str
+    especialidad: str
+    direccion: Optional[str] = None
+    telefono: Optional[str] = None
+    latitud: Optional[Decimal] = None
+    longitud: Optional[Decimal] = None
+    calificacion_promedio: Optional[float] = None
+    especialidades_activas: List[str] = []
+    esta_abierto_ahora: bool = False
+    distancia_km: Optional[float] = None
+    imagen_url: Optional[str] = None

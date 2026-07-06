@@ -5,7 +5,8 @@ from typing import List
 from app.api import deps  # 👈 Aquí vive la magia de la seguridad
 from app.crud.crud_taller import taller_crud
 from app.crud.crud_bitacora import bitacora_crud
-from app.schemas.taller import Taller, TallerCreate, TallerUpdate
+from app.schemas.taller import Taller, TallerCreate, TallerUpdate, TallerDirectorioOut
+from app.services.ranking_taller_service import RankingTallerService
 from fastapi.encoders import jsonable_encoder
 
 router = APIRouter()
@@ -41,6 +42,42 @@ def leer_talleres_activos(
     limit: int = 100
 ):
     return taller_crud.obtener_activos(db, skip=skip, limit=limit)
+
+# 2.5. Directorio de Talleres (solo consulta): talleres activos por especialidad,
+# ordenados por la lógica de ranking priorizando la mejor calificación promedio.
+@router.get("/directorio", response_model=List[TallerDirectorioOut])
+def directorio_talleres(
+    especialidad_id: int,
+    latitud: float | None = None,
+    longitud: float | None = None,
+    db: Session = Depends(deps.get_db),
+):
+    resultados = RankingTallerService(db).recomendar_talleres_por_especialidad(
+        especialidad_id=especialidad_id,
+        latitud=latitud,
+        longitud=longitud,
+    )
+
+    tarjetas: List[TallerDirectorioOut] = []
+    for item in resultados:
+        taller = item["taller"]
+        distancia_metros = item["distancia_metros"]
+        tarjetas.append(
+            TallerDirectorioOut(
+                id=taller.id,
+                nombre=taller.nombre,
+                especialidad=item["especialidad"],
+                direccion=taller.direccion,
+                telefono=taller.telefono,
+                latitud=taller.latitud,
+                longitud=taller.longitud,
+                calificacion_promedio=taller.calificacion_promedio,
+                especialidades_activas=taller.especialidades_activas,
+                esta_abierto_ahora=taller.esta_abierto_ahora,
+                distancia_km=round(distancia_metros / 1000, 1) if distancia_metros is not None else None,
+            )
+        )
+    return tarjetas
 
 # 3. MI TALLER: El perfil que el admin gestiona (Endpoint /me)
 @router.get("/me", response_model=Taller)
