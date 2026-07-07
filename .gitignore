@@ -24,6 +24,10 @@ build/
 *.backup*.db
 backend/emergencias.backup2.db
 
+# APK del móvil (se distribuye por instalación directa, no versionado en la web)
+*.apk
+frontend/public/Tallercito.apk
+
 # Evidencias subidas localmente por el backend
 backend/uploads/
 
