@@ -20,6 +20,10 @@ build/
 # Bases de datos locales (si estuvieras usando SQLite, pero por si acaso)
 *.sqlite3
 
+# Backups de bases de datos locales (Render usa PostgreSQL, no se suben)
+*.backup*.db
+backend/emergencias.backup2.db
+
 # Evidencias subidas localmente por el backend
 backend/uploads/
 

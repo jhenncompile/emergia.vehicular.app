@@ -1,7 +1,21 @@
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, root_validator, field_serializer
 from typing import Optional, Dict, Any, List
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+def _serializar_utc(dt: Optional[datetime]) -> Optional[str]:
+    """Serializa un datetime asumiendo UTC cuando es naive, emitiendo sufijo 'Z'.
+
+    Las fechas se guardan en UTC naive (func.now() / datetime.utcnow()). Sin el
+    sufijo 'Z' los clientes JS/Dart las interpretan como hora local. Al emitir
+    'Z' se estandariza a UTC y cada cliente convierte a su zona correctamente.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 # Esquema para mostrar info básica del usuario/cliente
 class UsuarioInfo(BaseModel):
@@ -75,6 +89,10 @@ class IncidenteBase(BaseModel):
     fecha_creacion: Optional[datetime] = None
     fecha_llegada_tecnico: Optional[datetime] = None
     tiempo_reparacion_estimado: Optional[str] = None
+
+    @field_serializer("fecha_creacion", "fecha_llegada_tecnico", when_used="json")
+    def _ser_fechas_utc(self, dt: Optional[datetime]) -> Optional[str]:
+        return _serializar_utc(dt)
 
     class Config:
         from_attributes = True

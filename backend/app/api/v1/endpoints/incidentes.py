@@ -60,9 +60,9 @@ IMAGE_UPLOADS_DIR = UPLOADS_DIR / "imagenes"
 PUBLIC_UPLOADS_BASE = "/uploads/incidentes"
 
 # --- Penalidad por cancelacion tardia ---
-# Si el cliente cancela pasados estos minutos desde fecha_creacion, se genera
+# Si el cliente cancela pasados estos segundos desde fecha_creacion, se genera
 # un cobro de penalidad usando el modulo de pagos existente.
-MINUTOS_GRACIA_CANCELACION = 5
+SEGUNDOS_GRACIA_CANCELACION = 1
 MONTO_PENALIDAD_CANCELACION = Decimal("20.00")
 
 ALLOWED_AUDIO_FORMATS = {
@@ -1959,7 +1959,7 @@ def cancelar_incidente(
     )
 
     # Penalidad por cancelacion tardia del cliente: si pasaron mas de
-    # MINUTOS_GRACIA_CANCELACION desde la creacion y ya habia un taller
+    # SEGUNDOS_GRACIA_CANCELACION desde la creacion y ya habia un taller
     # involucrado, se genera un cobro de penalidad con el modulo de pagos.
     if cancelado_por == CanceladoPor.CLIENTE and incidente_db.taller_id:
         _registrar_penalidad_cancelacion(db, incidente_db, current_user)
@@ -1985,7 +1985,7 @@ def _registrar_penalidad_cancelacion(db: Session, incidente_db: Incidente, curre
         fecha_creacion = fecha_creacion.replace(tzinfo=timezone.utc)
 
     transcurrido = datetime.now(timezone.utc) - fecha_creacion
-    if transcurrido <= timedelta(minutes=MINUTOS_GRACIA_CANCELACION):
+    if transcurrido <= timedelta(seconds=SEGUNDOS_GRACIA_CANCELACION):
         return
 
     # Evitamos duplicar cobros para el mismo incidente.

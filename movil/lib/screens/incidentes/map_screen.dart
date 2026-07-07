@@ -429,7 +429,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     ),
                   ),
                 ElevatedButton.icon(
-                  onPressed: () => _mostrarDialogoCancelar(context, activo['id'] as int, esTecnico),
+                  onPressed: () => _mostrarDialogoCancelar(context, activo, esTecnico),
                   icon: const Icon(Icons.cancel),
                   label: const Text('Cancelar'),
                   style: ElevatedButton.styleFrom(
@@ -462,7 +462,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: () => _mostrarDialogoCancelar(context, activo['id'] as int, esTecnico),
+              onPressed: () => _mostrarDialogoCancelar(context, activo, esTecnico),
               icon: const Icon(Icons.cancel),
               label: const Text('Cancelar'),
               style: ElevatedButton.styleFrom(
@@ -565,7 +565,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 const SizedBox(width: 8),
                 if (esTecnico || (!esTecnico && !isEnAtencion))
                   ElevatedButton.icon(
-                    onPressed: () => _mostrarDialogoCancelar(context, activo['id'] as int, esTecnico),
+                    onPressed: () => _mostrarDialogoCancelar(context, activo, esTecnico),
                     icon: const Icon(Icons.cancel),
                     label: const Text('Cancelar'),
                     style: ElevatedButton.styleFrom(
@@ -716,19 +716,64 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     }
   }
 
-  Future<void> _mostrarDialogoCancelar(BuildContext context, int incidenteId, bool esTecnico) async {
+  // Hay taller asignado si viene el id o el objeto anidado del taller.
+  bool _tieneTaller(Map<String, dynamic> incidente) =>
+      incidente['taller_id'] != null || incidente['taller'] != null;
+
+  // Penalidad si se cancela pasado 1 segundo desde la creacion del incidente.
+  bool _aplicaPenalidad(Map<String, dynamic> incidente) {
+    final creadoRaw = incidente['fecha_creacion'];
+    if (creadoRaw == null) return false;
+    var creado = DateTime.tryParse(creadoRaw.toString());
+    if (creado == null) return false;
+    // El backend envia la fecha en UTC; si es naive la reinterpretamos como UTC.
+    if (!creado.isUtc) {
+      creado = DateTime.utc(creado.year, creado.month, creado.day, creado.hour,
+          creado.minute, creado.second, creado.millisecond, creado.microsecond);
+    }
+    final diff = DateTime.now().toUtc().difference(creado);
+    return diff > const Duration(seconds: 1);
+  }
+
+  Future<void> _mostrarDialogoCancelar(BuildContext context, Map<String, dynamic> activo, bool esTecnico) async {
+    final int incidenteId = activo['id'] as int;
+    // El recargo aplica solo a cancelaciones del cliente, con taller asignado y pasado el umbral.
+    final bool penaliza =
+        !esTecnico && _aplicaPenalidad(activo) && _tieneTaller(activo);
     final TextEditingController motivoCtrl = TextEditingController();
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Cancelar Incidente'),
-        content: TextField(
-          controller: motivoCtrl,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            labelText: 'Motivo',
-            border: OutlineInputBorder(),
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (penaliza)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  border: Border.all(color: const Color(0xFFFECACA)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  '⚠️ Se aplicarán recargos por cancelación.\n'
+                  'Ya hay un taller asignado, por lo que al cancelar se '
+                  'generará un cargo de penalidad (revísalo en Pagos).',
+                  style: TextStyle(color: Color(0xFFB91C1C), fontSize: 13),
+                ),
+              ),
+            TextField(
+              controller: motivoCtrl,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Motivo',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -775,6 +820,18 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       try {
         final success = await provider.cancelarIncidente(incidenteId: incidenteId, motivo: motivo);
         if (success && mounted) {
+           if (penaliza) {
+             ScaffoldMessenger.of(context).showSnackBar(
+               const SnackBar(
+                 backgroundColor: Color(0xFFB91C1C),
+                 duration: Duration(seconds: 5),
+                 content: Text(
+                   'Incidente cancelado. Se aplicó un cargo de penalidad por '
+                   'cancelación. Revísalo en la sección Pagos.',
+                 ),
+               ),
+             );
+           }
            Navigator.pop(context);
         } else if (!success && mounted) {
            ScaffoldMessenger.of(context).showSnackBar(

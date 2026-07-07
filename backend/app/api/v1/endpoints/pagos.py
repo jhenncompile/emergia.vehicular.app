@@ -244,24 +244,30 @@ async def stripe_webhook(request: Request, db: Session = Depends(deps.get_db)):
             if pago_id:
                 try:
                     # 1. Obtener pago e incidente
-                    pago = pago_crud.obtener_por_id(db, id=int(pago_id))
+                    pago = pago_crud.get(db, int(pago_id))
                     if not pago:
                         logger.error(f"Pago {pago_id} no encontrado en DB.")
                         return {"status": "error", "message": "Pago no encontrado"}
 
                     # 2. Actualizar estado del pago a 'completado'
-                    pago_actualizado = pago_crud.actualizar(
+                    pago_actualizado = pago_crud.update(
                         db,
                         db_obj=pago,
                         obj_in={"estado": "completado"}
                     )
 
-                    # 3. Marcar incidente como 'pagado' (o estado final dependiendo de la lógica de negocio)
+                    # 3. Marcar incidente como pagado y finalizado.
+                    #    "pagado" NO es un EstadoIncidente válido: el estado del
+                    #    ciclo de vida pasa a FINALIZADO y el pago se refleja en
+                    #    pago_estado, igual que en confirmar_pago_cliente.
                     incidente = pago.incidente
-                    incidente_crud.actualizar(
+                    incidente_crud.update(
                         db,
                         db_obj=incidente,
-                        obj_in={"estado": "pagado"}
+                        obj_in={
+                            "pago_estado": "pagado",
+                            "estado": EstadoIncidente.FINALIZADO,
+                        }
                     )
 
                     logger.info(f"✅ Pago {pago_id} y su Incidente {incidente.id} marcados como completados.")

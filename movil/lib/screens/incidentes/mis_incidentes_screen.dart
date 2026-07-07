@@ -546,14 +546,24 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
         estado == 'en_camino';
   }
 
-  // Penalidad si se cancela pasados 5 minutos desde la creacion del incidente.
+  // Hay taller asignado si viene el id o el objeto anidado del taller.
+  bool _tieneTaller(Map<String, dynamic> incidente) =>
+      incidente['taller_id'] != null || incidente['taller'] != null;
+
+  // Penalidad si se cancela pasado 1 segundo desde la creacion del incidente.
   bool _aplicaPenalidad(Map<String, dynamic> incidente) {
     final creadoRaw = incidente['fecha_creacion'];
     if (creadoRaw == null) return false;
-    final creado = DateTime.tryParse(creadoRaw.toString());
+    var creado = DateTime.tryParse(creadoRaw.toString());
     if (creado == null) return false;
-    return DateTime.now().toUtc().difference(creado.toUtc()) >
-        const Duration(minutes: 5);
+    // El backend envia la fecha en UTC pero sin marca de zona ('Z'); si se
+    // interpreta como hora local queda desfasada. La reinterpretamos como UTC.
+    if (!creado.isUtc) {
+      creado = DateTime.utc(creado.year, creado.month, creado.day, creado.hour,
+          creado.minute, creado.second, creado.millisecond, creado.microsecond);
+    }
+    final diff = DateTime.now().toUtc().difference(creado);
+    return diff > const Duration(seconds: 1);
   }
 
   Future<void> _solicitarCancelacion(
@@ -570,7 +580,7 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (_aplicaPenalidad(incidente))
+              if (_aplicaPenalidad(incidente) && _tieneTaller(incidente))
                 Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(10),
@@ -580,8 +590,10 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
-                    '⚠️ Han pasado más de 5 minutos desde el reporte. '
-                    'Al cancelar ahora se generará un cargo de penalidad.',
+                    '⚠️ Se aplicarán recargos por cancelación.\n'
+                    'Han pasado más de 1 segundo desde el reporte y ya hay '
+                    'un taller asignado, por lo que al cancelar se generará '
+                    'un cargo de penalidad.',
                     style: TextStyle(color: Color(0xFFB91C1C), fontSize: 13),
                   ),
                 ),
@@ -618,17 +630,36 @@ class _MisIncidentesScreenState extends State<MisIncidentesScreen> {
         return;
       }
 
+      // Penalidad: aplica si pasado el umbral y el incidente ya tenía taller asignado.
+      final penaliza = _aplicaPenalidad(incidente) && _tieneTaller(incidente);
+
       final incidenteProvider = context.read<IncidenteProvider>();
       final ok = await incidenteProvider.cancelarIncidente(
         incidenteId: incidente['id'] as int,
         motivo: motivo,
       );
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(ok ? 'Incidente cancelado.' : 'No se pudo cancelar.'),
-        ),
-      );
+
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo cancelar.')),
+        );
+      } else if (penaliza) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Color(0xFFB91C1C),
+            duration: Duration(seconds: 5),
+            content: Text(
+              'Incidente cancelado. Se generó un cargo de penalidad por '
+              'cancelación tardía. Revísalo en la sección Pagos.',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Incidente cancelado.')),
+        );
+      }
     } finally {
       motivoController.dispose();
     }

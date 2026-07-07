@@ -244,7 +244,8 @@ def seed_db(
     )
     
     hash_clave = get_password_hash("password123")
-    hoy = datetime.now()
+    # UTC para ser consistente con func.now() que usa la app (evita desfase de zona horaria)
+    hoy = datetime.utcnow()
     
     # ---------------------------------------------------------
     # 1. ROLES
@@ -627,7 +628,73 @@ def seed_db(
     
     db.commit()
     logger.info(f"✅ Creados {len(incidentes_subasta)} incidentes en subasta")
-    
+
+    # ---------------------------------------------------------
+    # 7.6 INCIDENTES CANCELADOS CON PENALIDAD (feature de cancelación)
+    # ---------------------------------------------------------
+    logger.info("🚫 Creando INCIDENTES CANCELADOS con PENALIDAD...")
+    # Debe coincidir con MONTO_PENALIDAD_CANCELACION del endpoint de incidentes.
+    MONTO_PENALIDAD_CANCELACION = Decimal("20.00")
+    motivos_cancelacion = [
+        "Ya conseguí ayuda por mi cuenta.",
+        "El problema se resolvió solo.",
+        "La espera fue demasiado larga.",
+        "Me equivoqué al reportar.",
+    ]
+    incidentes_cancelados = []
+    pagos_penalidad = []
+    for _ in range(5):
+        cliente = random.choice(clientes)
+        vehiculos_cliente = db.query(Vehiculo).filter(Vehiculo.usuario_id == cliente.id).all()
+        if not vehiculos_cliente:
+            continue
+        vehiculo = random.choice(vehiculos_cliente)
+        clasificacion = random.choice(CLASIFICACIONES_INCIDENTES)
+        taller = elegir_taller_para_clasificacion(talleres, clasificacion)
+        zona = taller.zona if hasattr(taller, "zona") else random.choice(ZONAS_SC)
+        lat, lon = generar_coords_en_zona(zona)
+
+        # El cliente canceló pasados más de 5 min desde la creación → aplica penalidad.
+        fecha_incidente = hoy - timedelta(days=random.randint(0, dias_historial))
+        incidente = Incidente(
+            vehiculo_id=vehiculo.id,
+            usuario_id=cliente.id,
+            taller_id=taller.id,
+            descripcion=fake.sentence(nb_words=10),
+            ubicacion=zona["nombre"],
+            latitud=lat,
+            longitud=lon,
+            prioridad=random.choice(prioridades),
+            estado=EstadoIncidente.CANCELADO,
+            pago_estado="pendiente",
+            cancelado_por=CanceladoPor.CLIENTE,
+            motivo_cancelacion=random.choice(motivos_cancelacion),
+            clasificacion_ia=clasificacion,
+            resumen_ia=fake.sentence(nb_words=8),
+            fecha_creacion=fecha_incidente,
+        )
+        db.add(incidente)
+        db.flush()  # obtener id para el pago de penalidad
+
+        pago = Pago(
+            incidente_id=incidente.id,
+            usuario_id=incidente.usuario_id,
+            taller_id=incidente.taller_id,
+            monto=MONTO_PENALIDAD_CANCELACION,
+            comision_plataforma=MONTO_PENALIDAD_CANCELACION * Decimal("0.10"),
+            metodo_pago="penalidad",
+            estado="pendiente",
+            fecha=fecha_incidente + timedelta(minutes=random.randint(6, 20)),
+        )
+        db.add(pago)
+        incidentes_cancelados.append(incidente)
+        pagos_penalidad.append(pago)
+    db.commit()
+    logger.info(
+        f"✅ Creados {len(incidentes_cancelados)} incidentes cancelados "
+        f"con {len(pagos_penalidad)} pagos de penalidad"
+    )
+
     # ---------------------------------------------------------
     # 8. PAGOS (para incidentes finalizados)
     # ---------------------------------------------------------

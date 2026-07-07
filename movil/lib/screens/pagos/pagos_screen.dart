@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/pago_provider.dart';
 import '../../theme/colors.dart';
+import '../calificacion/calificacion_screen.dart';
 import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
 
 class PagosScreen extends StatefulWidget {
@@ -325,7 +326,7 @@ class _PagosScreenState extends State<PagosScreen>
       await Stripe.instance.presentPaymentSheet();
 
       // 5. Confirmar pago al backend directamente (fallback en caso de que webhook no llegue localmente)
-      await pagoService.confirmarPagoCliente(pagoId as int);
+      await pagoService.confirmarPagoCliente(pagoId);
 
       // 6. Éxito
       if (context.mounted) {
@@ -341,6 +342,9 @@ class _PagosScreenState extends State<PagosScreen>
           pagoProvider.cargarHistorialPagos(usuarioId: userId);
           pagoProvider.cargarFacturasPendientes(usuarioId: userId);
         }
+
+        // 7. Solicitar calificación del servicio tras el pago
+        await _pedirCalificacion(context, pago);
       }
     } on StripeException catch (e) {
       if (context.mounted) {
@@ -363,6 +367,28 @@ class _PagosScreenState extends State<PagosScreen>
         );
       }
     }
+  }
+
+  /// Abre la pantalla de reseña/calificación para el incidente pagado.
+  /// El backend permite calificar porque, tras confirmar el pago, el
+  /// incidente queda en estado FINALIZADO.
+  Future<void> _pedirCalificacion(
+    BuildContext context,
+    Map<String, dynamic> pago,
+  ) async {
+    final incidenteRaw = pago['incidente_id'];
+    final incidenteId =
+        incidenteRaw is int ? incidenteRaw : int.tryParse('$incidenteRaw');
+    if (incidenteId == null || !context.mounted) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CalificacionScreen(
+          incidenteId: incidenteId,
+          nombreTaller: pago['taller']?['nombre'] as String?,
+        ),
+      ),
+    );
   }
 
   void _mostrarDetallePago(BuildContext context, Map<String, dynamic> pago) {

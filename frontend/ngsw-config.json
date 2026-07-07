@@ -24,5 +24,21 @@
         "files": ["/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"]
       }
     }
+  ],
+  "dataGroups": [
+    {
+      "name": "cdn-assets",
+      "urls": [
+        "https://cdn.jsdelivr.net/**",
+        "https://cdnjs.cloudflare.com/**",
+        "https://unpkg.com/**"
+      ],
+      "cacheConfig": {
+        "strategy": "performance",
+        "maxSize": 100,
+        "maxAge": "30d",
+        "timeout": "5s"
+      }
+    }
   ]
 }

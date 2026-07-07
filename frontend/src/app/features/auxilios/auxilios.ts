@@ -284,12 +284,18 @@ export class AuxiliosComponent implements OnInit {
     this.mostrarModalRechazo = true;
   }
 
-  // Penalidad si se cancela pasados 5 minutos desde la creacion del incidente.
+  // Penalidad si se cancela pasados 5 segundos desde la creacion del incidente.
   aplicaPenalidad(inc: any): boolean {
     if (!inc?.fecha_creacion) return false;
-    const creado = new Date(inc.fecha_creacion).getTime();
+    let raw = String(inc.fecha_creacion);
+    // El backend envía la fecha en UTC pero sin marca de zona ('Z'); sin esto
+    // el navegador la interpreta como hora local y el cálculo queda desfasado.
+    if (!/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw)) {
+      raw = raw.replace(' ', 'T') + 'Z';
+    }
+    const creado = new Date(raw).getTime();
     if (isNaN(creado)) return false;
-    return (Date.now() - creado) > 5 * 60 * 1000;
+    return (Date.now() - creado) > 1 * 1000;
   }
 
   confirmarRechazo() {

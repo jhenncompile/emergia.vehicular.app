@@ -12,6 +12,12 @@ class BackendConfig {
   static const String _localNetworkIp = '192.168.100.9';
   static const String _androidEmulatorHost = '10.0.2.2';
 
+  /// Backend (API FastAPI) de producción desplegado en Render.
+  /// El APK release distribuido en la web usa esta URL.
+  /// Nota: el frontend web vive en emergencia-vehicular-1.onrender.com;
+  /// la API es este host (sin el sufijo -1).
+  static const String _renderUrl = 'https://emergencia-vehicular.onrender.com';
+
   // ===== URLS CONSTRUIDAS =====
   static const String _localDevUrl = 'http://localhost:$_defaultPort';
   static const String _localNetworkUrl =
@@ -25,6 +31,13 @@ class BackendConfig {
     if (fromEnv.isNotEmpty) {
       debugPrint('[CONFIG] URL de variable de entorno: $fromEnv');
       return fromEnv;
+    }
+
+    // En compilaciones release (APK distribuido para pruebas) siempre se
+    // apunta al backend de producción en Render, sin importar la plataforma.
+    if (kReleaseMode) {
+      debugPrint('[CONFIG] Release: $_renderUrl');
+      return _renderUrl;
     }
 
     if (kIsWeb) {

@@ -1,6 +1,15 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, field_serializer
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+def _serializar_utc(dt: Optional[datetime]) -> Optional[str]:
+    """Serializa un datetime naive como UTC con sufijo 'Z' (ver schemas/incidente.py)."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 class CalificacionCreate(BaseModel):
@@ -23,6 +32,10 @@ class CalificacionOut(BaseModel):
     puntuacion: int
     comentario: Optional[str] = None
     fecha_creacion: Optional[datetime] = None
+
+    @field_serializer("fecha_creacion", when_used="json")
+    def _ser_fecha_utc(self, dt: Optional[datetime]) -> Optional[str]:
+        return _serializar_utc(dt)
 
     class Config:
         from_attributes = True

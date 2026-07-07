@@ -93,6 +93,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF3F4F6),
       appBar: AppBar(title: const Text('Chatbot Auxiliar')),
       body: Column(
         children: [
@@ -144,25 +145,54 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
   Widget _burbuja(_MensajeChat mensaje) {
     final esBot = mensaje.esBot;
-    return Align(
-      alignment: esBot ? Alignment.centerLeft : Alignment.centerRight,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+
+    final burbuja = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width * 0.72,
+      ),
+      decoration: BoxDecoration(
+        color: esBot ? Colors.white : AppColors.primaryColor,
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(16),
+          topRight: const Radius.circular(16),
+          bottomLeft: Radius.circular(esBot ? 4 : 16),
+          bottomRight: Radius.circular(esBot ? 16 : 4),
         ),
-        decoration: BoxDecoration(
-          color: esBot ? Colors.grey.shade200 : AppColors.primaryColor,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Text(
-          mensaje.texto,
-          style: TextStyle(
-            color: esBot ? AppColors.textDark : Colors.white,
-            fontSize: 14,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
+        ],
+      ),
+      child: Text(
+        mensaje.texto,
+        style: TextStyle(
+          color: esBot ? AppColors.textDark : Colors.white,
+          fontSize: 14,
+          height: 1.35,
         ),
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: esBot ? MainAxisAlignment.start : MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (esBot) ...[
+            const CircleAvatar(
+              radius: 16,
+              backgroundColor: AppColors.info,
+              child: Icon(Icons.support_agent, color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(child: burbuja),
+        ],
       ),
     );
   }
